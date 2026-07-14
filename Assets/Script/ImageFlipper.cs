@@ -1,101 +1,101 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
 /// <summary>
-/// ÁöÁ¤µÈ ½Ã°£ °£°İ¸¶´Ù SpriteRenderer ÄÄÆ÷³ÍÆ®ÀÇ ÁÂ¿ì ¹İÀü(flipX)À» Åä±ÛÇÕ´Ï´Ù.
-/// ÀÌ ½ºÅ©¸³Æ®´Â SpriteRenderer ÄÄÆ÷³ÍÆ®°¡ ÀÖ´Â GameObject¿¡ »ç¿ëµÇ¾î¾ß ÇÕ´Ï´Ù.
-/// (Âü°í: ÆÄÀÏ¸íÀº ImageFlipper.csÀÌÁö¸¸ Å¬·¡½º¸íÀº SpriteFlipperÀÔ´Ï´Ù.)
+/// ì§€ì •ëœ ì‹œê°„ ê°„ê²©ë§ˆë‹¤ SpriteRenderer ì»´í¬ë„ŒíŠ¸ì˜ ì¢Œìš° ë°˜ì „(flipX)ì„ í† ê¸€í•©ë‹ˆë‹¤.
+/// ì´ ìŠ¤í¬ë¦½íŠ¸ëŠ” SpriteRenderer ì»´í¬ë„ŒíŠ¸ê°€ ìˆëŠ” GameObjectì— ì‚¬ìš©ë˜ì–´ì•¼ í•©ë‹ˆë‹¤.
+/// (ì°¸ê³ : íŒŒì¼ëª…ì€ ImageFlipper.csì´ì§€ë§Œ í´ë˜ìŠ¤ëª…ì€ SpriteFlipperì…ë‹ˆë‹¤.)
 /// </summary>
-[RequireComponent(typeof(SpriteRenderer))] // SpriteRenderer ÄÄÆ÷³ÍÆ®°¡ ÇÊ¼ö·Î ¿ä±¸µÊÀ» ¸í½Ã
+[RequireComponent(typeof(SpriteRenderer))] // SpriteRenderer ì»´í¬ë„ŒíŠ¸ê°€ í•„ìˆ˜ë¡œ ìš”êµ¬ë¨ì„ ëª…ì‹œ
 public class SpriteFlipper : MonoBehaviour
 {
     // --- Public Member Variables ---
 
-    [Tooltip("½ºÇÁ¶óÀÌÆ® ÁÂ¿ì ¹İÀüÀ» Åä±ÛÇÒ ½Ã°£ °£°İ (ÃÊ)")]
+    [Tooltip("ìŠ¤í”„ë¼ì´íŠ¸ ì¢Œìš° ë°˜ì „ì„ í† ê¸€í•  ì‹œê°„ ê°„ê²© (ì´ˆ)")]
     public float flipInterval = 0.5f;
 
     // --- Private Member Variables ---
 
     /// <summary>
-    /// ÁÂ¿ì ¹İÀüÀ» Àû¿ëÇÒ ´ë»ó SpriteRenderer
+    /// ì¢Œìš° ë°˜ì „ì„ ì ìš©í•  ëŒ€ìƒ SpriteRenderer
     /// </summary>
     private SpriteRenderer targetSprite;
 
     /// <summary>
-    /// ´ÙÀ½ ¹İÀü±îÁö ³²Àº ½Ã°£À» ÃßÀûÇÏ´Â Å¸ÀÌ¸Ó
+    /// ë‹¤ìŒ ë°˜ì „ê¹Œì§€ ë‚¨ì€ ì‹œê°„ì„ ì¶”ì í•˜ëŠ” íƒ€ì´ë¨¸
     /// </summary>
     private float timer;
 
     // --- Unity Event Functions ---
 
     /// <summary>
-    /// ½ºÅ©¸³Æ®°¡ Ã³À½ È°¼ºÈ­µÉ ¶§ È£ÃâµË´Ï´Ù.
+    /// ìŠ¤í¬ë¦½íŠ¸ê°€ ì²˜ìŒ í™œì„±í™”ë  ë•Œ í˜¸ì¶œë©ë‹ˆë‹¤.
     /// </summary>
     void Start()
     {
-        // °°Àº GameObjectÀÇ SpriteRenderer ÄÄÆ÷³ÍÆ® °¡Á®¿À±â
+        // ê°™ì€ GameObjectì˜ SpriteRenderer ì»´í¬ë„ŒíŠ¸ ê°€ì ¸ì˜¤ê¸°
         targetSprite = GetComponent<SpriteRenderer>();
 
-        // SpriteRenderer°¡ ¾ø´Â °æ¿ì ¿À·ù¸¦ ±â·ÏÇÏ°í ½ºÅ©¸³Æ®¸¦ ºñÈ°¼ºÈ­ÇÕ´Ï´Ù.
+        // SpriteRendererê°€ ì—†ëŠ” ê²½ìš° ì˜¤ë¥˜ë¥¼ ê¸°ë¡í•˜ê³  ìŠ¤í¬ë¦½íŠ¸ë¥¼ ë¹„í™œì„±í™”í•©ë‹ˆë‹¤.
         if (targetSprite == null)
         {
-            Debug.LogError("SpriteFlipper: SpriteRenderer ÄÄÆ÷³ÍÆ®¸¦ Ã£À» ¼ö ¾ø½À´Ï´Ù! ½ºÅ©¸³Æ®°¡ ºñÈ°¼ºÈ­µË´Ï´Ù.");
+            Debug.LogError("SpriteFlipper: SpriteRenderer ì»´í¬ë„ŒíŠ¸ë¥¼ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤! ìŠ¤í¬ë¦½íŠ¸ê°€ ë¹„í™œì„±í™”ë©ë‹ˆë‹¤.");
             this.enabled = false;
             return;
         }
 
-        // Å¸ÀÌ¸Ó¸¦ ÁöÁ¤µÈ °£°İÀ¸·Î ÃÊ±âÈ­ÇÕ´Ï´Ù.
+        // íƒ€ì´ë¨¸ë¥¼ ì§€ì •ëœ ê°„ê²©ìœ¼ë¡œ ì´ˆê¸°í™”í•©ë‹ˆë‹¤.
         timer = flipInterval;
     }
 
     /// <summary>
-    /// ¸Å ÇÁ·¹ÀÓ¸¶´Ù È£ÃâµË´Ï´Ù.
+    /// ë§¤ í”„ë ˆì„ë§ˆë‹¤ í˜¸ì¶œë©ë‹ˆë‹¤.
     /// </summary>
     void Update()
     {
-        // Å¸ÀÌ¸Ó¿¡¼­ °æ°ú ½Ã°£À» »®´Ï´Ù.
+        // íƒ€ì´ë¨¸ì—ì„œ ê²½ê³¼ ì‹œê°„ì„ ëºë‹ˆë‹¤.
         timer -= Time.deltaTime;
 
-        // Å¸ÀÌ¸Ó°¡ 0 ÀÌÇÏ°¡ µÇ¸é
+        // íƒ€ì´ë¨¸ê°€ 0 ì´í•˜ê°€ ë˜ë©´
         if (timer <= 0f)
         {
-            ToggleFlip(); // ½ºÇÁ¶óÀÌÆ®¸¦ ¹İÀü½ÃÅµ´Ï´Ù.
-            timer = flipInterval; // Å¸ÀÌ¸Ó¸¦ ´Ù½Ã ¼³Á¤ÇÕ´Ï´Ù.
+            ToggleFlip(); // ìŠ¤í”„ë¼ì´íŠ¸ë¥¼ ë°˜ì „ì‹œí‚µë‹ˆë‹¤.
+            timer = flipInterval; // íƒ€ì´ë¨¸ë¥¼ ë‹¤ì‹œ ì„¤ì •í•©ë‹ˆë‹¤.
         }
     }
 
     // --- Public Methods ---
 
     /// <summary>
-    /// ¿ÜºÎ¿¡¼­ °­Á¦·Î ½ºÇÁ¶óÀÌÆ®¸¦ ¿ø·¡ »óÅÂ(¹İÀü ¾øÀ½)·Î µÇµ¹¸®°í ½ÍÀ» ¶§ È£ÃâÇÕ´Ï´Ù.
+    /// ì™¸ë¶€ì—ì„œ ê°•ì œë¡œ ìŠ¤í”„ë¼ì´íŠ¸ë¥¼ ì›ë˜ ìƒíƒœ(ë°˜ì „ ì—†ìŒ)ë¡œ ë˜ëŒë¦¬ê³  ì‹¶ì„ ë•Œ í˜¸ì¶œí•©ë‹ˆë‹¤.
     /// </summary>
     public void ResetFlip()
     {
         if (targetSprite == null) return;
         targetSprite.flipX = false;
-        timer = flipInterval; // Å¸ÀÌ¸Óµµ ÃÊ±âÈ­
+        timer = flipInterval; // íƒ€ì´ë¨¸ë„ ì´ˆê¸°í™”
     }
 
     /// <summary>
-    /// ¿ÜºÎ¿¡¼­ °­Á¦·Î ½ºÇÁ¶óÀÌÆ®¸¦ ¹İÀü½ÃÅ°°í ½ÍÀ» ¶§ È£ÃâÇÕ´Ï´Ù.
+    /// ì™¸ë¶€ì—ì„œ ê°•ì œë¡œ ìŠ¤í”„ë¼ì´íŠ¸ë¥¼ ë°˜ì „ì‹œí‚¤ê³  ì‹¶ì„ ë•Œ í˜¸ì¶œí•©ë‹ˆë‹¤.
     /// </summary>
     public void ForceFlip()
     {
         if (targetSprite == null) return;
         targetSprite.flipX = true;
-        timer = flipInterval; // Å¸ÀÌ¸Óµµ ÃÊ±âÈ­
+        timer = flipInterval; // íƒ€ì´ë¨¸ë„ ì´ˆê¸°í™”
     }
 
     // --- Private Methods ---
 
     /// <summary>
-    /// ½ºÇÁ¶óÀÌÆ®ÀÇ ÁÂ¿ì ¹İÀü »óÅÂ(flipX)¸¦ Åä±ÛÇÕ´Ï´Ù.
-    /// (true´Â false·Î, false´Â true·Î º¯°æ)
+    /// ìŠ¤í”„ë¼ì´íŠ¸ì˜ ì¢Œìš° ë°˜ì „ ìƒíƒœ(flipX)ë¥¼ í† ê¸€í•©ë‹ˆë‹¤.
+    /// (trueëŠ” falseë¡œ, falseëŠ” trueë¡œ ë³€ê²½)
     /// </summary>
     private void ToggleFlip()
     {
         if (targetSprite == null) return;
 
-        // SpriteRendererÀÇ flipX ÇÁ·ÎÆÛÆ¼ °ªÀ» ÇöÀç °ªÀÇ ¹İ´ë·Î ¼³Á¤
+        // SpriteRendererì˜ flipX í”„ë¡œí¼í‹° ê°’ì„ í˜„ì¬ ê°’ì˜ ë°˜ëŒ€ë¡œ ì„¤ì •
         targetSprite.flipX = !targetSprite.flipX;
     }
 }

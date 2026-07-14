@@ -1,4 +1,4 @@
-Shader "Hidden/PixelizePalette" // ¼ÎÀÌ´õ ÀÌ¸§ º¯°æ
+ï»¿Shader "Hidden/PixelizePalette" // ì…°ì´ë” ì´ë¦„ ë³€ê²½
 {
     Properties
     {
@@ -12,7 +12,7 @@ Shader "Hidden/PixelizePalette" // ¼ÎÀÌ´õ ÀÌ¸§ º¯°æ
 
         [Header(Luminance Quantization)]
         _Levels("Color Levels", Float) = 16
-        // [º¯°æ] ¾îµÎ¿î Åæ°ú ¹àÀº ÅæÀ» ³ª´©´Â ±âÁØ ½½¶óÀÌ´õ Ãß°¡
+        // [ë³€ê²½] ì–´ë‘ìš´ í†¤ê³¼ ë°ì€ í†¤ì„ ë‚˜ëˆ„ëŠ” ê¸°ì¤€ ìŠ¬ë¼ì´ë” ì¶”ê°€
         _ToneThreshold("Tone Threshold", Range(0.0, 1.0)) = 0.5 
 
         [Header(Palette Mapping)]
@@ -45,7 +45,7 @@ Shader "Hidden/PixelizePalette" // ¼ÎÀÌ´õ ÀÌ¸§ º¯°æ
             float _Levels;
             float _PaletteSize;
             float _DitherStrength;
-            float _ToneThreshold; // [º¯°æ] ¼ÎÀÌ´õ¿¡¼­ »ç¿ëÇÒ º¯¼ö ¼±¾ğ
+            float _ToneThreshold; // [ë³€ê²½] ì…°ì´ë”ì—ì„œ ì‚¬ìš©í•  ë³€ìˆ˜ ì„ ì–¸
 
             struct Attributes
             {
@@ -72,20 +72,20 @@ Shader "Hidden/PixelizePalette" // ¼ÎÀÌ´õ ÀÌ¸§ º¯°æ
                 half4 originalColor = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, IN.uv);
                 half4 processedColor = originalColor;
 
-                // --- [¹æ¹ı A] ÈÖµµ ¾çÀÚÈ­ (¿äÃ»ÇÏ½Å ³»¿ëÀ¸·Î ¼öÁ¤µÊ) ---
+                // --- [ë°©ë²• A] íœ˜ë„ ì–‘ìí™” (ìš”ì²­í•˜ì‹  ë‚´ìš©ìœ¼ë¡œ ìˆ˜ì •ë¨) ---
                 #if _METHOD_LUMINANCE_QUANTIZE
                     float originalLuminance = dot(processedColor.rgb, float3(0.299, 0.587, 0.114));
                     
-                    // [º¯°æ] ÈÖµµ °ª¿¡ µû¶ó ¿Ã¸²(ceil) ¶Ç´Â ¹İ¿Ã¸²(round)À» ¼±ÅÃ
+                    // [ë³€ê²½] íœ˜ë„ ê°’ì— ë”°ë¼ ì˜¬ë¦¼(ceil) ë˜ëŠ” ë°˜ì˜¬ë¦¼(round)ì„ ì„ íƒ
                     float posterizedLuminance;
                     if (originalLuminance <= _ToneThreshold)
                     {
-                        // ±âÁØ°ª ÀÌÇÏ(¾îµÎ¿î »ö)´Â ¿Ã¸² Ã³¸®ÇÏ¿© ³Ê¹« ¾îµÎ¿öÁö´Â °ÍÀ» ¹æÁö
+                        // ê¸°ì¤€ê°’ ì´í•˜(ì–´ë‘ìš´ ìƒ‰)ëŠ” ì˜¬ë¦¼ ì²˜ë¦¬í•˜ì—¬ ë„ˆë¬´ ì–´ë‘ì›Œì§€ëŠ” ê²ƒì„ ë°©ì§€
                         posterizedLuminance = ceil(originalLuminance * _Levels) / _Levels;
                     }
                     else
                     {
-                        // ±âÁØ°ª ÃÊ°ú(¹àÀº »ö)´Â ¹İ¿Ã¸² Ã³¸®ÇÏ¿© ÀÚ¿¬½º·´°Ô Ç¥Çö
+                        // ê¸°ì¤€ê°’ ì´ˆê³¼(ë°ì€ ìƒ‰)ëŠ” ë°˜ì˜¬ë¦¼ ì²˜ë¦¬í•˜ì—¬ ìì—°ìŠ¤ëŸ½ê²Œ í‘œí˜„
                         posterizedLuminance = round(originalLuminance * _Levels) / _Levels;
                     }
                     
@@ -93,7 +93,7 @@ Shader "Hidden/PixelizePalette" // ¼ÎÀÌ´õ ÀÌ¸§ º¯°æ
                     processedColor.rgb *= ratio;
                 #endif
 
-                // --- [¹æ¹ı B] ÆÈ·¹Æ® ¸ÅÇÎ (º¯°æ ¾øÀ½) ---
+                // --- [ë°©ë²• B] íŒ”ë ˆíŠ¸ ë§¤í•‘ (ë³€ê²½ ì—†ìŒ) ---
                 #if _METHOD_PALETTE_MAP
                     half3 finalPaletteColor = 0;
                     float minDistance = 10000.0;
@@ -111,7 +111,7 @@ Shader "Hidden/PixelizePalette" // ¼ÎÀÌ´õ ÀÌ¸§ º¯°æ
                     processedColor.rgb = finalPaletteColor;
                 #endif
 
-                // --- [¹æ¹ı C] µğ´õ¸µÀ» Àû¿ëÇÑ ÈÖµµ ¾çÀÚÈ­ (º¯°æ ¾øÀ½) ---
+                // --- [ë°©ë²• C] ë””ë”ë§ì„ ì ìš©í•œ íœ˜ë„ ì–‘ìí™” (ë³€ê²½ ì—†ìŒ) ---
                 #if _METHOD_DITHERED_QUANTIZE
                     const float4x4 bayerMatrix = float4x4(
                          0,  8,  2, 10,

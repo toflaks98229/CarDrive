@@ -1,24 +1,24 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
 /// <summary>
-/// Àå¾Ö¹°(Obstacle) µî È¯°æ ¿ÀºêÁ§Æ®ÀÇ »ç¿îµå¸¦ Àü´ãÇÕ´Ï´Ù.
-/// ObstacleController¿Í °°Àº GameObject¿¡ Ãß°¡ÇØ¾ß ÇÕ´Ï´Ù.
+/// ì¥ì• ë¬¼(Obstacle) ë“± í™˜ê²½ ì˜¤ë¸Œì íŠ¸ì˜ ì‚¬ìš´ë“œë¥¼ ì „ë‹´í•©ë‹ˆë‹¤.
+/// ObstacleControllerì™€ ê°™ì€ GameObjectì— ì¶”ê°€í•´ì•¼ í•©ë‹ˆë‹¤.
 /// </summary>
 [RequireComponent(typeof(ObstacleController), typeof(AudioSource))]
 public class EnvironmentSoundController : MonoBehaviour
 {
-    [Header("¿Àµğ¿À ¼Ò½º (AudioSource)")]
-    [Tooltip("Ãæµ¹ È¿°úÀ½À» Àç»ıÇÒ AudioSource")]
+    [Header("ì˜¤ë””ì˜¤ ì†ŒìŠ¤ (AudioSource)")]
+    [Tooltip("ì¶©ëŒ íš¨ê³¼ìŒì„ ì¬ìƒí•  AudioSource")]
     public AudioSource effectsSource;
 
-    [Header("¿Àµğ¿À Å¬¸³ (AudioClips)")]
-    [Tooltip("Ãæµ¹ ½Ã Àç»ıµÉ ¹«ÀÛÀ§ »ç¿îµå")]
+    [Header("ì˜¤ë””ì˜¤ í´ë¦½ (AudioClips)")]
+    [Tooltip("ì¶©ëŒ ì‹œ ì¬ìƒë  ë¬´ì‘ìœ„ ì‚¬ìš´ë“œ")]
     public AudioClip[] hitClips;
 
     /// <summary>
-    /// Ãæµ¹ »ç¿îµå¸¦ Àç»ıÇÕ´Ï´Ù. (ObstacleController°¡ È£Ãâ)
+    /// ì¶©ëŒ ì‚¬ìš´ë“œë¥¼ ì¬ìƒí•©ë‹ˆë‹¤. (ObstacleControllerê°€ í˜¸ì¶œ)
     /// </summary>
-    /// <param name="impactStrength">Ãæµ¹ °­µµ (0.0 ~ 1.0), º¼·ı Á¶Àı¿¡ »ç¿ë</param>
+    /// <param name="impactStrength">ì¶©ëŒ ê°•ë„ (0.0 ~ 1.0), ë³¼ë¥¨ ì¡°ì ˆì— ì‚¬ìš©</param>
     public void PlayHitSound(float impactStrength)
     {
         float volume = Mathf.Clamp(impactStrength, 0.2f, 1.0f);

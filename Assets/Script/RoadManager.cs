@@ -1,56 +1,56 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
-/// ¹«ÇÑ µµ·Î »ı¼ºÀ» ÃÑ°ıÇÏ´Â °ü¸®ÀÚ Å¬·¡½ºÀÔ´Ï´Ù.
-/// µµ·Î ÇÁ¸®ÆÕµéÀ» ÀÌ¿ëÇØ ÇÃ·¹ÀÌ¾î ¾Õ¿¡ »õ·Î¿î µµ·Î¸¦ »ı¼ºÇÏ°í,
-/// ÇÃ·¹ÀÌ¾î µÚÀÇ ¿À·¡µÈ µµ·Î´Â Á¦°ÅÇÏ¿© ¼º´ÉÀ» °ü¸®ÇÕ´Ï´Ù.
+/// ë¬´í•œ ë„ë¡œ ìƒì„±ì„ ì´ê´„í•˜ëŠ” ê´€ë¦¬ì í´ë˜ìŠ¤ì…ë‹ˆë‹¤.
+/// ë„ë¡œ í”„ë¦¬íŒ¹ë“¤ì„ ì´ìš©í•´ í”Œë ˆì´ì–´ ì•ì— ìƒˆë¡œìš´ ë„ë¡œë¥¼ ìƒì„±í•˜ê³ ,
+/// í”Œë ˆì´ì–´ ë’¤ì˜ ì˜¤ë˜ëœ ë„ë¡œëŠ” ì œê±°í•˜ì—¬ ì„±ëŠ¥ì„ ê´€ë¦¬í•©ë‹ˆë‹¤.
 /// </summary>
 public class RoadManager : MonoBehaviour
 {
     // --- Public Member Variables ---
 
-    [Header("µµ·Î ÇÁ¸®ÆÕ ¼³Á¤")]
-    [Tooltip("»ı¼ºÇÒ µµ·Î Á¶°¢µéÀÇ ÇÁ¸®ÆÕ ¸®½ºÆ®")]
+    [Header("ë„ë¡œ í”„ë¦¬íŒ¹ ì„¤ì •")]
+    [Tooltip("ìƒì„±í•  ë„ë¡œ ì¡°ê°ë“¤ì˜ í”„ë¦¬íŒ¹ ë¦¬ìŠ¤íŠ¸")]
     public List<GameObject> roadPrefabs;
 
-    [Header("ÇÃ·¹ÀÌ¾î ¹× »ı¼º ¼³Á¤")]
-    [Tooltip("ÇÃ·¹ÀÌ¾î Â÷·®ÀÇ Transform (ÇöÀç »ç¿ëµÇ°í ÀÖÁö´Â ¾ÊÁö¸¸, ÃßÈÄ °Å¸® ±â¹İ »èÁ¦ µî¿¡ »ç¿ë °¡´É)")]
+    [Header("í”Œë ˆì´ì–´ ë° ìƒì„± ì„¤ì •")]
+    [Tooltip("í”Œë ˆì´ì–´ ì°¨ëŸ‰ì˜ Transform (í˜„ì¬ ì‚¬ìš©ë˜ê³  ìˆì§€ëŠ” ì•Šì§€ë§Œ, ì¶”í›„ ê±°ë¦¬ ê¸°ë°˜ ì‚­ì œ ë“±ì— ì‚¬ìš© ê°€ëŠ¥)")]
     public Transform playerTransform;
 
-    [Tooltip("Ã³À½¿¡ »ı¼ºÇÒ µµ·ÎÀÇ °³¼ö")]
+    [Tooltip("ì²˜ìŒì— ìƒì„±í•  ë„ë¡œì˜ ê°œìˆ˜")]
     public int initialRoadCount = 5;
 
-    [Tooltip("ÇÃ·¹ÀÌ¾î µÚ¿¡ À¯ÁöÇÒ µµ·ÎÀÇ ÃÖ´ë °³¼ö (¼º´É °ü¸®¸¦ À§ÇØ ¿À·¡µÈ µµ·Î »èÁ¦)")]
+    [Tooltip("í”Œë ˆì´ì–´ ë’¤ì— ìœ ì§€í•  ë„ë¡œì˜ ìµœëŒ€ ê°œìˆ˜ (ì„±ëŠ¥ ê´€ë¦¬ë¥¼ ìœ„í•´ ì˜¤ë˜ëœ ë„ë¡œ ì‚­ì œ)")]
     public int maxActiveRoads = 10;
 
     // --- Private Member Variables ---
 
     /// <summary>
-    /// ÇöÀç ¾À¿¡ È°¼ºÈ­(»ı¼º)µÇ¾î ÀÖ´Â µµ·Î Á¶°¢µéÀÇ ¸®½ºÆ®.
+    /// í˜„ì¬ ì”¬ì— í™œì„±í™”(ìƒì„±)ë˜ì–´ ìˆëŠ” ë„ë¡œ ì¡°ê°ë“¤ì˜ ë¦¬ìŠ¤íŠ¸.
     /// </summary>
     private List<GameObject> activeRoads = new List<GameObject>();
 
     /// <summary>
-    /// ´ÙÀ½ µµ·Î°¡ »ı¼ºµÉ À§Ä¡¿Í ¹æÇâÀ» °¡Áø Transform.
-    /// (ÀÏ¹İÀûÀ¸·Î ¸¶Áö¸·¿¡ »ı¼ºµÈ µµ·ÎÀÇ ³¡¿¡ ÀÖ´Â 'NextSpawnPoint' ¿ÀºêÁ§Æ®)
+    /// ë‹¤ìŒ ë„ë¡œê°€ ìƒì„±ë  ìœ„ì¹˜ì™€ ë°©í–¥ì„ ê°€ì§„ Transform.
+    /// (ì¼ë°˜ì ìœ¼ë¡œ ë§ˆì§€ë§‰ì— ìƒì„±ëœ ë„ë¡œì˜ ëì— ìˆëŠ” 'NextSpawnPoint' ì˜¤ë¸Œì íŠ¸)
     /// </summary>
     private Transform nextSpawnPoint;
 
     // --- Unity Event Functions ---
 
     /// <summary>
-    /// ½ºÅ©¸³Æ®°¡ Ã³À½ È°¼ºÈ­µÉ ¶§ È£ÃâµË´Ï´Ù.
+    /// ìŠ¤í¬ë¦½íŠ¸ê°€ ì²˜ìŒ í™œì„±í™”ë  ë•Œ í˜¸ì¶œë©ë‹ˆë‹¤.
     /// </summary>
     void Start()
     {
-        // RoadSegment ½ºÅ©¸³Æ®°¡ Manager¸¦ ½±°Ô Ã£À» ¼ö ÀÖµµ·Ï static º¯¼ö¿¡ ÀÚ±â ÀÚ½ÅÀ» ÇÒ´ç
+        // RoadSegment ìŠ¤í¬ë¦½íŠ¸ê°€ Managerë¥¼ ì‰½ê²Œ ì°¾ì„ ìˆ˜ ìˆë„ë¡ static ë³€ìˆ˜ì— ìê¸° ìì‹ ì„ í• ë‹¹
         RoadSegment.roadManager = this;
 
-        // ÃÊ±â ½ÃÀÛ ÁöÁ¡ ¼³Á¤ (Manager ÀÚ½ÅÀÇ À§Ä¡¿¡¼­ ½ÃÀÛ)
+        // ì´ˆê¸° ì‹œì‘ ì§€ì  ì„¤ì • (Manager ìì‹ ì˜ ìœ„ì¹˜ì—ì„œ ì‹œì‘)
         nextSpawnPoint = transform;
 
-        // °ÔÀÓ ½ÃÀÛ ½Ã ÃÊ±â µµ·Î »ı¼º
+        // ê²Œì„ ì‹œì‘ ì‹œ ì´ˆê¸° ë„ë¡œ ìƒì„±
         for (int i = 0; i < initialRoadCount; i++)
         {
             SpawnRoad();
@@ -60,28 +60,28 @@ public class RoadManager : MonoBehaviour
     // --- Public Methods ---
 
     /// <summary>
-    /// »õ·Î¿î µµ·Î Á¶°¢À» »ı¼ºÇÏ°í °ü¸® ¸®½ºÆ®¿¡ Ãß°¡ÇÕ´Ï´Ù.
-    /// (RoadSegmentÀÇ OnTriggerEnter¿¡ ÀÇÇØ È£ÃâµÊ)
+    /// ìƒˆë¡œìš´ ë„ë¡œ ì¡°ê°ì„ ìƒì„±í•˜ê³  ê´€ë¦¬ ë¦¬ìŠ¤íŠ¸ì— ì¶”ê°€í•©ë‹ˆë‹¤.
+    /// (RoadSegmentì˜ OnTriggerEnterì— ì˜í•´ í˜¸ì¶œë¨)
     /// </summary>
     public void SpawnRoad()
     {
-        // µµ·Î ÇÁ¸®ÆÕÀÌ ¼³Á¤µÇÁö ¾Ê¾ÒÀ¸¸é °æ°í¸¦ Ãâ·ÂÇÏ°í Á¾·áÇÕ´Ï´Ù.
+        // ë„ë¡œ í”„ë¦¬íŒ¹ì´ ì„¤ì •ë˜ì§€ ì•Šì•˜ìœ¼ë©´ ê²½ê³ ë¥¼ ì¶œë ¥í•˜ê³  ì¢…ë£Œí•©ë‹ˆë‹¤.
         if (roadPrefabs == null || roadPrefabs.Count == 0)
         {
-            Debug.LogError("RoadManager: roadPrefabs ¸®½ºÆ®°¡ ºñ¾îÀÖ½À´Ï´Ù!");
+            Debug.LogError("RoadManager: roadPrefabs ë¦¬ìŠ¤íŠ¸ê°€ ë¹„ì–´ìˆìŠµë‹ˆë‹¤!");
             return;
         }
 
-        // ÇÁ¸®ÆÕ ¸®½ºÆ®¿¡¼­ ¹«ÀÛÀ§·Î µµ·Î ÇÏ³ª¸¦ ¼±ÅÃ
+        // í”„ë¦¬íŒ¹ ë¦¬ìŠ¤íŠ¸ì—ì„œ ë¬´ì‘ìœ„ë¡œ ë„ë¡œ í•˜ë‚˜ë¥¼ ì„ íƒ
         GameObject randomRoadPrefab = roadPrefabs[Random.Range(0, roadPrefabs.Count)];
 
-        // ¼±ÅÃµÈ µµ·Î¸¦ nextSpawnPointÀÇ À§Ä¡¿Í È¸Àü°ª¿¡ ¸ÂÃç »ı¼º
+        // ì„ íƒëœ ë„ë¡œë¥¼ nextSpawnPointì˜ ìœ„ì¹˜ì™€ íšŒì „ê°’ì— ë§ì¶° ìƒì„±
         GameObject newRoad = Instantiate(randomRoadPrefab, nextSpawnPoint.position, nextSpawnPoint.rotation);
 
-        // »ı¼ºµÈ µµ·Î¸¦ È°¼ºÈ­µÈ µµ·Î ¸®½ºÆ®¿¡ Ãß°¡
+        // ìƒì„±ëœ ë„ë¡œë¥¼ í™œì„±í™”ëœ ë„ë¡œ ë¦¬ìŠ¤íŠ¸ì— ì¶”ê°€
         activeRoads.Add(newRoad);
 
-        // ´ÙÀ½ µµ·Î°¡ »ı¼ºµÉ À§Ä¡¸¦ »õ·Î »ı¼ºµÈ µµ·ÎÀÇ 'NextSpawnPoint' ÀÚ½Ä ¿ÀºêÁ§Æ®·Î °»½Å
+        // ë‹¤ìŒ ë„ë¡œê°€ ìƒì„±ë  ìœ„ì¹˜ë¥¼ ìƒˆë¡œ ìƒì„±ëœ ë„ë¡œì˜ 'NextSpawnPoint' ìì‹ ì˜¤ë¸Œì íŠ¸ë¡œ ê°±ì‹ 
         Transform spawnPoint = newRoad.transform.Find("NextSpawnPoint");
         if (spawnPoint != null)
         {
@@ -89,10 +89,10 @@ public class RoadManager : MonoBehaviour
         }
         else
         {
-            Debug.LogError("RoadManager: »ı¼ºµÈ µµ·Î ÇÁ¸®ÆÕ(" + newRoad.name + ")¿¡ 'NextSpawnPoint' ÀÚ½Ä ¿ÀºêÁ§Æ®°¡ ¾ø½À´Ï´Ù!");
+            Debug.LogError("RoadManager: ìƒì„±ëœ ë„ë¡œ í”„ë¦¬íŒ¹(" + newRoad.name + ")ì— 'NextSpawnPoint' ìì‹ ì˜¤ë¸Œì íŠ¸ê°€ ì—†ìŠµë‹ˆë‹¤!");
         }
 
-        // È°¼ºÈ­µÈ µµ·ÎÀÇ ¼ö°¡ ³Ê¹« ¸¹¾ÆÁö¸é °¡Àå ¿À·¡µÈ µµ·Î¸¦ Á¦°Å
+        // í™œì„±í™”ëœ ë„ë¡œì˜ ìˆ˜ê°€ ë„ˆë¬´ ë§ì•„ì§€ë©´ ê°€ì¥ ì˜¤ë˜ëœ ë„ë¡œë¥¼ ì œê±°
         if (activeRoads.Count > maxActiveRoads)
         {
             DeleteOldestRoad();
@@ -102,17 +102,17 @@ public class RoadManager : MonoBehaviour
     // --- Private Methods ---
 
     /// <summary>
-    /// ¸®½ºÆ®¿¡¼­ °¡Àå ¿À·¡µÈ µµ·Î Á¶°¢À» ¾À¿¡¼­ Á¦°Å(ÆÄ±«)ÇÕ´Ï´Ù.
+    /// ë¦¬ìŠ¤íŠ¸ì—ì„œ ê°€ì¥ ì˜¤ë˜ëœ ë„ë¡œ ì¡°ê°ì„ ì”¬ì—ì„œ ì œê±°(íŒŒê´´)í•©ë‹ˆë‹¤.
     /// </summary>
     private void DeleteOldestRoad()
     {
-        // °¡Àå ¿À·¡µÈ µµ·Î(¸®½ºÆ®ÀÇ Ã¹ ¹øÂ° ¿ä¼Ò)¸¦ °¡Á®¿É´Ï´Ù.
+        // ê°€ì¥ ì˜¤ë˜ëœ ë„ë¡œ(ë¦¬ìŠ¤íŠ¸ì˜ ì²« ë²ˆì§¸ ìš”ì†Œ)ë¥¼ ê°€ì ¸ì˜µë‹ˆë‹¤.
         GameObject oldRoad = activeRoads[0];
 
-        // ¸®½ºÆ®¿¡¼­ Á¦°ÅÇÕ´Ï´Ù.
+        // ë¦¬ìŠ¤íŠ¸ì—ì„œ ì œê±°í•©ë‹ˆë‹¤.
         activeRoads.RemoveAt(0);
 
-        // ¾À¿¡¼­ ¿ÀºêÁ§Æ®¸¦ ÆÄ±«ÇÕ´Ï´Ù.
+        // ì”¬ì—ì„œ ì˜¤ë¸Œì íŠ¸ë¥¼ íŒŒê´´í•©ë‹ˆë‹¤.
         if (oldRoad != null)
         {
             Destroy(oldRoad);

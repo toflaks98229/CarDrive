@@ -1,32 +1,32 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
 /// <summary>
-/// ÇÃ·¹ÀÌ¾îÀÇ Çàµ¿(¾ÓÅ© °ø°İ, »óÈ£ÀÛ¿ë) °ü·Ã »ç¿îµå¸¦ Àü´ãÇÕ´Ï´Ù.
-/// PlayerAttacker, PlayerInteractor°¡ ÀÖ´Â Ä«¸Ş¶ó¿¡ ºÎÂøÇÕ´Ï´Ù.
+/// í”Œë ˆì´ì–´ì˜ í–‰ë™(ì•™í¬ ê³µê²©, ìƒí˜¸ì‘ìš©) ê´€ë ¨ ì‚¬ìš´ë“œë¥¼ ì „ë‹´í•©ë‹ˆë‹¤.
+/// PlayerAttacker, PlayerInteractorê°€ ìˆëŠ” ì¹´ë©”ë¼ì— ë¶€ì°©í•©ë‹ˆë‹¤.
 /// </summary>
 public class PlayerSoundController : MonoBehaviour
 {
-    [Header("¿Àµğ¿À ¼Ò½º (AudioSources)")]
-    [Tooltip("¾ÓÅ© ¹ß»ç ·çÇÁ »ç¿îµå¸¦ Àç»ıÇÒ AudioSource")]
+    [Header("ì˜¤ë””ì˜¤ ì†ŒìŠ¤ (AudioSources)")]
+    [Tooltip("ì•™í¬ ë°œì‚¬ ë£¨í”„ ì‚¬ìš´ë“œë¥¼ ì¬ìƒí•  AudioSource")]
     public AudioSource ankhLoopSource;
-    [Tooltip("À½·á ¸¶½Ã±â, ÃæÀü µî È¿°úÀ½À» Àç»ıÇÒ AudioSource")]
+    [Tooltip("ìŒë£Œ ë§ˆì‹œê¸°, ì¶©ì „ ë“± íš¨ê³¼ìŒì„ ì¬ìƒí•  AudioSource")]
     public AudioSource effectsSource;
 
-    [Header("¾ÓÅ© °ø°İ Å¬¸³ (Ankh Clips)")]
-    [Tooltip("¾ÓÅ© ÃæÀü ½ÃÀÛÀ½")]
+    [Header("ì•™í¬ ê³µê²© í´ë¦½ (Ankh Clips)")]
+    [Tooltip("ì•™í¬ ì¶©ì „ ì‹œì‘ìŒ")]
     public AudioClip ankhChargeClip;
-    [Tooltip("¾ÓÅ© ¹ß»ç Áß ·çÇÁ")]
+    [Tooltip("ì•™í¬ ë°œì‚¬ ì¤‘ ë£¨í”„")]
     public AudioClip ankhFireLoopClip;
-    [Tooltip("¾ÓÅ© ¹ß»ç ÁßÁöÀ½")]
+    [Tooltip("ì•™í¬ ë°œì‚¬ ì¤‘ì§€ìŒ")]
     public AudioClip ankhStopClip;
 
-    [Header("»óÈ£ÀÛ¿ë Å¬¸³ (Interaction Clips)")]
-    [Tooltip("À½·á ¸¶½Ã´Â ¼Ò¸®")]
+    [Header("ìƒí˜¸ì‘ìš© í´ë¦½ (Interaction Clips)")]
+    [Tooltip("ìŒë£Œ ë§ˆì‹œëŠ” ì†Œë¦¬")]
     public AudioClip drinkSound;
-    [Tooltip("»óÈ£ÀÛ¿ë ½ÇÆĞ (¿¹: ¿¬·á ¾øÀ½) ¼Ò¸®")]
+    [Tooltip("ìƒí˜¸ì‘ìš© ì‹¤íŒ¨ (ì˜ˆ: ì—°ë£Œ ì—†ìŒ) ì†Œë¦¬")]
     public AudioClip interactionFailSound;
 
-    // --- ¾ÓÅ© »ç¿îµå ¸Ş¼­µå (PlayerAttacker°¡ È£Ãâ) ---
+    // --- ì•™í¬ ì‚¬ìš´ë“œ ë©”ì„œë“œ (PlayerAttackerê°€ í˜¸ì¶œ) ---
 
     public void PlayAnkhCharge()
     {
@@ -44,7 +44,7 @@ public class PlayerSoundController : MonoBehaviour
         AudioUtility.PlayOneShot(effectsSource, ankhStopClip);
     }
 
-    // --- »óÈ£ÀÛ¿ë »ç¿îµå ¸Ş¼­µå (PlayerInteractor°¡ È£Ãâ) ---
+    // --- ìƒí˜¸ì‘ìš© ì‚¬ìš´ë“œ ë©”ì„œë“œ (PlayerInteractorê°€ í˜¸ì¶œ) ---
 
     public void PlayDrinkSound()
     {

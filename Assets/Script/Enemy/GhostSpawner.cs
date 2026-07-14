@@ -1,40 +1,40 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
 /// <summary>
-/// [½Å±Ô] CarController¿¡ ºÎÂøÇÏ¿© AttachedGhost¸¦ ÁÖ±âÀûÀ¸·Î ½ºÆùÇÏ´Â °ü¸®ÀÚÀÔ´Ï´Ù.
-/// ½ºÆùµÈ ±Í½ÅÀº ÀÌ ¿ÀºêÁ§Æ®(Â÷·®)ÀÇ ÀÚ½ÄÀÌ µË´Ï´Ù.
+/// [ì‹ ê·œ] CarControllerì— ë¶€ì°©í•˜ì—¬ AttachedGhostë¥¼ ì£¼ê¸°ì ìœ¼ë¡œ ìŠ¤í°í•˜ëŠ” ê´€ë¦¬ìì…ë‹ˆë‹¤.
+/// ìŠ¤í°ëœ ê·€ì‹ ì€ ì´ ì˜¤ë¸Œì íŠ¸(ì°¨ëŸ‰)ì˜ ìì‹ì´ ë©ë‹ˆë‹¤.
 /// </summary>
 [RequireComponent(typeof(CarController))]
 public class GhostSpawner : MonoBehaviour
 {
-    [Header("±Í½Å ÇÁ¸®ÆÕ")]
-    [Tooltip("µÚ¿¡¼­ ³ªÅ¸³¯ ±Í½Å ÇÁ¸®ÆÕ (AttachedGhostController ÇÊ¿ä)")]
+    [Header("ê·€ì‹  í”„ë¦¬íŒ¹")]
+    [Tooltip("ë’¤ì—ì„œ ë‚˜íƒ€ë‚  ê·€ì‹  í”„ë¦¬íŒ¹ (AttachedGhostController í•„ìš”)")]
     public GameObject rearGhostPrefab;
-    [Tooltip("¿·¿¡¼­ ³ªÅ¸³¯ ±Í½Å ÇÁ¸®ÆÕ (AttachedGhostController ÇÊ¿ä)")]
+    [Tooltip("ì˜†ì—ì„œ ë‚˜íƒ€ë‚  ê·€ì‹  í”„ë¦¬íŒ¹ (AttachedGhostController í•„ìš”)")]
     public GameObject sideGhostPrefab;
 
-    [Header("½ºÆù À§Ä¡ (Â÷·®ÀÇ ÀÚ½Ä Transform)")]
-    [Tooltip("µÚÂÊ ±Í½ÅÀÌ Ã³À½ »ı¼ºµÉ À§Ä¡¸¦ °¡Áø ÀÚ½Ä Transform")]
+    [Header("ìŠ¤í° ìœ„ì¹˜ (ì°¨ëŸ‰ì˜ ìì‹ Transform)")]
+    [Tooltip("ë’¤ìª½ ê·€ì‹ ì´ ì²˜ìŒ ìƒì„±ë  ìœ„ì¹˜ë¥¼ ê°€ì§„ ìì‹ Transform")]
     public Transform rearSpawnAnchor;
-    [Tooltip("¿ŞÂÊ(Side 1) ±Í½ÅÀÌ Ã³À½ »ı¼ºµÉ À§Ä¡¸¦ °¡Áø ÀÚ½Ä Transform")] // [¼öÁ¤µÊ]
+    [Tooltip("ì™¼ìª½(Side 1) ê·€ì‹ ì´ ì²˜ìŒ ìƒì„±ë  ìœ„ì¹˜ë¥¼ ê°€ì§„ ìì‹ Transform")] // [ìˆ˜ì •ë¨]
     public Transform sideSpawnAnchor1;
-    [Tooltip("¿À¸¥ÂÊ(Side 2) ±Í½ÅÀÌ Ã³À½ »ı¼ºµÉ À§Ä¡¸¦ °¡Áø ÀÚ½Ä Transform")] // [¼öÁ¤µÊ]
+    [Tooltip("ì˜¤ë¥¸ìª½(Side 2) ê·€ì‹ ì´ ì²˜ìŒ ìƒì„±ë  ìœ„ì¹˜ë¥¼ ê°€ì§„ ìì‹ Transform")] // [ìˆ˜ì •ë¨]
     public Transform sideSpawnAnchor2;
 
 
-    [Header("±Í½Å °ø°İ ¸ñÇ¥ (·ÎÄÃ ÁÂÇ¥)")]
-    [Tooltip("µÚÂÊ ±Í½ÅÀÌ µµ´ŞÇÒ Â÷·®ÀÇ ·ÎÄÃ ÁÂÇ¥ (¿¹: (0, 1, -2))")]
+    [Header("ê·€ì‹  ê³µê²© ëª©í‘œ (ë¡œì»¬ ì¢Œí‘œ)")]
+    [Tooltip("ë’¤ìª½ ê·€ì‹ ì´ ë„ë‹¬í•  ì°¨ëŸ‰ì˜ ë¡œì»¬ ì¢Œí‘œ (ì˜ˆ: (0, 1, -2))")]
     public Vector3 rearGhostTargetOffset = new Vector3(0, 1, -2);
-    [Tooltip("¿ŞÂÊ(Side 1) ±Í½ÅÀÌ µµ´ŞÇÒ Â÷·®ÀÇ ·ÎÄÃ ÁÂÇ¥ (¿¹: (-1, 1, 0))")] // [¼öÁ¤µÊ]
+    [Tooltip("ì™¼ìª½(Side 1) ê·€ì‹ ì´ ë„ë‹¬í•  ì°¨ëŸ‰ì˜ ë¡œì»¬ ì¢Œí‘œ (ì˜ˆ: (-1, 1, 0))")] // [ìˆ˜ì •ë¨]
     public Vector3 sideGhostTargetOffset1 = new Vector3(-1, 1, 0);
-    [Tooltip("¿À¸¥ÂÊ(Side 2) ±Í½ÅÀÌ µµ´ŞÇÒ Â÷·®ÀÇ ·ÎÄÃ ÁÂÇ¥ (¿¹: (1, 1, 0))")] // [¼öÁ¤µÊ]
+    [Tooltip("ì˜¤ë¥¸ìª½(Side 2) ê·€ì‹ ì´ ë„ë‹¬í•  ì°¨ëŸ‰ì˜ ë¡œì»¬ ì¢Œí‘œ (ì˜ˆ: (1, 1, 0))")] // [ìˆ˜ì •ë¨]
     public Vector3 sideGhostTargetOffset2 = new Vector3(1, 1, 0);
 
 
-    [Header("½ºÆù Å¸ÀÌ¹Ö")]
-    [Tooltip("ÃÖ¼Ò ½ºÆù °£°İ (ÃÊ)")]
+    [Header("ìŠ¤í° íƒ€ì´ë°")]
+    [Tooltip("ìµœì†Œ ìŠ¤í° ê°„ê²© (ì´ˆ)")]
     public float minSpawnInterval = 15f;
-    [Tooltip("ÃÖ´ë ½ºÆù °£°İ (ÃÊ)")]
+    [Tooltip("ìµœëŒ€ ìŠ¤í° ê°„ê²© (ì´ˆ)")]
     public float maxSpawnInterval = 30f;
 
     // --- Private Variables ---
@@ -45,14 +45,14 @@ public class GhostSpawner : MonoBehaviour
     private float spawnTimer;
 
     /// <summary>
-    /// ½ºÅ©¸³Æ®°¡ Ã³À½ È°¼ºÈ­µÉ ¶§ È£ÃâµË´Ï´Ù.
+    /// ìŠ¤í¬ë¦½íŠ¸ê°€ ì²˜ìŒ í™œì„±í™”ë  ë•Œ í˜¸ì¶œë©ë‹ˆë‹¤.
     /// </summary>
     void Start()
     {
         carController = GetComponent<CarController>();
         if (carController == null)
         {
-            Debug.LogError("GhostSpawner: CarController¸¦ Ã£À» ¼ö ¾ø½À´Ï´Ù!");
+            Debug.LogError("GhostSpawner: CarControllerë¥¼ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤!");
             this.enabled = false;
             return;
         }
@@ -60,26 +60,26 @@ public class GhostSpawner : MonoBehaviour
         carHealthBar = carController.healthBar;
         if (carHealthBar == null)
         {
-            Debug.LogError("GhostSpawner: CarController¿¡ healthBar°¡ ¿¬°áµÇÁö ¾Ê¾Ò½À´Ï´Ù!");
+            Debug.LogError("GhostSpawner: CarControllerì— healthBarê°€ ì—°ê²°ë˜ì§€ ì•Šì•˜ìŠµë‹ˆë‹¤!");
             this.enabled = false;
             return;
         }
 
-        // [¼öÁ¤µÊ] ½ºÆù À§Ä¡ ¾ŞÄ¿ È®ÀÎ
+        // [ìˆ˜ì •ë¨] ìŠ¤í° ìœ„ì¹˜ ì•µì»¤ í™•ì¸
         if (rearSpawnAnchor == null || sideSpawnAnchor1 == null || sideSpawnAnchor2 == null)
         {
-            Debug.LogWarning("GhostSpawner: ¸ğµç ½ºÆù ¾ŞÄ¿(SpawnAnchor)°¡ ¼³Á¤µÇÁö ¾Ê¾Ò½À´Ï´Ù.");
+            Debug.LogWarning("GhostSpawner: ëª¨ë“  ìŠ¤í° ì•µì»¤(SpawnAnchor)ê°€ ì„¤ì •ë˜ì§€ ì•Šì•˜ìŠµë‹ˆë‹¤.");
         }
 
         ResetSpawnTimer();
     }
 
     /// <summary>
-    /// ¸Å ÇÁ·¹ÀÓ¸¶´Ù È£ÃâµË´Ï´Ù.
+    /// ë§¤ í”„ë ˆì„ë§ˆë‹¤ í˜¸ì¶œë©ë‹ˆë‹¤.
     /// </summary>
     void Update()
     {
-        // ½Ãµ¿ÀÌ ÄÑÁ® ÀÖÀ» ¶§¸¸ ½ºÆù Å¸ÀÌ¸Ó ÀÛµ¿
+        // ì‹œë™ì´ ì¼œì ¸ ìˆì„ ë•Œë§Œ ìŠ¤í° íƒ€ì´ë¨¸ ì‘ë™
         if (!carController.IsEngineOn())
         {
             return;
@@ -95,7 +95,7 @@ public class GhostSpawner : MonoBehaviour
     }
 
     /// <summary>
-    /// ½ºÆù Å¸ÀÌ¸Ó¸¦ Àç¼³Á¤ÇÕ´Ï´Ù.
+    /// ìŠ¤í° íƒ€ì´ë¨¸ë¥¼ ì¬ì„¤ì •í•©ë‹ˆë‹¤.
     /// </summary>
     private void ResetSpawnTimer()
     {
@@ -103,30 +103,30 @@ public class GhostSpawner : MonoBehaviour
     }
 
     /// <summary>
-    /// ±Í½Å ½ºÆùÀ» ½ÃµµÇÕ´Ï´Ù.
+    /// ê·€ì‹  ìŠ¤í°ì„ ì‹œë„í•©ë‹ˆë‹¤.
     /// </summary>
     private void TrySpawnGhost()
     {
-        // 50% È®·ü·Î µÚÂÊ ¶Ç´Â ¿·ÂÊ ½ºÆù ½Ãµµ
+        // 50% í™•ë¥ ë¡œ ë’¤ìª½ ë˜ëŠ” ì˜†ìª½ ìŠ¤í° ì‹œë„
         bool spawnRear = Random.Range(0, 2) == 0;
 
         if (spawnRear)
         {
-            // µÚÂÊ ±Í½Å ½ºÆù ½Ãµµ
+            // ë’¤ìª½ ê·€ì‹  ìŠ¤í° ì‹œë„
             if (currentRearGhost == null && rearGhostPrefab != null && rearSpawnAnchor != null)
             {
-                // [¼öÁ¤µÊ] SpawnGhost¿¡ ºÎ¸ğ ¾ŞÄ¿(rearSpawnAnchor) Àü´Ş
+                // [ìˆ˜ì •ë¨] SpawnGhostì— ë¶€ëª¨ ì•µì»¤(rearSpawnAnchor) ì „ë‹¬
                 SpawnGhost(rearGhostPrefab, rearSpawnAnchor.position, rearGhostTargetOffset, rearSpawnAnchor, true);
             }
-            // ½ºÆù ½ÇÆĞ ½Ã (Á¶°Ç ºÒÃæÁ·), ´ÙÀ½ ÅÏ¿¡ ´Ù½Ã ½Ãµµ
+            // ìŠ¤í° ì‹¤íŒ¨ ì‹œ (ì¡°ê±´ ë¶ˆì¶©ì¡±), ë‹¤ìŒ í„´ì— ë‹¤ì‹œ ì‹œë„
         }
         else
         {
-            // ¿·ÂÊ ±Í½Å ½ºÆù ½Ãµµ
-            // [¼öÁ¤µÊ] sideSpawnAnchor1°ú sideSpawnAnchor2¸¦ ¸ğµÎ È®ÀÎ
+            // ì˜†ìª½ ê·€ì‹  ìŠ¤í° ì‹œë„
+            // [ìˆ˜ì •ë¨] sideSpawnAnchor1ê³¼ sideSpawnAnchor2ë¥¼ ëª¨ë‘ í™•ì¸
             if (currentSideGhost == null && sideGhostPrefab != null && sideSpawnAnchor1 != null && sideSpawnAnchor2 != null)
             {
-                // [Ãß°¡µÊ] 50% È®·ü·Î sideSpawnAnchor1 ¶Ç´Â sideSpawnAnchor2 ¼±ÅÃ
+                // [ì¶”ê°€ë¨] 50% í™•ë¥ ë¡œ sideSpawnAnchor1 ë˜ëŠ” sideSpawnAnchor2 ì„ íƒ
                 bool spawnOnSide1 = Random.Range(0, 2) == 0;
 
                 if (spawnOnSide1)
@@ -138,28 +138,28 @@ public class GhostSpawner : MonoBehaviour
                     SpawnGhost(sideGhostPrefab, sideSpawnAnchor2.position, sideGhostTargetOffset2, sideSpawnAnchor2, false);
                 }
             }
-            // ½ºÆù ½ÇÆĞ ½Ã (Á¶°Ç ºÒÃæÁ·), ´ÙÀ½ ÅÏ¿¡ ´Ù½Ã ½Ãµµ
+            // ìŠ¤í° ì‹¤íŒ¨ ì‹œ (ì¡°ê±´ ë¶ˆì¶©ì¡±), ë‹¤ìŒ í„´ì— ë‹¤ì‹œ ì‹œë„
         }
     }
 
     /// <summary>
-    /// [¼öÁ¤µÊ] ÁöÁ¤µÈ À§Ä¡¿¡ ±Í½ÅÀ» ½ºÆùÇÏ°í ÃÊ±âÈ­ÇÕ´Ï´Ù. ºÎ¸ğ ¾ŞÄ¿¸¦ ÆÄ¶ó¹ÌÅÍ·Î ¹Ş½À´Ï´Ù.
+    /// [ìˆ˜ì •ë¨] ì§€ì •ëœ ìœ„ì¹˜ì— ê·€ì‹ ì„ ìŠ¤í°í•˜ê³  ì´ˆê¸°í™”í•©ë‹ˆë‹¤. ë¶€ëª¨ ì•µì»¤ë¥¼ íŒŒë¼ë¯¸í„°ë¡œ ë°›ìŠµë‹ˆë‹¤.
     /// </summary>
     private void SpawnGhost(GameObject prefab, Vector3 spawnWorldPosition, Vector3 targetLocalOffset, Transform parentAnchor, bool isRearGhost)
     {
-        Debug.Log(prefab.name + " ½ºÆù ½Ãµµ...");
+        Debug.Log(prefab.name + " ìŠ¤í° ì‹œë„...");
 
-        // 1. ÁöÁ¤µÈ ¾ŞÄ¿ÀÇ ÀÚ½ÄÀ¸·Î ±Í½ÅÀ» »ı¼º(Instantiate)ÇÕ´Ï´Ù.
-        // ºÎ¸ğ¸¦ 'parentAnchor'·Î ¼³Á¤ÇÕ´Ï´Ù.
+        // 1. ì§€ì •ëœ ì•µì»¤ì˜ ìì‹ìœ¼ë¡œ ê·€ì‹ ì„ ìƒì„±(Instantiate)í•©ë‹ˆë‹¤.
+        // ë¶€ëª¨ë¥¼ 'parentAnchor'ë¡œ ì„¤ì •í•©ë‹ˆë‹¤.
         GameObject ghostObj = Instantiate(prefab, spawnWorldPosition, transform.rotation, parentAnchor);
 
-        // 2. ±Í½Å ÄÁÆ®·Ñ·¯ ½ºÅ©¸³Æ®¸¦ °¡Á®¿Í¼­ ÃÊ±âÈ­ÇÕ´Ï´Ù.
+        // 2. ê·€ì‹  ì»¨íŠ¸ë¡¤ëŸ¬ ìŠ¤í¬ë¦½íŠ¸ë¥¼ ê°€ì ¸ì™€ì„œ ì´ˆê¸°í™”í•©ë‹ˆë‹¤.
         AttachedGhostController ghostController = ghostObj.GetComponent<AttachedGhostController>();
         if (ghostController != null)
         {
             ghostController.Initialize(carHealthBar, targetLocalOffset);
 
-            // 3. [¼öÁ¤] °ü¸® ¸ñ·Ï¿¡ Ãß°¡ÇÕ´Ï´Ù. (ºÎ¸ğ ¼³Á¤ ·ÎÁ÷ Á¦°Å)
+            // 3. [ìˆ˜ì •] ê´€ë¦¬ ëª©ë¡ì— ì¶”ê°€í•©ë‹ˆë‹¤. (ë¶€ëª¨ ì„¤ì • ë¡œì§ ì œê±°)
             if (isRearGhost)
             {
                 currentRearGhost = ghostController;
@@ -171,8 +171,8 @@ public class GhostSpawner : MonoBehaviour
         }
         else
         {
-            Debug.LogError(prefab.name + " ÇÁ¸®ÆÕ¿¡ AttachedGhostController ½ºÅ©¸³Æ®°¡ ¾ø½À´Ï´Ù!", prefab);
-            Destroy(ghostObj); // Àß¸øµÈ ÇÁ¸®ÆÕÀÌ¹Ç·Î Á¦°Å
+            Debug.LogError(prefab.name + " í”„ë¦¬íŒ¹ì— AttachedGhostController ìŠ¤í¬ë¦½íŠ¸ê°€ ì—†ìŠµë‹ˆë‹¤!", prefab);
+            Destroy(ghostObj); // ì˜ëª»ëœ í”„ë¦¬íŒ¹ì´ë¯€ë¡œ ì œê±°
         }
     }
 }

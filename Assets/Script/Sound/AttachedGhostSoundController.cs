@@ -1,28 +1,28 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
 /// <summary>
-/// AttachedGhostController(ºÎÂøÇü Àû)ÀÇ »ç¿îµå¸¦ Àü´ãÇÕ´Ï´Ù.
-/// AttachedGhostController¿Í °°Àº GameObject¿¡ Ãß°¡ÇØ¾ß ÇÕ´Ï´Ù.
+/// AttachedGhostController(ë¶€ì°©í˜• ì )ì˜ ì‚¬ìš´ë“œë¥¼ ì „ë‹´í•©ë‹ˆë‹¤.
+/// AttachedGhostControllerì™€ ê°™ì€ GameObjectì— ì¶”ê°€í•´ì•¼ í•©ë‹ˆë‹¤.
 /// </summary>
 [RequireComponent(typeof(AttachedGhostController), typeof(AudioSource))]
 public class AttachedGhostSoundController : MonoBehaviour
 {
-    [Header("¿Àµğ¿À ¼Ò½º (AudioSources)")]
-    [Tooltip("°ø°İ/¼Ó»èÀÓ ·çÇÁ »ç¿îµå")]
+    [Header("ì˜¤ë””ì˜¤ ì†ŒìŠ¤ (AudioSources)")]
+    [Tooltip("ê³µê²©/ì†ì‚­ì„ ë£¨í”„ ì‚¬ìš´ë“œ")]
     public AudioSource loopSource;
-    [Tooltip("ÇÇ°İ, ½ºÆù µî È¿°úÀ½")]
+    [Tooltip("í”¼ê²©, ìŠ¤í° ë“± íš¨ê³¼ìŒ")]
     public AudioSource effectsSource;
 
-    [Header("¿Àµğ¿À Å¬¸³ (AudioClips)")]
-    [Tooltip("½ºÆù ½Ã »ç¿îµå")]
+    [Header("ì˜¤ë””ì˜¤ í´ë¦½ (AudioClips)")]
+    [Tooltip("ìŠ¤í° ì‹œ ì‚¬ìš´ë“œ")]
     public AudioClip spawnSound;
-    [Tooltip("Â÷·®¿¡ ºÎÂø ÈÄ °ø°İ(Áö¼Ó) ·çÇÁ »ç¿îµå")]
+    [Tooltip("ì°¨ëŸ‰ì— ë¶€ì°© í›„ ê³µê²©(ì§€ì†) ë£¨í”„ ì‚¬ìš´ë“œ")]
     public AudioClip attackLoop;
-    [Tooltip("ÁÖ±âÀû °ø°İ ½Ã È¿°úÀ½")]
+    [Tooltip("ì£¼ê¸°ì  ê³µê²© ì‹œ íš¨ê³¼ìŒ")]
     public AudioClip[] attackImpactClips;
-    [Tooltip("ÇÇ°İ ½Ã Àç»ıµÉ ¹«ÀÛÀ§ »ç¿îµå")]
+    [Tooltip("í”¼ê²© ì‹œ ì¬ìƒë  ë¬´ì‘ìœ„ ì‚¬ìš´ë“œ")]
     public AudioClip[] takeDamageClips;
-    [Tooltip("Á×À» ¶§ »ç¿îµå (¿ÀºêÁ§Æ®°¡ ÆÄ±«µÇ¾îµµ Àç»ıµÊ)")]
+    [Tooltip("ì£½ì„ ë•Œ ì‚¬ìš´ë“œ (ì˜¤ë¸Œì íŠ¸ê°€ íŒŒê´´ë˜ì–´ë„ ì¬ìƒë¨)")]
     public AudioClip deathClip;
 
     private AttachedGhostController ghostController;
@@ -31,12 +31,12 @@ public class AttachedGhostSoundController : MonoBehaviour
     {
         ghostController = GetComponent<AttachedGhostController>();
 
-        // ½ºÆù »ç¿îµå Àç»ı
+        // ìŠ¤í° ì‚¬ìš´ë“œ ì¬ìƒ
         AudioUtility.PlayOneShot(effectsSource, spawnSound);
     }
 
     /// <summary>
-    /// Â÷·®¿¡ ºÎÂøµÇ¾úÀ» ¶§ °ø°İ ·çÇÁ¸¦ ½ÃÀÛÇÕ´Ï´Ù. (AttachedGhostController°¡ È£Ãâ)
+    /// ì°¨ëŸ‰ì— ë¶€ì°©ë˜ì—ˆì„ ë•Œ ê³µê²© ë£¨í”„ë¥¼ ì‹œì‘í•©ë‹ˆë‹¤. (AttachedGhostControllerê°€ í˜¸ì¶œ)
     /// </summary>
     public void StartAttackLoop()
     {
@@ -44,7 +44,7 @@ public class AttachedGhostSoundController : MonoBehaviour
     }
 
     /// <summary>
-    /// ÁÖ±âÀû µ¥¹ÌÁö È¿°úÀ½À» Àç»ıÇÕ´Ï´Ù. (AttachedGhostController°¡ È£Ãâ)
+    /// ì£¼ê¸°ì  ë°ë¯¸ì§€ íš¨ê³¼ìŒì„ ì¬ìƒí•©ë‹ˆë‹¤. (AttachedGhostControllerê°€ í˜¸ì¶œ)
     /// </summary>
     public void PlayAttackImpact()
     {
@@ -52,7 +52,7 @@ public class AttachedGhostSoundController : MonoBehaviour
     }
 
     /// <summary>
-    /// ÇÇ°İ »ç¿îµå¸¦ Àç»ıÇÕ´Ï´Ù. (AttachedGhostController°¡ È£Ãâ)
+    /// í”¼ê²© ì‚¬ìš´ë“œë¥¼ ì¬ìƒí•©ë‹ˆë‹¤. (AttachedGhostControllerê°€ í˜¸ì¶œ)
     /// </summary>
     public void PlayTakeDamageSound()
     {
@@ -60,14 +60,14 @@ public class AttachedGhostSoundController : MonoBehaviour
     }
 
     /// <summary>
-    /// Á×À½ »ç¿îµå¸¦ Àç»ıÇÕ´Ï´Ù. (AttachedGhostController°¡ È£Ãâ)
+    /// ì£½ìŒ ì‚¬ìš´ë“œë¥¼ ì¬ìƒí•©ë‹ˆë‹¤. (AttachedGhostControllerê°€ í˜¸ì¶œ)
     /// </summary>
     public void PlayDeathSound()
     {
-        // ·çÇÁ »ç¿îµå ÁßÁö
+        // ë£¨í”„ ì‚¬ìš´ë“œ ì¤‘ì§€
         AudioUtility.StopLoop(loopSource);
 
-        // ¿ÀºêÁ§Æ®°¡ ÆÄ±«µÉ °ÍÀÌ¹Ç·Î, AudioUtility¸¦ »ç¿ëÇØ À§Ä¡ ±â¹İÀ¸·Î Àç»ı
+        // ì˜¤ë¸Œì íŠ¸ê°€ íŒŒê´´ë  ê²ƒì´ë¯€ë¡œ, AudioUtilityë¥¼ ì‚¬ìš©í•´ ìœ„ì¹˜ ê¸°ë°˜ìœ¼ë¡œ ì¬ìƒ
         AudioUtility.PlayClipAtPoint(deathClip, transform.position);
     }
 }

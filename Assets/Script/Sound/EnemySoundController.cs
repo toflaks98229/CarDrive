@@ -1,26 +1,26 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
 /// <summary>
-/// EnemyController(ÃßÀûÇü Àû)ÀÇ »ç¿îµå¸¦ Àü´ãÇÕ´Ï´Ù.
-/// EnemyController¿Í °°Àº GameObject¿¡ Ãß°¡ÇØ¾ß ÇÕ´Ï´Ù.
+/// EnemyController(ì¶”ì í˜• ì )ì˜ ì‚¬ìš´ë“œë¥¼ ì „ë‹´í•©ë‹ˆë‹¤.
+/// EnemyControllerì™€ ê°™ì€ GameObjectì— ì¶”ê°€í•´ì•¼ í•©ë‹ˆë‹¤.
 /// </summary>
 [RequireComponent(typeof(EnemyController), typeof(AudioSource))]
 public class EnemySoundController : MonoBehaviour
 {
-    [Header("¿Àµğ¿À ¼Ò½º (AudioSources)")]
-    [Tooltip("ÃßÀû Áß ·çÇÁ »ç¿îµå¸¦ Àç»ıÇÒ AudioSource")]
+    [Header("ì˜¤ë””ì˜¤ ì†ŒìŠ¤ (AudioSources)")]
+    [Tooltip("ì¶”ì  ì¤‘ ë£¨í”„ ì‚¬ìš´ë“œë¥¼ ì¬ìƒí•  AudioSource")]
     public AudioSource loopSource;
-    [Tooltip("ÇÇ°İ µî È¿°úÀ½À» Àç»ıÇÒ AudioSource")]
+    [Tooltip("í”¼ê²© ë“± íš¨ê³¼ìŒì„ ì¬ìƒí•  AudioSource")]
     public AudioSource effectsSource;
 
-    [Header("¿Àµğ¿À Å¬¸³ (AudioClips)")]
-    [Tooltip("½ºÆù(È°¼ºÈ­) ½Ã »ç¿îµå")]
+    [Header("ì˜¤ë””ì˜¤ í´ë¦½ (AudioClips)")]
+    [Tooltip("ìŠ¤í°(í™œì„±í™”) ì‹œ ì‚¬ìš´ë“œ")]
     public AudioClip spawnSound;
-    [Tooltip("ÃßÀû Áß ·çÇÁ »ç¿îµå")]
+    [Tooltip("ì¶”ì  ì¤‘ ë£¨í”„ ì‚¬ìš´ë“œ")]
     public AudioClip chaseLoop;
-    [Tooltip("ÇÇ°İ ½Ã Àç»ıµÉ ¹«ÀÛÀ§ »ç¿îµå")]
+    [Tooltip("í”¼ê²© ì‹œ ì¬ìƒë  ë¬´ì‘ìœ„ ì‚¬ìš´ë“œ")]
     public AudioClip[] takeDamageClips;
-    [Tooltip("Á×À» ¶§ »ç¿îµå (¿ÀºêÁ§Æ®°¡ ÆÄ±«µÇ¾îµµ Àç»ıµÊ)")]
+    [Tooltip("ì£½ì„ ë•Œ ì‚¬ìš´ë“œ (ì˜¤ë¸Œì íŠ¸ê°€ íŒŒê´´ë˜ì–´ë„ ì¬ìƒë¨)")]
     public AudioClip deathClip;
 
     private EnemyController enemyController;
@@ -29,15 +29,15 @@ public class EnemySoundController : MonoBehaviour
     {
         enemyController = GetComponent<EnemyController>();
 
-        // ½ºÆù »ç¿îµå Àç»ı
+        // ìŠ¤í° ì‚¬ìš´ë“œ ì¬ìƒ
         AudioUtility.PlayOneShot(effectsSource, spawnSound);
 
-        // ÃßÀû ·çÇÁ ½ÃÀÛ
+        // ì¶”ì  ë£¨í”„ ì‹œì‘
         AudioUtility.StartLoop(loopSource, chaseLoop, 1.0f, 1.0f);
     }
 
     /// <summary>
-    /// ÇÇ°İ »ç¿îµå¸¦ Àç»ıÇÕ´Ï´Ù. (EnemyController°¡ È£Ãâ)
+    /// í”¼ê²© ì‚¬ìš´ë“œë¥¼ ì¬ìƒí•©ë‹ˆë‹¤. (EnemyControllerê°€ í˜¸ì¶œ)
     /// </summary>
     public void PlayTakeDamageSound()
     {
@@ -45,14 +45,14 @@ public class EnemySoundController : MonoBehaviour
     }
 
     /// <summary>
-    /// Á×À½ »ç¿îµå¸¦ Àç»ıÇÕ´Ï´Ù. (EnemyController°¡ È£Ãâ)
+    /// ì£½ìŒ ì‚¬ìš´ë“œë¥¼ ì¬ìƒí•©ë‹ˆë‹¤. (EnemyControllerê°€ í˜¸ì¶œ)
     /// </summary>
     public void PlayDeathSound()
     {
-        // ·çÇÁ »ç¿îµå ÁßÁö
+        // ë£¨í”„ ì‚¬ìš´ë“œ ì¤‘ì§€
         AudioUtility.StopLoop(loopSource);
 
-        // ¿ÀºêÁ§Æ®°¡ ÆÄ±«µÉ °ÍÀÌ¹Ç·Î, AudioUtility¸¦ »ç¿ëÇØ À§Ä¡ ±â¹İÀ¸·Î Àç»ı
+        // ì˜¤ë¸Œì íŠ¸ê°€ íŒŒê´´ë  ê²ƒì´ë¯€ë¡œ, AudioUtilityë¥¼ ì‚¬ìš©í•´ ìœ„ì¹˜ ê¸°ë°˜ìœ¼ë¡œ ì¬ìƒ
         AudioUtility.PlayClipAtPoint(deathClip, transform.position);
     }
 }

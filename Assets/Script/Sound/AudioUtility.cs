@@ -1,39 +1,39 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
 /// <summary>
-/// ¿Àµğ¿À Àç»ıÀ» À§ÇÑ Á¤Àû(static) ÇïÆÛ Å¬·¡½ºÀÔ´Ï´Ù.
-/// ÆÄ±«µÇ´Â ¿ÀºêÁ§Æ®ÀÇ »ç¿îµå(¿¹: Á×À½ È¿°úÀ½)¸¦ Àç»ıÇÏ´Â µ¥ À¯¿ëÇÕ´Ï´Ù.
+/// ì˜¤ë””ì˜¤ ì¬ìƒì„ ìœ„í•œ ì •ì (static) í—¬í¼ í´ë˜ìŠ¤ì…ë‹ˆë‹¤.
+/// íŒŒê´´ë˜ëŠ” ì˜¤ë¸Œì íŠ¸ì˜ ì‚¬ìš´ë“œ(ì˜ˆ: ì£½ìŒ íš¨ê³¼ìŒ)ë¥¼ ì¬ìƒí•˜ëŠ” ë° ìœ ìš©í•©ë‹ˆë‹¤.
 /// </summary>
 public static class AudioUtility
 {
     /// <summary>
-    /// ÁöÁ¤µÈ À§Ä¡¿¡ ÀÓ½Ã AudioSource¸¦ »ı¼ºÇÏ¿© Å¬¸³À» ÇÑ ¹ø Àç»ıÇÕ´Ï´Ù.
-    /// ¿ÀºêÁ§Æ®°¡ ÆÄ±«µÈ ÈÄ¿¡µµ »ç¿îµå°¡ °è¼Ó Àç»ıµÇµµ·Ï º¸ÀåÇÕ´Ï´Ù.
+    /// ì§€ì •ëœ ìœ„ì¹˜ì— ì„ì‹œ AudioSourceë¥¼ ìƒì„±í•˜ì—¬ í´ë¦½ì„ í•œ ë²ˆ ì¬ìƒí•©ë‹ˆë‹¤.
+    /// ì˜¤ë¸Œì íŠ¸ê°€ íŒŒê´´ëœ í›„ì—ë„ ì‚¬ìš´ë“œê°€ ê³„ì† ì¬ìƒë˜ë„ë¡ ë³´ì¥í•©ë‹ˆë‹¤.
     /// </summary>
-    /// <param name="clip">Àç»ıÇÒ AudioClip</param>
-    /// <param name="position">Àç»ıÇÒ ¿ùµå ÁÂÇ¥</param>
-    /// <param name="volume">º¼·ı (0.0f ~ 1.0f)</param>
+    /// <param name="clip">ì¬ìƒí•  AudioClip</param>
+    /// <param name="position">ì¬ìƒí•  ì›”ë“œ ì¢Œí‘œ</param>
+    /// <param name="volume">ë³¼ë¥¨ (0.0f ~ 1.0f)</param>
     public static void PlayClipAtPoint(AudioClip clip, Vector3 position, float volume = 1.0f)
     {
         if (clip == null) return;
 
-        // ÀÓ½Ã °ÔÀÓ ¿ÀºêÁ§Æ® »ı¼º
+        // ì„ì‹œ ê²Œì„ ì˜¤ë¸Œì íŠ¸ ìƒì„±
         GameObject tempAudioPlayer = new GameObject($"OneShotAudio_{clip.name}");
         tempAudioPlayer.transform.position = position;
 
-        // AudioSource ÄÄÆ÷³ÍÆ® Ãß°¡ ¹× ¼³Á¤
+        // AudioSource ì»´í¬ë„ŒíŠ¸ ì¶”ê°€ ë° ì„¤ì •
         AudioSource audioSource = tempAudioPlayer.AddComponent<AudioSource>();
         audioSource.clip = clip;
         audioSource.volume = volume;
-        audioSource.spatialBlend = 1.0f; // 3D »ç¿îµå·Î ¼³Á¤
+        audioSource.spatialBlend = 1.0f; // 3D ì‚¬ìš´ë“œë¡œ ì„¤ì •
         audioSource.Play();
 
-        // Å¬¸³ Àç»ıÀÌ ³¡³ª¸é ÀÓ½Ã ¿ÀºêÁ§Æ® ÆÄ±«
+        // í´ë¦½ ì¬ìƒì´ ëë‚˜ë©´ ì„ì‹œ ì˜¤ë¸Œì íŠ¸ íŒŒê´´
         Object.Destroy(tempAudioPlayer, clip.length);
     }
 
     /// <summary>
-    /// AudioSource°¡ nullÀÌ°Å³ª Å¬¸³ÀÌ nullÀÎÁö È®ÀÎÇÏ°í ¾ÈÀüÇÏ°Ô Å¬¸³À» ÇÑ ¹ø Àç»ıÇÕ´Ï´Ù.
+    /// AudioSourceê°€ nullì´ê±°ë‚˜ í´ë¦½ì´ nullì¸ì§€ í™•ì¸í•˜ê³  ì•ˆì „í•˜ê²Œ í´ë¦½ì„ í•œ ë²ˆ ì¬ìƒí•©ë‹ˆë‹¤.
     /// </summary>
     public static void PlayOneShot(AudioSource source, AudioClip clip, float volumeScale = 1.0f)
     {
@@ -44,7 +44,7 @@ public static class AudioUtility
     }
 
     /// <summary>
-    /// Å¬¸³ ¹è¿­¿¡¼­ ¹«ÀÛÀ§ Å¬¸³À» ¼±ÅÃÇÏ¿© ¾ÈÀüÇÏ°Ô ÇÑ ¹ø Àç»ıÇÕ´Ï´Ù.
+    /// í´ë¦½ ë°°ì—´ì—ì„œ ë¬´ì‘ìœ„ í´ë¦½ì„ ì„ íƒí•˜ì—¬ ì•ˆì „í•˜ê²Œ í•œ ë²ˆ ì¬ìƒí•©ë‹ˆë‹¤.
     /// </summary>
     public static void PlayOneShotRandom(AudioSource source, AudioClip[] clips, float volumeScale = 1.0f)
     {
@@ -56,7 +56,7 @@ public static class AudioUtility
     }
 
     /// <summary>
-    /// ·çÇÁ »ç¿îµå¸¦ ¾ÈÀüÇÏ°Ô ½ÃÀÛÇÏ°Å³ª ±³Ã¼ÇÕ´Ï´Ù.
+    /// ë£¨í”„ ì‚¬ìš´ë“œë¥¼ ì•ˆì „í•˜ê²Œ ì‹œì‘í•˜ê±°ë‚˜ êµì²´í•©ë‹ˆë‹¤.
     /// </summary>
     public static void StartLoop(AudioSource source, AudioClip clip, float volume = 1.0f, float pitch = 1.0f)
     {
@@ -74,7 +74,7 @@ public static class AudioUtility
     }
 
     /// <summary>
-    /// ·çÇÁ »ç¿îµå¸¦ ¾ÈÀüÇÏ°Ô ÁßÁöÇÕ´Ï´Ù.
+    /// ë£¨í”„ ì‚¬ìš´ë“œë¥¼ ì•ˆì „í•˜ê²Œ ì¤‘ì§€í•©ë‹ˆë‹¤.
     /// </summary>
     public static void StopLoop(AudioSource source)
     {
