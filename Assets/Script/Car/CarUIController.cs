@@ -1,89 +1,89 @@
-using UnityEngine;
-using UnityEngine.UI; // UI ¿ä¼Ò¸¦ »ç¿ëÇÒ °æ¿ì¸¦ ´ëºñÇØ Ãß°¡ (ÇöÀç´Â Transform¸¸ »ç¿ë)
+ï»¿using UnityEngine;
+using UnityEngine.UI; // UI ìš”ì†Œë¥¼ ì‚¬ìš©í•  ê²½ìš°ë¥¼ ëŒ€ë¹„í•´ ì¶”ê°€ (í˜„ì¬ëŠ” Transformë§Œ ì‚¬ìš©)
 
 /// <summary>
-/// CarControllerÀÇ µ¥ÀÌÅÍ¸¦ ¹Ş¾Æ¿Í ¼Óµµ, RPM, ¿¬·á °è±âÆÇÀÇ ¹Ù´Ã(Transform)À» È¸Àü½ÃÅ°´Â Å¬·¡½ºÀÔ´Ï´Ù.
+/// CarControllerì˜ ë°ì´í„°ë¥¼ ë°›ì•„ì™€ ì†ë„, RPM, ì—°ë£Œ ê³„ê¸°íŒì˜ ë°”ëŠ˜(Transform)ì„ íšŒì „ì‹œí‚¤ëŠ” í´ë˜ìŠ¤ì…ë‹ˆë‹¤.
 /// </summary>
 public class CarUIController : MonoBehaviour
 {
     // --- Public Member Variables ---
 
-    [Header("ÇÙ½É ÄÄÆ÷³ÍÆ® ¿¬°á")]
-    [Tooltip("µ¥ÀÌÅÍ¸¦ °¡Á®¿Ã CarController ½ºÅ©¸³Æ®")]
+    [Header("í•µì‹¬ ì»´í¬ë„ŒíŠ¸ ì—°ê²°")]
+    [Tooltip("ë°ì´í„°ë¥¼ ê°€ì ¸ì˜¬ CarController ìŠ¤í¬ë¦½íŠ¸")]
     public CarController carController;
 
-    [Header("°è±âÆÇ ¹Ù´Ã (Transform)")]
-    [Tooltip("¼Óµµ°è ¹Ù´ÃÀÇ Transform")]
+    [Header("ê³„ê¸°íŒ ë°”ëŠ˜ (Transform)")]
+    [Tooltip("ì†ë„ê³„ ë°”ëŠ˜ì˜ Transform")]
     public Transform speedometerNeedle;
 
-    [Tooltip("RPM °ÔÀÌÁö ¹Ù´ÃÀÇ Transform")]
+    [Tooltip("RPM ê²Œì´ì§€ ë°”ëŠ˜ì˜ Transform")]
     public Transform rpmNeedle;
 
-    [Tooltip("¿¬·á °ÔÀÌÁö ¹Ù´ÃÀÇ Transform")]
+    [Tooltip("ì—°ë£Œ ê²Œì´ì§€ ë°”ëŠ˜ì˜ Transform")]
     public Transform fuelNeedle;
 
-    [Header("°è±âÆÇ ÃÖ´ë°ª ¼³Á¤")]
-    [Tooltip("¼Óµµ°è¿¡ Ç¥½ÃµÉ ÃÖ´ë ¼Óµµ(km/h). ÀÌ °ªÀ» ³Ñ¾îµµ ¹Ù´ÃÀº ÃÖ´ë °¢µµ¿¡ ¸Ó¹«¸¨´Ï´Ù.")]
+    [Header("ê³„ê¸°íŒ ìµœëŒ€ê°’ ì„¤ì •")]
+    [Tooltip("ì†ë„ê³„ì— í‘œì‹œë  ìµœëŒ€ ì†ë„(km/h). ì´ ê°’ì„ ë„˜ì–´ë„ ë°”ëŠ˜ì€ ìµœëŒ€ ê°ë„ì— ë¨¸ë¬´ë¦…ë‹ˆë‹¤.")]
     public float maxSpeed = 240f;
 
-    [Tooltip("RPM °ÔÀÌÁö¿¡ Ç¥½ÃµÉ ÃÖ´ë RPM. ÀÌ °ªÀ» ³Ñ¾îµµ ¹Ù´ÃÀº ÃÖ´ë °¢µµ¿¡ ¸Ó¹«¸¨´Ï´Ù.")]
+    [Tooltip("RPM ê²Œì´ì§€ì— í‘œì‹œë  ìµœëŒ€ RPM. ì´ ê°’ì„ ë„˜ì–´ë„ ë°”ëŠ˜ì€ ìµœëŒ€ ê°ë„ì— ë¨¸ë¬´ë¦…ë‹ˆë‹¤.")]
     public float maxRpm = 6000f;
-    // (¿¬·á´Â CarControllerÀÇ maxFuel °ªÀ» ÃÖ´ë°ªÀ¸·Î »ç¿ëÇÕ´Ï´Ù)
+    // (ì—°ë£ŒëŠ” CarControllerì˜ maxFuel ê°’ì„ ìµœëŒ€ê°’ìœ¼ë¡œ ì‚¬ìš©í•©ë‹ˆë‹¤)
 
-    [Header("¹Ù´Ã È¸Àü °¢µµ ¼³Á¤")]
-    [Tooltip("°ªÀÌ 0ÀÏ ¶§ÀÇ ¹Ù´Ã ZÃà ·ÎÄÃ È¸Àü °¢µµ")]
+    [Header("ë°”ëŠ˜ íšŒì „ ê°ë„ ì„¤ì •")]
+    [Tooltip("ê°’ì´ 0ì¼ ë•Œì˜ ë°”ëŠ˜ Zì¶• ë¡œì»¬ íšŒì „ ê°ë„")]
     public float zeroAngle = 0f;
 
-    [Tooltip("°ªÀÌ ÃÖ´ëÀÏ ¶§ÀÇ ¹Ù´Ã ZÃà ·ÎÄÃ È¸Àü °¢µµ")]
-    public float maxAngle = -100f; // ¿¹: ½Ã°è ¹İ´ë ¹æÇâÀ¸·Î 100µµ È¸Àü
+    [Tooltip("ê°’ì´ ìµœëŒ€ì¼ ë•Œì˜ ë°”ëŠ˜ Zì¶• ë¡œì»¬ íšŒì „ ê°ë„")]
+    public float maxAngle = -100f; // ì˜ˆ: ì‹œê³„ ë°˜ëŒ€ ë°©í–¥ìœ¼ë¡œ 100ë„ íšŒì „
 
     // --- Unity Event Functions ---
 
     /// <summary>
-    /// ¸Å ÇÁ·¹ÀÓ¸¶´Ù È£ÃâµË´Ï´Ù.
+    /// ë§¤ í”„ë ˆì„ë§ˆë‹¤ í˜¸ì¶œë©ë‹ˆë‹¤.
     /// </summary>
     void Update()
     {
-        // carController°¡ ÇÒ´çµÇÁö ¾Ê¾Ò´Ù¸é ¿À·ù ¸Ş½ÃÁö¸¦ Ãâ·ÂÇÏ°í ½ÇÇàÀ» ÁßÁöÇÕ´Ï´Ù.
+        // carControllerê°€ í• ë‹¹ë˜ì§€ ì•Šì•˜ë‹¤ë©´ ì˜¤ë¥˜ ë©”ì‹œì§€ë¥¼ ì¶œë ¥í•˜ê³  ì‹¤í–‰ì„ ì¤‘ì§€í•©ë‹ˆë‹¤.
         if (carController == null)
         {
-            Debug.LogError("CarUIController¿¡ CarController°¡ ¿¬°áµÇÁö ¾Ê¾Ò½À´Ï´Ù!");
-            this.enabled = false; // ½ºÅ©¸³Æ® ºñÈ°¼ºÈ­
+            Debug.LogError("CarUIControllerì— CarControllerê°€ ì—°ê²°ë˜ì§€ ì•Šì•˜ìŠµë‹ˆë‹¤!");
+            this.enabled = false; // ìŠ¤í¬ë¦½íŠ¸ ë¹„í™œì„±í™”
             return;
         }
 
-        // 1. ¼Óµµ°è ¹Ù´Ã ¾÷µ¥ÀÌÆ®
+        // 1. ì†ë„ê³„ ë°”ëŠ˜ ì—…ë°ì´íŠ¸
         UpdateNeedle(speedometerNeedle, carController.GetCurrentSpeed(), maxSpeed);
 
-        // 2. RPM ¹Ù´Ã ¾÷µ¥ÀÌÆ®
+        // 2. RPM ë°”ëŠ˜ ì—…ë°ì´íŠ¸
         UpdateNeedle(rpmNeedle, carController.GetCurrentRPM(), maxRpm);
 
-        // 3. ¿¬·á ¹Ù´Ã ¾÷µ¥ÀÌÆ® (ÃÖ´ë°ªÀ¸·Î CarControllerÀÇ ÃÖ´ë ¿¬·á·®À» »ç¿ë)
+        // 3. ì—°ë£Œ ë°”ëŠ˜ ì—…ë°ì´íŠ¸ (ìµœëŒ€ê°’ìœ¼ë¡œ CarControllerì˜ ìµœëŒ€ ì—°ë£ŒëŸ‰ì„ ì‚¬ìš©)
         UpdateNeedle(fuelNeedle, carController.GetCurrentFuel(), carController.GetMaxFuel());
     }
 
     // --- Private Methods ---
 
     /// <summary>
-    /// ÁöÁ¤µÈ °ª¿¡ µû¶ó °è±âÆÇ ¹Ù´ÃÀ» È¸Àü½ÃÅ°´Â °ø¿ë ÇÔ¼öÀÔ´Ï´Ù.
+    /// ì§€ì •ëœ ê°’ì— ë”°ë¼ ê³„ê¸°íŒ ë°”ëŠ˜ì„ íšŒì „ì‹œí‚¤ëŠ” ê³µìš© í•¨ìˆ˜ì…ë‹ˆë‹¤.
     /// </summary>
-    /// <param name="needle">È¸Àü½ÃÅ³ ¹Ù´ÃÀÇ Transform</param>
-    /// <param name="currentValue">ÇöÀç °ª (¿¹: ÇöÀç ¼Óµµ)</param>
-    /// <param name="maxValue">ÃÖ´ë °ª (¿¹: ÃÖ´ë ¼Óµµ)</param>
+    /// <param name="needle">íšŒì „ì‹œí‚¬ ë°”ëŠ˜ì˜ Transform</param>
+    /// <param name="currentValue">í˜„ì¬ ê°’ (ì˜ˆ: í˜„ì¬ ì†ë„)</param>
+    /// <param name="maxValue">ìµœëŒ€ ê°’ (ì˜ˆ: ìµœëŒ€ ì†ë„)</param>
     private void UpdateNeedle(Transform needle, float currentValue, float maxValue)
     {
-        // ¹Ù´Ã TransformÀÌ ÇÒ´çµÇÁö ¾Ê¾Ò´Ù¸é ½ÇÇàÇÏÁö ¾Ê½À´Ï´Ù.
+        // ë°”ëŠ˜ Transformì´ í• ë‹¹ë˜ì§€ ì•Šì•˜ë‹¤ë©´ ì‹¤í–‰í•˜ì§€ ì•ŠìŠµë‹ˆë‹¤.
         if (needle == null) return;
 
-        // ÇöÀç °ªÀÌ ÃÖ´ë°ª¿¡¼­ Â÷ÁöÇÏ´Â ºñÀ²À» °è»êÇÕ´Ï´Ù (0.0 ~ 1.0 »çÀÌ·Î Á¦ÇÑ)
-        // maxValue°¡ 0ÀÌ µÇ´Â °æ¿ì(¿¹: ¿¬·áÅëÀÌ ¾ø´Â °æ¿ì)¸¦ ´ëºñÇØ 0À¸·Î ³ª´µ´Â °ÍÀ» ¹æÁöÇÕ´Ï´Ù.
+        // í˜„ì¬ ê°’ì´ ìµœëŒ€ê°’ì—ì„œ ì°¨ì§€í•˜ëŠ” ë¹„ìœ¨ì„ ê³„ì‚°í•©ë‹ˆë‹¤ (0.0 ~ 1.0 ì‚¬ì´ë¡œ ì œí•œ)
+        // maxValueê°€ 0ì´ ë˜ëŠ” ê²½ìš°(ì˜ˆ: ì—°ë£Œí†µì´ ì—†ëŠ” ê²½ìš°)ë¥¼ ëŒ€ë¹„í•´ 0ìœ¼ë¡œ ë‚˜ë‰˜ëŠ” ê²ƒì„ ë°©ì§€í•©ë‹ˆë‹¤.
         float percentage = (maxValue > 0) ? Mathf.Clamp01(currentValue / maxValue) : 0f;
 
-        // ºñÀ²(percentage)¿¡ µû¶ó 0ÀÏ ¶§ÀÇ °¢µµ(zeroAngle)¿Í ÃÖ´ëÀÏ ¶§ÀÇ °¢µµ(maxAngle) »çÀÌÀÇ °ªÀ» º¸°£(Lerp)ÇÕ´Ï´Ù.
+        // ë¹„ìœ¨(percentage)ì— ë”°ë¼ 0ì¼ ë•Œì˜ ê°ë„(zeroAngle)ì™€ ìµœëŒ€ì¼ ë•Œì˜ ê°ë„(maxAngle) ì‚¬ì´ì˜ ê°’ì„ ë³´ê°„(Lerp)í•©ë‹ˆë‹¤.
         float targetAngle = Mathf.Lerp(zeroAngle, maxAngle, percentage);
 
-        // °è»êµÈ °¢µµ¸¦ ¹Ù´ÃÀÇ ZÃà ·ÎÄÃ È¸Àü°ª(localRotation)À¸·Î Àû¿ëÇÕ´Ï´Ù.
-        // Quaternion.Euler¸¦ »ç¿ëÇÏ¿© (0, 0, Z°¢µµ)ÀÇ È¸Àü°ªÀ» ¸¸µì´Ï´Ù.
+        // ê³„ì‚°ëœ ê°ë„ë¥¼ ë°”ëŠ˜ì˜ Zì¶• ë¡œì»¬ íšŒì „ê°’(localRotation)ìœ¼ë¡œ ì ìš©í•©ë‹ˆë‹¤.
+        // Quaternion.Eulerë¥¼ ì‚¬ìš©í•˜ì—¬ (0, 0, Zê°ë„)ì˜ íšŒì „ê°’ì„ ë§Œë“­ë‹ˆë‹¤.
         needle.localRotation = Quaternion.Euler(0, 0, targetAngle);
     }
 }

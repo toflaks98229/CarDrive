@@ -1,36 +1,36 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
 /// <summary>
-/// Â÷·®ÀÇ ¸ğµç »ç¿îµå(¿£Áø, Ãæµ¹, ½Ãµ¿)¸¦ Àü´ãÇÏ´Â ÄÁÆ®·Ñ·¯ÀÔ´Ï´Ù.
-/// CarController¿Í °°Àº GameObject¿¡ Ãß°¡ÇØ¾ß ÇÕ´Ï´Ù.
+/// ì°¨ëŸ‰ì˜ ëª¨ë“  ì‚¬ìš´ë“œ(ì—”ì§„, ì¶©ëŒ, ì‹œë™)ë¥¼ ì „ë‹´í•˜ëŠ” ì»¨íŠ¸ë¡¤ëŸ¬ì…ë‹ˆë‹¤.
+/// CarControllerì™€ ê°™ì€ GameObjectì— ì¶”ê°€í•´ì•¼ í•©ë‹ˆë‹¤.
 /// </summary>
 [RequireComponent(typeof(CarController))]
 public class CarSoundController : MonoBehaviour
 {
-    [Header("¿Àµğ¿À ¼Ò½º (AudioSources)")]
-    [Tooltip("¿£Áø ·çÇÁ »ç¿îµå¸¦ Àç»ıÇÒ AudioSource")]
+    [Header("ì˜¤ë””ì˜¤ ì†ŒìŠ¤ (AudioSources)")]
+    [Tooltip("ì—”ì§„ ë£¨í”„ ì‚¬ìš´ë“œë¥¼ ì¬ìƒí•  AudioSource")]
     public AudioSource engineSource;
-    [Tooltip("½Ãµ¿, Ãæµ¹ µî È¿°úÀ½À» Àç»ıÇÒ AudioSource")]
+    [Tooltip("ì‹œë™, ì¶©ëŒ ë“± íš¨ê³¼ìŒì„ ì¬ìƒí•  AudioSource")]
     public AudioSource effectsSource;
 
-    [Header("¿Àµğ¿À Å¬¸³ (AudioClips)")]
-    [Tooltip("½Ãµ¿ °Å´Â ¼Ò¸®")]
+    [Header("ì˜¤ë””ì˜¤ í´ë¦½ (AudioClips)")]
+    [Tooltip("ì‹œë™ ê±°ëŠ” ì†Œë¦¬")]
     public AudioClip engineStartClip;
-    [Tooltip("¿£Áø ÀÛµ¿ ·çÇÁ (RPM¿¡ µû¶ó ÇÇÄ¡ Á¶ÀıµÊ)")]
+    [Tooltip("ì—”ì§„ ì‘ë™ ë£¨í”„ (RPMì— ë”°ë¼ í”¼ì¹˜ ì¡°ì ˆë¨)")]
     public AudioClip engineLoopClip;
-    [Tooltip("½Ãµ¿ ²ô´Â ¼Ò¸®")]
+    [Tooltip("ì‹œë™ ë„ëŠ” ì†Œë¦¬")]
     public AudioClip engineStopClip;
-    [Tooltip("Àû ¶Ç´Â Àå¾Ö¹°°ú Ãæµ¹ ½Ã Àç»ıµÉ ¹«ÀÛÀ§ ¼Ò¸®")]
+    [Tooltip("ì  ë˜ëŠ” ì¥ì• ë¬¼ê³¼ ì¶©ëŒ ì‹œ ì¬ìƒë  ë¬´ì‘ìœ„ ì†Œë¦¬")]
     public AudioClip[] collisionClips;
 
-    [Header("¿£Áø »ç¿îµå ¼³Á¤")]
-    [Tooltip("¿£Áø ¼Ò¸®°¡ ³ªÁö ¾Ê´Â ÃÖ¼Ò RPM")]
+    [Header("ì—”ì§„ ì‚¬ìš´ë“œ ì„¤ì •")]
+    [Tooltip("ì—”ì§„ ì†Œë¦¬ê°€ ë‚˜ì§€ ì•ŠëŠ” ìµœì†Œ RPM")]
     public float minRpm = 800f;
-    [Tooltip("¿£Áø ÇÇÄ¡°¡ ÃÖ´ë°¡ µÇ´Â RPM")]
+    [Tooltip("ì—”ì§„ í”¼ì¹˜ê°€ ìµœëŒ€ê°€ ë˜ëŠ” RPM")]
     public float maxRpm = 6000f;
-    [Tooltip("ÃÖ¼Ò RPMÀÏ ¶§ÀÇ ¿£Áø ÇÇÄ¡")]
+    [Tooltip("ìµœì†Œ RPMì¼ ë•Œì˜ ì—”ì§„ í”¼ì¹˜")]
     public float minPitch = 0.8f;
-    [Tooltip("ÃÖ´ë RPMÀÏ ¶§ÀÇ ¿£Áø ÇÇÄ¡")]
+    [Tooltip("ìµœëŒ€ RPMì¼ ë•Œì˜ ì—”ì§„ í”¼ì¹˜")]
     public float maxPitch = 2.5f;
 
     private CarController carController;
@@ -50,7 +50,7 @@ public class CarSoundController : MonoBehaviour
     }
 
     /// <summary>
-    /// CarControllerÀÇ ÇöÀç RPMÀ» ±â¹İÀ¸·Î ¿£Áø »ç¿îµå¸¦ Á¶ÀıÇÕ´Ï´Ù.
+    /// CarControllerì˜ í˜„ì¬ RPMì„ ê¸°ë°˜ìœ¼ë¡œ ì—”ì§„ ì‚¬ìš´ë“œë¥¼ ì¡°ì ˆí•©ë‹ˆë‹¤.
     /// </summary>
     private void UpdateEngineSound()
     {
@@ -68,19 +68,19 @@ public class CarSoundController : MonoBehaviour
             engineSource.Play();
         }
 
-        // RPM ºñÀ² °è»ê (0.0 ~ 1.0)
+        // RPM ë¹„ìœ¨ ê³„ì‚° (0.0 ~ 1.0)
         float rpmRatio = Mathf.InverseLerp(minRpm, maxRpm, carController.GetCurrentRPM());
 
-        // ÇÇÄ¡ Á¶Àı
+        // í”¼ì¹˜ ì¡°ì ˆ
         engineSource.pitch = Mathf.Lerp(minPitch, maxPitch, rpmRatio);
 
-        // º¼·ı Á¶Àı (½º·ÎÆ² ÀÔ·Â¿¡ µû¶ó)
+        // ë³¼ë¥¨ ì¡°ì ˆ (ìŠ¤ë¡œí‹€ ì…ë ¥ì— ë”°ë¼)
         float throttleInput = Mathf.Abs(Input.GetAxis("Vertical"));
         engineSource.volume = Mathf.Lerp(0.5f, 1.0f, throttleInput);
     }
 
     /// <summary>
-    /// ½Ãµ¿ »ç¿îµå¸¦ Àç»ıÇÕ´Ï´Ù. (CarController¿¡¼­ È£Ãâ)
+    /// ì‹œë™ ì‚¬ìš´ë“œë¥¼ ì¬ìƒí•©ë‹ˆë‹¤. (CarControllerì—ì„œ í˜¸ì¶œ)
     /// </summary>
     public void PlayEngineStart()
     {
@@ -88,7 +88,7 @@ public class CarSoundController : MonoBehaviour
     }
 
     /// <summary>
-    /// ½Ãµ¿ ²ô´Â »ç¿îµå¸¦ Àç»ıÇÕ´Ï´Ù. (CarController¿¡¼­ È£Ãâ)
+    /// ì‹œë™ ë„ëŠ” ì‚¬ìš´ë“œë¥¼ ì¬ìƒí•©ë‹ˆë‹¤. (CarControllerì—ì„œ í˜¸ì¶œ)
     /// </summary>
     public void PlayEngineStop()
     {
@@ -96,9 +96,9 @@ public class CarSoundController : MonoBehaviour
     }
 
     /// <summary>
-    /// Ãæµ¹ »ç¿îµå¸¦ Àç»ıÇÕ´Ï´Ù. (CarCollisionHandler¿¡¼­ È£Ãâ)
+    /// ì¶©ëŒ ì‚¬ìš´ë“œë¥¼ ì¬ìƒí•©ë‹ˆë‹¤. (CarCollisionHandlerì—ì„œ í˜¸ì¶œ)
     /// </summary>
-    /// <param name="impactStrength">Ãæµ¹ °­µµ (0.0 ~ 1.0), º¼·ı Á¶Àı¿¡ »ç¿ë</param>
+    /// <param name="impactStrength">ì¶©ëŒ ê°•ë„ (0.0 ~ 1.0), ë³¼ë¥¨ ì¡°ì ˆì— ì‚¬ìš©</param>
     public void PlayCollisionSound(float impactStrength)
     {
         float volume = Mathf.Clamp(impactStrength, 0.3f, 1.0f);

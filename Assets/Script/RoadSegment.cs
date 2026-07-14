@@ -1,52 +1,52 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
 /// <summary>
-/// °³º° µµ·Î Á¶°¢¿¡ ºÎÂøµÇ´Â ½ºÅ©¸³Æ®ÀÔ´Ï´Ù.
-/// ÇÃ·¹ÀÌ¾î°¡ ÀÚ½ÅÀÇ Æ®¸®°Å ¿µ¿ª¿¡ µé¾î¿À¸é RoadManager¿¡°Ô ´ÙÀ½ µµ·Î »ı¼ºÀ» ¿äÃ»ÇÕ´Ï´Ù.
+/// ê°œë³„ ë„ë¡œ ì¡°ê°ì— ë¶€ì°©ë˜ëŠ” ìŠ¤í¬ë¦½íŠ¸ì…ë‹ˆë‹¤.
+/// í”Œë ˆì´ì–´ê°€ ìì‹ ì˜ íŠ¸ë¦¬ê±° ì˜ì—­ì— ë“¤ì–´ì˜¤ë©´ RoadManagerì—ê²Œ ë‹¤ìŒ ë„ë¡œ ìƒì„±ì„ ìš”ì²­í•©ë‹ˆë‹¤.
 /// </summary>
 public class RoadSegment : MonoBehaviour
 {
     // --- Public Member Variables (Static) ---
 
     /// <summary>
-    /// RoadManager¿¡ ½±°Ô Á¢±ÙÇÏ±â À§ÇÑ static ÂüÁ¶ º¯¼ö.
-    /// RoadManager°¡ ½ÃÀÛÇÒ ¶§ ÀÌ º¯¼ö¿¡ ÀÚ±â ÀÚ½ÅÀ» ÇÒ´çÇÕ´Ï´Ù.
+    /// RoadManagerì— ì‰½ê²Œ ì ‘ê·¼í•˜ê¸° ìœ„í•œ static ì°¸ì¡° ë³€ìˆ˜.
+    /// RoadManagerê°€ ì‹œì‘í•  ë•Œ ì´ ë³€ìˆ˜ì— ìê¸° ìì‹ ì„ í• ë‹¹í•©ë‹ˆë‹¤.
     /// </summary>
     public static RoadManager roadManager;
 
     // --- Private Member Variables ---
 
     /// <summary>
-    /// Áßº¹ »ı¼ºÀ» ¹æÁöÇÏ±â À§ÇÑ ÇÃ·¡±×.
-    /// true°¡ µÇ¸é ÀÌ ¼¼±×¸ÕÆ®´Â ´õ ÀÌ»ó »ı¼º ¿äÃ»À» ÇÏÁö ¾Ê½À´Ï´Ù.
+    /// ì¤‘ë³µ ìƒì„±ì„ ë°©ì§€í•˜ê¸° ìœ„í•œ í”Œë˜ê·¸.
+    /// trueê°€ ë˜ë©´ ì´ ì„¸ê·¸ë¨¼íŠ¸ëŠ” ë” ì´ìƒ ìƒì„± ìš”ì²­ì„ í•˜ì§€ ì•ŠìŠµë‹ˆë‹¤.
     /// </summary>
     private bool hasTriggered = false;
 
     // --- Unity Event Functions ---
 
     /// <summary>
-    /// ÀÌ µµ·ÎÀÇ Æ®¸®°Å ¿µ¿ª(Collider)¿¡ ´Ù¸¥ Collider°¡ µé¾î¿ÔÀ» ¶§ È£ÃâµË´Ï´Ù.
+    /// ì´ ë„ë¡œì˜ íŠ¸ë¦¬ê±° ì˜ì—­(Collider)ì— ë‹¤ë¥¸ Colliderê°€ ë“¤ì–´ì™”ì„ ë•Œ í˜¸ì¶œë©ë‹ˆë‹¤.
     /// </summary>
-    /// <param name="other">Æ®¸®°Å¿¡ µé¾î¿Â ´ë»óÀÇ Collider</param>
+    /// <param name="other">íŠ¸ë¦¬ê±°ì— ë“¤ì–´ì˜¨ ëŒ€ìƒì˜ Collider</param>
     private void OnTriggerEnter(Collider other)
     {
-        // ÀÌ¹Ì ÇÑ¹ø ¹ßµ¿Çß°Å³ª, µé¾î¿Â °´Ã¼°¡ 'Player' ÅÂ±×°¡ ¾Æ´Ï¸é ¹«½Ã
+        // ì´ë¯¸ í•œë²ˆ ë°œë™í–ˆê±°ë‚˜, ë“¤ì–´ì˜¨ ê°ì²´ê°€ 'Player' íƒœê·¸ê°€ ì•„ë‹ˆë©´ ë¬´ì‹œ
         if (hasTriggered || !other.CompareTag("Player"))
         {
             return;
         }
 
-        // Áßº¹ ½ÇÇà ¹æÁö ÇÃ·¡±× ¼³Á¤
+        // ì¤‘ë³µ ì‹¤í–‰ ë°©ì§€ í”Œë˜ê·¸ ì„¤ì •
         hasTriggered = true;
 
-        // RoadManager¿¡°Ô ´ÙÀ½ µµ·Î¸¦ »ı¼ºÇÏ¶ó°í ¿äÃ»
+        // RoadManagerì—ê²Œ ë‹¤ìŒ ë„ë¡œë¥¼ ìƒì„±í•˜ë¼ê³  ìš”ì²­
         if (roadManager != null)
         {
             roadManager.SpawnRoad();
         }
         else
         {
-            Debug.LogError("RoadSegment: RoadManager°¡ ÇÒ´çµÇÁö ¾Ê¾Ò½À´Ï´Ù!");
+            Debug.LogError("RoadSegment: RoadManagerê°€ í• ë‹¹ë˜ì§€ ì•Šì•˜ìŠµë‹ˆë‹¤!");
         }
     }
 }

@@ -1,37 +1,37 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
 /// <summary>
-/// [¸®ÆÑÅä¸µµÊ]
-/// ¿ÀÁ÷ ¸¶¿ì½º ÀÔ·ÂÀ» ¹Ş¾Æ ÇÃ·¹ÀÌ¾î Ä«¸Ş¶ó(»óÇÏ)¿Í ¸öÃ¼(ÁÂ¿ì)ÀÇ
-/// È¸ÀüÀ» Ã³¸®ÇÏ´Â ¿ªÇÒ¸¸ Àü´ãÇÏ´Â Å¬·¡½ºÀÔ´Ï´Ù.
-/// »óÈ£ÀÛ¿ë°ú °ø°İ ·ÎÁ÷Àº PlayerInteractor¿Í PlayerAttacker·Î ºĞ¸®µÇ¾ú½À´Ï´Ù.
+/// [ë¦¬íŒ©í† ë§ë¨]
+/// ì˜¤ì§ ë§ˆìš°ìŠ¤ ì…ë ¥ì„ ë°›ì•„ í”Œë ˆì´ì–´ ì¹´ë©”ë¼(ìƒí•˜)ì™€ ëª¸ì²´(ì¢Œìš°)ì˜
+/// íšŒì „ì„ ì²˜ë¦¬í•˜ëŠ” ì—­í• ë§Œ ì „ë‹´í•˜ëŠ” í´ë˜ìŠ¤ì…ë‹ˆë‹¤.
+/// ìƒí˜¸ì‘ìš©ê³¼ ê³µê²© ë¡œì§ì€ PlayerInteractorì™€ PlayerAttackerë¡œ ë¶„ë¦¬ë˜ì—ˆìŠµë‹ˆë‹¤.
 /// </summary>
 public class PlayerCameraController : MonoBehaviour
 {
     // --- Public Member Variables ---
 
-    [Header("È¸Àü ¼³Á¤")]
-    [Tooltip("¸¶¿ì½º °¨µµ")]
+    [Header("íšŒì „ ì„¤ì •")]
+    [Tooltip("ë§ˆìš°ìŠ¤ ê°ë„")]
     public float mouseSensitivity = 100f;
 
-    [Tooltip("ÇÃ·¹ÀÌ¾î ¸öÃ¼ Transform. ÁÂ¿ì È¸Àü¿¡ »ç¿ëµË´Ï´Ù.")]
+    [Tooltip("í”Œë ˆì´ì–´ ëª¸ì²´ Transform. ì¢Œìš° íšŒì „ì— ì‚¬ìš©ë©ë‹ˆë‹¤.")]
     public Transform playerBody;
 
-    [Header("»óÇÏ È¸Àü Á¦ÇÑ")]
-    [Tooltip("Ä«¸Ş¶óÀÇ ÃÖ¼Ò »óÇÏ È¸Àü °¢µµ (¾Æ·¡ÂÊ)")]
+    [Header("ìƒí•˜ íšŒì „ ì œí•œ")]
+    [Tooltip("ì¹´ë©”ë¼ì˜ ìµœì†Œ ìƒí•˜ íšŒì „ ê°ë„ (ì•„ë˜ìª½)")]
     public float minVerticalAngle = -90f;
 
-    [Tooltip("Ä«¸Ş¶óÀÇ ÃÖ´ë »óÇÏ È¸Àü °¢µµ (À§ÂÊ)")]
+    [Tooltip("ì¹´ë©”ë¼ì˜ ìµœëŒ€ ìƒí•˜ íšŒì „ ê°ë„ (ìœ„ìª½)")]
     public float maxVerticalAngle = 90f;
 
-    [Header("ÁÂ¿ì È¸Àü Á¦ÇÑ")]
-    [Tooltip("ÁÂ¿ì È¸Àü Á¦ÇÑ »ç¿ë ¿©ºÎ")]
+    [Header("ì¢Œìš° íšŒì „ ì œí•œ")]
+    [Tooltip("ì¢Œìš° íšŒì „ ì œí•œ ì‚¬ìš© ì—¬ë¶€")]
     public bool useHorizontalRotationLimit = false;
 
-    [Tooltip("ÇÃ·¹ÀÌ¾îÀÇ ÃÖ¼Ò ÁÂ¿ì È¸Àü °¢µµ")]
+    [Tooltip("í”Œë ˆì´ì–´ì˜ ìµœì†Œ ì¢Œìš° íšŒì „ ê°ë„")]
     public float minHorizontalAngle = -90f;
 
-    [Tooltip("ÇÃ·¹ÀÌ¾îÀÇ ÃÖ´ë ÁÂ¿ì È¸Àü °¢µµ")]
+    [Tooltip("í”Œë ˆì´ì–´ì˜ ìµœëŒ€ ì¢Œìš° íšŒì „ ê°ë„")]
     public float maxHorizontalAngle = 90f;
 
 
@@ -40,7 +40,7 @@ public class PlayerCameraController : MonoBehaviour
     private float currentYRotation = 0f;
 
     /// <summary>
-    /// ½ºÅ©¸³Æ®°¡ Ã³À½ È°¼ºÈ­µÉ ¶§ ¸¶¿ì½º Ä¿¼­ ¹× ÃÊ±â È¸Àü °ªÀ» ¼³Á¤ÇÕ´Ï´Ù.
+    /// ìŠ¤í¬ë¦½íŠ¸ê°€ ì²˜ìŒ í™œì„±í™”ë  ë•Œ ë§ˆìš°ìŠ¤ ì»¤ì„œ ë° ì´ˆê¸° íšŒì „ ê°’ì„ ì„¤ì •í•©ë‹ˆë‹¤.
     /// </summary>
     void Start()
     {
@@ -55,7 +55,7 @@ public class PlayerCameraController : MonoBehaviour
     }
 
     /// <summary>
-    /// ¸Å ÇÁ·¹ÀÓ¸¶´Ù È£ÃâµÇ¾î ¸¶¿ì½º È¸ÀüÀ» Ã³¸®ÇÕ´Ï´Ù.
+    /// ë§¤ í”„ë ˆì„ë§ˆë‹¤ í˜¸ì¶œë˜ì–´ ë§ˆìš°ìŠ¤ íšŒì „ì„ ì²˜ë¦¬í•©ë‹ˆë‹¤.
     /// </summary>
     void Update()
     {
@@ -63,20 +63,20 @@ public class PlayerCameraController : MonoBehaviour
     }
 
     /// <summary>
-    /// ¸¶¿ì½º ÀÔ·ÂÀ» ¹Ş¾Æ Ä«¸Ş¶ó(»óÇÏ) ¹× ÇÃ·¹ÀÌ¾î ¸öÃ¼(ÁÂ¿ì) È¸ÀüÀ» Ã³¸®ÇÕ´Ï´Ù.
-    /// (¿øº» PlayerCameraControllerÀÇ ¸Ş¼­µå)
+    /// ë§ˆìš°ìŠ¤ ì…ë ¥ì„ ë°›ì•„ ì¹´ë©”ë¼(ìƒí•˜) ë° í”Œë ˆì´ì–´ ëª¸ì²´(ì¢Œìš°) íšŒì „ì„ ì²˜ë¦¬í•©ë‹ˆë‹¤.
+    /// (ì›ë³¸ PlayerCameraControllerì˜ ë©”ì„œë“œ)
     /// </summary>
     private void HandleMouseLook()
     {
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
         float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
 
-        // »óÇÏ È¸Àü (Pitch)
+        // ìƒí•˜ íšŒì „ (Pitch)
         xRotation -= mouseY;
         xRotation = Mathf.Clamp(xRotation, minVerticalAngle, maxVerticalAngle);
         transform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
 
-        // ÁÂ¿ì È¸Àü (Yaw)
+        // ì¢Œìš° íšŒì „ (Yaw)
         if (playerBody != null)
         {
             currentYRotation += mouseX;

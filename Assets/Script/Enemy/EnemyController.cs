@@ -1,9 +1,9 @@
-using UnityEngine;
-using System.Collections; // [Ãß°¡µÊ] ÄÚ·çÆ¾À» »ç¿ëÇÏ±â À§ÇØ ÇÊ¿ä
+ï»¿using UnityEngine;
+using System.Collections; // [ì¶”ê°€ë¨] ì½”ë£¨í‹´ì„ ì‚¬ìš©í•˜ê¸° ìœ„í•´ í•„ìš”
 
 /// <summary>
-/// Å¸°ÙÀ» XZ Æò¸é(³ôÀÌ ¹«½Ã)¿¡¼­ µû¶ó°¡°í, 'Player' ÅÂ±×¿Í Ãæµ¹ ½Ã ¶Ç´Â Ã¼·ÂÀÌ 0ÀÌ µÇ¸é ÆÄ±«µÇ´Â Àû ÄÁÆ®·Ñ·¯ÀÔ´Ï´Ù.
-/// ÀÌ ½ºÅ©¸³Æ®´Â Rigidbody¿Í Collider ÄÄÆ÷³ÍÆ®°¡ ÇÊ¿äÇÕ´Ï´Ù.
+/// íƒ€ê²Ÿì„ XZ í‰ë©´(ë†’ì´ ë¬´ì‹œ)ì—ì„œ ë”°ë¼ê°€ê³ , 'Player' íƒœê·¸ì™€ ì¶©ëŒ ì‹œ ë˜ëŠ” ì²´ë ¥ì´ 0ì´ ë˜ë©´ íŒŒê´´ë˜ëŠ” ì  ì»¨íŠ¸ë¡¤ëŸ¬ì…ë‹ˆë‹¤.
+/// ì´ ìŠ¤í¬ë¦½íŠ¸ëŠ” Rigidbodyì™€ Collider ì»´í¬ë„ŒíŠ¸ê°€ í•„ìš”í•©ë‹ˆë‹¤.
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
 [RequireComponent(typeof(Collider))]
@@ -11,82 +11,82 @@ public class EnemyController : MonoBehaviour
 {
     // --- Public Member Variables ---
 
-    [Header("ÃßÀû ¼³Á¤")]
-    [Tooltip("ÃßÀûÇÒ ´ë»óÀÇ Transform (¿¹: ÇÃ·¹ÀÌ¾î Â÷·®)")]
+    [Header("ì¶”ì  ì„¤ì •")]
+    [Tooltip("ì¶”ì í•  ëŒ€ìƒì˜ Transform (ì˜ˆ: í”Œë ˆì´ì–´ ì°¨ëŸ‰)")]
     public Transform target;
 
-    [Tooltip("ÀûÀÇ ÀÌµ¿ ¼Óµµ")]
+    [Tooltip("ì ì˜ ì´ë™ ì†ë„")]
     public float moveSpeed = 3f;
 
-    [Tooltip("ÀûÀÇ ÃÖ´ë Ã¼·Â")]
+    [Tooltip("ì ì˜ ìµœëŒ€ ì²´ë ¥")]
     public float maxHealth = 100f;
 
-    [Header("Ãæµ¹ ¼³Á¤")]
-    [Tooltip("Ãæµ¹ ´ë»óÀ¸·Î °¨ÁöÇÒ ÅÂ±×")]
+    [Header("ì¶©ëŒ ì„¤ì •")]
+    [Tooltip("ì¶©ëŒ ëŒ€ìƒìœ¼ë¡œ ê°ì§€í•  íƒœê·¸")]
     public string playerTag = "Player";
 
-    [Header("È¿°ú ¼³Á¤")]
-    [Tooltip("ÇÇ°İ ½Ã Àç»ıÇÒ ÆÄÆ¼Å¬ ½Ã½ºÅÛ (ÀÌ ¿ÀºêÁ§Æ®ÀÇ ÀÚ½Ä ¶Ç´Â ÄÄÆ÷³ÍÆ®)")]
+    [Header("íš¨ê³¼ ì„¤ì •")]
+    [Tooltip("í”¼ê²© ì‹œ ì¬ìƒí•  íŒŒí‹°í´ ì‹œìŠ¤í…œ (ì´ ì˜¤ë¸Œì íŠ¸ì˜ ìì‹ ë˜ëŠ” ì»´í¬ë„ŒíŠ¸)")]
     public ParticleSystem hitEffectParticle;
 
-    [Tooltip("Á×¾úÀ» ¶§ »ı¼ºÇÒ ÆÄÆ¼Å¬ ÇÁ¸®ÆÕ")]
+    [Tooltip("ì£½ì—ˆì„ ë•Œ ìƒì„±í•  íŒŒí‹°í´ í”„ë¦¬íŒ¹")]
     public ParticleSystem deathEffectParticle;
 
-    [Tooltip("ÇÇ°İ ½Ã Á¡¸ê È¿°ú¸¦ ÁÙ ·»´õ·¯ (ÀÚ½Ä ¿ÀºêÁ§Æ®ÀÇ MeshRenderer µî)")] // [Ãß°¡µÊ]
-    public Renderer visualRenderer; // [Ãß°¡µÊ]
+    [Tooltip("í”¼ê²© ì‹œ ì ë©¸ íš¨ê³¼ë¥¼ ì¤„ ë Œë”ëŸ¬ (ìì‹ ì˜¤ë¸Œì íŠ¸ì˜ MeshRenderer ë“±)")] // [ì¶”ê°€ë¨]
+    public Renderer visualRenderer; // [ì¶”ê°€ë¨]
 
-    public Light flickerLight; // [Ãß°¡µÊ]
+    public Light flickerLight; // [ì¶”ê°€ë¨]
 
-    [Tooltip("Á¡¸ê Áö¼Ó ½Ã°£")] // [Ãß°¡µÊ]
-    public float flickerDuration = 0.5f; // [Ãß°¡µÊ]
+    [Tooltip("ì ë©¸ ì§€ì† ì‹œê°„")] // [ì¶”ê°€ë¨]
+    public float flickerDuration = 0.5f; // [ì¶”ê°€ë¨]
 
-    [Tooltip("Á¡¸ê °£°İ (±ôºıÀÌ´Â ¼Óµµ)")] // [Ãß°¡µÊ]
-    public float flickerInterval = 0.1f; // [Ãß°¡µÊ]
+    [Tooltip("ì ë©¸ ê°„ê²© (ê¹œë¹¡ì´ëŠ” ì†ë„)")] // [ì¶”ê°€ë¨]
+    public float flickerInterval = 0.1f; // [ì¶”ê°€ë¨]
 
     // --- Private Member Variables ---
 
     /// <summary>
-    /// ÀÌ ÀûÀÇ Rigidbody ÄÄÆ÷³ÍÆ®
+    /// ì´ ì ì˜ Rigidbody ì»´í¬ë„ŒíŠ¸
     /// </summary>
     private Rigidbody rb;
 
     /// <summary>
-    /// ÃßÀûÇÒ Å¸°ÙÀÌ À¯È¿ÇÏ°Ô ¼³Á¤µÇ¾ú´ÂÁö ¿©ºÎ
+    /// ì¶”ì í•  íƒ€ê²Ÿì´ ìœ íš¨í•˜ê²Œ ì„¤ì •ë˜ì—ˆëŠ”ì§€ ì—¬ë¶€
     /// </summary>
     private bool isTargetSet = false;
 
     /// <summary>
-    /// ÇöÀç Ã¼·Â
+    /// í˜„ì¬ ì²´ë ¥
     /// </summary>
     private float currentHealth;
 
     /// <summary>
-    /// [Ãß°¡µÊ] ÇöÀç Á¡¸ê È¿°ú°¡ ÁøÇà ÁßÀÎÁö ¿©ºÎ
+    /// [ì¶”ê°€ë¨] í˜„ì¬ ì ë©¸ íš¨ê³¼ê°€ ì§„í–‰ ì¤‘ì¸ì§€ ì—¬ë¶€
     /// </summary>
-    private bool isFlickering = false; // [Ãß°¡µÊ]
+    private bool isFlickering = false; // [ì¶”ê°€ë¨]
 
     // --- Unity Event Functions ---
 
     /// <summary>
-    /// ½ºÅ©¸³Æ®°¡ Ã³À½ È°¼ºÈ­µÉ ¶§ È£ÃâµË´Ï´Ù.
+    /// ìŠ¤í¬ë¦½íŠ¸ê°€ ì²˜ìŒ í™œì„±í™”ë  ë•Œ í˜¸ì¶œë©ë‹ˆë‹¤.
     /// </summary>
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-        currentHealth = maxHealth; // Ã¼·Â ÃÊ±âÈ­
+        currentHealth = maxHealth; // ì²´ë ¥ ì´ˆê¸°í™”
 
-        // Rigidbody ¼³Á¤ (ÇÊ¿ä¿¡ µû¶ó Á¶Àı)
+        // Rigidbody ì„¤ì • (í•„ìš”ì— ë”°ë¼ ì¡°ì ˆ)
         rb.useGravity = true;
         rb.isKinematic = false;
 
-        // Å¸°ÙÀÌ ÀÎ½ºÆåÅÍ¿¡¼­ ¼³Á¤µÇ¾ú´ÂÁö È®ÀÎ
+        // íƒ€ê²Ÿì´ ì¸ìŠ¤í™í„°ì—ì„œ ì„¤ì •ë˜ì—ˆëŠ”ì§€ í™•ì¸
         if (target != null)
         {
             isTargetSet = true;
         }
         else
         {
-            // Å¸°ÙÀÌ ¾ø´Ù¸é, ¾À¿¡¼­ 'playerTag'·Î Ã£¾Æº¾´Ï´Ù.
+            // íƒ€ê²Ÿì´ ì—†ë‹¤ë©´, ì”¬ì—ì„œ 'playerTag'ë¡œ ì°¾ì•„ë´…ë‹ˆë‹¤.
             GameObject player = GameObject.FindGameObjectWithTag(playerTag);
             if (player != null)
             {
@@ -95,91 +95,91 @@ public class EnemyController : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning("EnemyController: Å¸°ÙÀÌ ¼³Á¤µÇÁö ¾Ê¾Ò°í, '" + playerTag + "' ÅÂ±×¸¦ °¡Áø ¿ÀºêÁ§Æ®µµ ¾À¿¡ ¾ø½À´Ï´Ù.");
+                Debug.LogWarning("EnemyController: íƒ€ê²Ÿì´ ì„¤ì •ë˜ì§€ ì•Šì•˜ê³ , '" + playerTag + "' íƒœê·¸ë¥¼ ê°€ì§„ ì˜¤ë¸Œì íŠ¸ë„ ì”¬ì— ì—†ìŠµë‹ˆë‹¤.");
                 isTargetSet = false;
             }
         }
 
         if (hitEffectParticle != null)
         {
-            hitEffectParticle.Stop(); // ÇÇ°İ ÆÄÆ¼Å¬ÀÌ ÀÚµ¿ Àç»ıµÇÁö ¾Êµµ·Ï ÃÊ±âÈ­
+            hitEffectParticle.Stop(); // í”¼ê²© íŒŒí‹°í´ì´ ìë™ ì¬ìƒë˜ì§€ ì•Šë„ë¡ ì´ˆê¸°í™”
         }
 
-        // [Ãß°¡µÊ] visualRenderer ÀÚµ¿ ÇÒ´ç (¼³Á¤µÇÁö ¾ÊÀº °æ¿ì)
+        // [ì¶”ê°€ë¨] visualRenderer ìë™ í• ë‹¹ (ì„¤ì •ë˜ì§€ ì•Šì€ ê²½ìš°)
         if (visualRenderer == null)
         {
-            // ÀÚ½Ä ¿ÀºêÁ§Æ®¿¡¼­ MeshRenderer¸¦ Ã£¾Æº¾´Ï´Ù.
+            // ìì‹ ì˜¤ë¸Œì íŠ¸ì—ì„œ MeshRendererë¥¼ ì°¾ì•„ë´…ë‹ˆë‹¤.
             visualRenderer = GetComponentInChildren<MeshRenderer>();
             if (visualRenderer == null)
             {
-                // MeshRenderer°¡ ¾ø´Ù¸é SkinnedMeshRenderer¸¦ Ã£¾Æº¾´Ï´Ù. (¾Ö´Ï¸ŞÀÌ¼Ç ¸ğµ¨¿ë)
+                // MeshRendererê°€ ì—†ë‹¤ë©´ SkinnedMeshRendererë¥¼ ì°¾ì•„ë´…ë‹ˆë‹¤. (ì• ë‹ˆë©”ì´ì…˜ ëª¨ë¸ìš©)
                 visualRenderer = GetComponentInChildren<SkinnedMeshRenderer>();
             }
 
             if (visualRenderer == null)
             {
-                // ±×·¡µµ ¾ø´Ù¸é ÀÏ¹İ Renderer¸¦ Ã£¾Æº¾´Ï´Ù.
+                // ê·¸ë˜ë„ ì—†ë‹¤ë©´ ì¼ë°˜ Rendererë¥¼ ì°¾ì•„ë´…ë‹ˆë‹¤.
                 visualRenderer = GetComponentInChildren<Renderer>();
             }
 
             if (visualRenderer == null)
             {
-                Debug.LogWarning("EnemyController: Á¡¸ê È¿°ú¸¦ À§ÇÑ 'visualRenderer'°¡ ÇÒ´çµÇÁö ¾Ê¾Ò°í, ÀÚ½Ä ¿ÀºêÁ§Æ®¿¡¼­µµ Ã£À» ¼ö ¾ø½À´Ï´Ù.");
+                Debug.LogWarning("EnemyController: ì ë©¸ íš¨ê³¼ë¥¼ ìœ„í•œ 'visualRenderer'ê°€ í• ë‹¹ë˜ì§€ ì•Šì•˜ê³ , ìì‹ ì˜¤ë¸Œì íŠ¸ì—ì„œë„ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤.");
             }
         }
     }
 
     /// <summary>
-    /// °íÁ¤µÈ ½Ã°£ °£°İÀ¸·Î ¹°¸® ¾÷µ¥ÀÌÆ® ½Ã È£ÃâµË´Ï´Ù.
-    /// Rigidbody¸¦ Á¦¾îÇÒ ¶§ »ç¿ëÇÕ´Ï´Ù.
+    /// ê³ ì •ëœ ì‹œê°„ ê°„ê²©ìœ¼ë¡œ ë¬¼ë¦¬ ì—…ë°ì´íŠ¸ ì‹œ í˜¸ì¶œë©ë‹ˆë‹¤.
+    /// Rigidbodyë¥¼ ì œì–´í•  ë•Œ ì‚¬ìš©í•©ë‹ˆë‹¤.
     /// </summary>
     void FixedUpdate()
     {
-        // Å¸°ÙÀÌ ¾ø°Å³ª (ÆÄ±«µÇ¾ú°Å³ª) ¼³Á¤µÇÁö ¾Ê¾ÒÀ¸¸é ÃßÀû ·ÎÁ÷À» ½ÇÇàÇÏÁö ¾Ê½À´Ï´Ù.
+        // íƒ€ê²Ÿì´ ì—†ê±°ë‚˜ (íŒŒê´´ë˜ì—ˆê±°ë‚˜) ì„¤ì •ë˜ì§€ ì•Šì•˜ìœ¼ë©´ ì¶”ì  ë¡œì§ì„ ì‹¤í–‰í•˜ì§€ ì•ŠìŠµë‹ˆë‹¤.
         if (!isTargetSet || target == null)
         {
-            // Å¸°ÙÀÌ ¾øÀ¸¸é XZÃà ÀÌµ¿À» ÁßÁöÇÕ´Ï´Ù. (YÃà ¼Óµµ´Â Áß·Â µîÀ» À§ÇØ À¯Áö)
+            // íƒ€ê²Ÿì´ ì—†ìœ¼ë©´ XZì¶• ì´ë™ì„ ì¤‘ì§€í•©ë‹ˆë‹¤. (Yì¶• ì†ë„ëŠ” ì¤‘ë ¥ ë“±ì„ ìœ„í•´ ìœ ì§€)
             rb.velocity = new Vector3(0, rb.velocity.y, 0);
             return;
         }
 
-        // --- XZ Æò¸é ÃßÀû ·ÎÁ÷ ---
+        // --- XZ í‰ë©´ ì¶”ì  ë¡œì§ ---
 
-        // 1. Å¸°ÙÀÇ À§Ä¡¿Í ÀÌ ¿ÀºêÁ§Æ®ÀÇ À§Ä¡¸¦ °¡Á®¿É´Ï´Ù.
+        // 1. íƒ€ê²Ÿì˜ ìœ„ì¹˜ì™€ ì´ ì˜¤ë¸Œì íŠ¸ì˜ ìœ„ì¹˜ë¥¼ ê°€ì ¸ì˜µë‹ˆë‹¤.
         Vector3 targetPosition = target.position;
         Vector3 currentPosition = transform.position;
 
-        // 2. YÃà(³ôÀÌ)À» 0(È¤Àº µ¿ÀÏÇÏ°Ô)À¸·Î ¸¸µé¾î XZ Æò¸é»óÀÇ À§Ä¡¸¸ °è»êÇÕ´Ï´Ù.
+        // 2. Yì¶•(ë†’ì´)ì„ 0(í˜¹ì€ ë™ì¼í•˜ê²Œ)ìœ¼ë¡œ ë§Œë“¤ì–´ XZ í‰ë©´ìƒì˜ ìœ„ì¹˜ë§Œ ê³„ì‚°í•©ë‹ˆë‹¤.
         Vector3 targetPositionXZ = new Vector3(targetPosition.x, 0, targetPosition.z);
         Vector3 currentPositionXZ = new Vector3(currentPosition.x, 0, currentPosition.z);
 
-        // 3. Å¸°ÙÀ» ÇâÇÏ´Â ¹æÇâ º¤ÅÍ¸¦ °è»êÇÏ°í Á¤±ÔÈ­(normalized, ±æÀÌ 1)ÇÕ´Ï´Ù.
+        // 3. íƒ€ê²Ÿì„ í–¥í•˜ëŠ” ë°©í–¥ ë²¡í„°ë¥¼ ê³„ì‚°í•˜ê³  ì •ê·œí™”(normalized, ê¸¸ì´ 1)í•©ë‹ˆë‹¤.
         Vector3 direction = (targetPositionXZ - currentPositionXZ).normalized;
 
-        // 4. RigidbodyÀÇ ¼Óµµ(velocity)¸¦ ¼³Á¤ÇÏ¿© Å¸°Ù ¹æÇâÀ¸·Î ÀÌµ¿½ÃÅµ´Ï´Ù.
-        // YÃà ¼Óµµ´Â ÇöÀç RigidbodyÀÇ Y ¼Óµµ¸¦ À¯ÁöÇÏ¿© Áß·Â µîÀÌ Àû¿ëµÇ°Ô ÇÕ´Ï´Ù.
+        // 4. Rigidbodyì˜ ì†ë„(velocity)ë¥¼ ì„¤ì •í•˜ì—¬ íƒ€ê²Ÿ ë°©í–¥ìœ¼ë¡œ ì´ë™ì‹œí‚µë‹ˆë‹¤.
+        // Yì¶• ì†ë„ëŠ” í˜„ì¬ Rigidbodyì˜ Y ì†ë„ë¥¼ ìœ ì§€í•˜ì—¬ ì¤‘ë ¥ ë“±ì´ ì ìš©ë˜ê²Œ í•©ë‹ˆë‹¤.
         rb.velocity = new Vector3(direction.x * moveSpeed, rb.velocity.y, direction.z * moveSpeed);
 
-        // 5. (¼±ÅÃ »çÇ×) ÀûÀÌ ÀÌµ¿ÇÏ´Â ¹æÇâÀ» ¹Ù¶óº¸°Ô ÇÕ´Ï´Ù.
-        if (direction != Vector3.zero) // ¹æÇâÀÌ 0ÀÌ ¾Æ´Ò ¶§¸¸ (Á¦ÀÚ¸®ÀÏ ¶§ ¿À·ù ¹æÁö)
+        // 5. (ì„ íƒ ì‚¬í•­) ì ì´ ì´ë™í•˜ëŠ” ë°©í–¥ì„ ë°”ë¼ë³´ê²Œ í•©ë‹ˆë‹¤.
+        if (direction != Vector3.zero) // ë°©í–¥ì´ 0ì´ ì•„ë‹ ë•Œë§Œ (ì œìë¦¬ì¼ ë•Œ ì˜¤ë¥˜ ë°©ì§€)
         {
-            // YÃà ³ôÀÌ´Â ÇöÀç ¿ÀºêÁ§Æ®ÀÇ ³ôÀÌ¸¦ À¯ÁöÇÏ¸é¼­ Å¸°ÙÀÇ XZ À§Ä¡¸¦ ¹Ù¶óº¸°Ô ÇÕ´Ï´Ù.
+            // Yì¶• ë†’ì´ëŠ” í˜„ì¬ ì˜¤ë¸Œì íŠ¸ì˜ ë†’ì´ë¥¼ ìœ ì§€í•˜ë©´ì„œ íƒ€ê²Ÿì˜ XZ ìœ„ì¹˜ë¥¼ ë°”ë¼ë³´ê²Œ í•©ë‹ˆë‹¤.
             Vector3 lookPosition = new Vector3(target.position.x, transform.position.y, target.position.z);
             transform.LookAt(lookPosition);
         }
     }
 
     /// <summary>
-    /// ´Ù¸¥ Collider¿Í ¹°¸®Àû Ãæµ¹ÀÌ ½ÃÀÛµÉ ¶§ È£ÃâµË´Ï´Ù.
+    /// ë‹¤ë¥¸ Colliderì™€ ë¬¼ë¦¬ì  ì¶©ëŒì´ ì‹œì‘ë  ë•Œ í˜¸ì¶œë©ë‹ˆë‹¤.
     /// </summary>
-    /// <param name="collision">Ãæµ¹ °ü·Ã Á¤º¸¸¦ ´ã°í ÀÖ´Â Collision °´Ã¼</param>
+    /// <param name="collision">ì¶©ëŒ ê´€ë ¨ ì •ë³´ë¥¼ ë‹´ê³  ìˆëŠ” Collision ê°ì²´</param>
     void OnCollisionEnter(Collision collision)
     {
-        // Ãæµ¹ÇÑ ¿ÀºêÁ§Æ®ÀÇ ÅÂ±×°¡ 'playerTag'¿Í ÀÏÄ¡ÇÏ´ÂÁö È®ÀÎÇÕ´Ï´Ù.
+        // ì¶©ëŒí•œ ì˜¤ë¸Œì íŠ¸ì˜ íƒœê·¸ê°€ 'playerTag'ì™€ ì¼ì¹˜í•˜ëŠ”ì§€ í™•ì¸í•©ë‹ˆë‹¤.
         if (collision.gameObject.CompareTag(playerTag))
         {
-            // 'Player' ÅÂ±×¿Í Ãæµ¹Çß´Ù¸é ÀÌ ¿ÀºêÁ§Æ®¸¦ ÆÄ±«ÇÕ´Ï´Ù.
-            Debug.Log("EnemyController: '" + playerTag + "'¿Í Ãæµ¹ÇÏ¿© ÆÄ±«µË´Ï´Ù.");
+            // 'Player' íƒœê·¸ì™€ ì¶©ëŒí–ˆë‹¤ë©´ ì´ ì˜¤ë¸Œì íŠ¸ë¥¼ íŒŒê´´í•©ë‹ˆë‹¤.
+            Debug.Log("EnemyController: '" + playerTag + "'ì™€ ì¶©ëŒí•˜ì—¬ íŒŒê´´ë©ë‹ˆë‹¤.");
             Die();
         }
     }
@@ -187,18 +187,18 @@ public class EnemyController : MonoBehaviour
     // --- Public Methods ---
 
     /// <summary>
-    /// [¼öÁ¤µÊ] Àû¿¡°Ô µ¥¹ÌÁö¸¦ ÀÔÈ÷´Â public ÇÔ¼öÀÔ´Ï´Ù.
+    /// [ìˆ˜ì •ë¨] ì ì—ê²Œ ë°ë¯¸ì§€ë¥¼ ì…íˆëŠ” public í•¨ìˆ˜ì…ë‹ˆë‹¤.
     /// </summary>
-    /// <param name="amount">¹ŞÀº µ¥¹ÌÁö ¾ç</param>
+    /// <param name="amount">ë°›ì€ ë°ë¯¸ì§€ ì–‘</param>
     public void TakeDamage(float amount)
     {
-        // ÀÌ¹Ì Á×¾ú´Ù¸é (Ã¼·ÂÀÌ 0 ÀÌÇÏ¸é) µ¥¹ÌÁö¸¦ ¹ŞÁö ¾Ê½À´Ï´Ù.
+        // ì´ë¯¸ ì£½ì—ˆë‹¤ë©´ (ì²´ë ¥ì´ 0 ì´í•˜ë©´) ë°ë¯¸ì§€ë¥¼ ë°›ì§€ ì•ŠìŠµë‹ˆë‹¤.
         if (currentHealth <= 0) return;
 
-        // Ã¼·ÂÀ» ±ğ½À´Ï´Ù.
+        // ì²´ë ¥ì„ ê¹ìŠµë‹ˆë‹¤.
         currentHealth -= amount;
 
-        // ÇÇ°İ ÆÄÆ¼Å¬ Àç»ı
+        // í”¼ê²© íŒŒí‹°í´ ì¬ìƒ
         if (hitEffectParticle != null)
         {
             if (hitEffectParticle.isPlaying)
@@ -212,75 +212,75 @@ public class EnemyController : MonoBehaviour
         }
         else
         {
-            // ÆÄÆ¼Å¬ÀÌ ÇÒ´çµÇÁö ¾Ê¾ÒÀ» °æ¿ì¸¦ ´ëºñÇÑ ·Î±× (¼±ÅÃ »çÇ×)
-            // Debug.LogWarning("HitEffectParticleÀÌ ÇÒ´çµÇÁö ¾Ê¾Ò½À´Ï´Ù.");
+            // íŒŒí‹°í´ì´ í• ë‹¹ë˜ì§€ ì•Šì•˜ì„ ê²½ìš°ë¥¼ ëŒ€ë¹„í•œ ë¡œê·¸ (ì„ íƒ ì‚¬í•­)
+            // Debug.LogWarning("HitEffectParticleì´ í• ë‹¹ë˜ì§€ ì•Šì•˜ìŠµë‹ˆë‹¤.");
         }
 
-        // [Ãß°¡µÊ] Á¡¸ê È¿°ú ½ÃÀÛ (ÇöÀç Á¡¸ê ÁßÀÌ ¾Æ´Ò ¶§¸¸)
+        // [ì¶”ê°€ë¨] ì ë©¸ íš¨ê³¼ ì‹œì‘ (í˜„ì¬ ì ë©¸ ì¤‘ì´ ì•„ë‹ ë•Œë§Œ)
         if (visualRenderer != null && !isFlickering)
         {
             StartCoroutine(FlickerEffect());
         }
 
 
-        // Ã¼·ÂÀÌ 0 ÀÌÇÏ°¡ µÇ¸é
+        // ì²´ë ¥ì´ 0 ì´í•˜ê°€ ë˜ë©´
         if (currentHealth <= 0)
         {
-            Die(); // Á×À½ Ã³¸®¸¦ ÇÕ´Ï´Ù.
+            Die(); // ì£½ìŒ ì²˜ë¦¬ë¥¼ í•©ë‹ˆë‹¤.
         }
     }
 
     // --- Private Methods ---
 
     /// <summary>
-    /// [¼öÁ¤µÊ] ÀûÀÌ Á×¾úÀ» ¶§ Ã³¸® (ÆÄÆ¼Å¬ »ı¼º ¹× ¿ÀºêÁ§Æ® ÆÄ±«)
+    /// [ìˆ˜ì •ë¨] ì ì´ ì£½ì—ˆì„ ë•Œ ì²˜ë¦¬ (íŒŒí‹°í´ ìƒì„± ë° ì˜¤ë¸Œì íŠ¸ íŒŒê´´)
     /// </summary>
     private void Die()
     {
-        // [Ãß°¡µÊ] Á×À½ ÆÄÆ¼Å¬ »ı¼º
+        // [ì¶”ê°€ë¨] ì£½ìŒ íŒŒí‹°í´ ìƒì„±
         if (deathEffectParticle != null)
         {
-            // ÆÄÆ¼Å¬ ÀÌÆåÆ®¸¦ ÇöÀç À§Ä¡¿Í È¸Àü°ªÀ¸·Î ¾À¿¡ »ı¼º(Instantiate)ÇÕ´Ï´Ù.
-            // ÀÌ ÆÄÆ¼Å¬ ÇÁ¸®ÆÕÀº 'Play On Awake'°¡ ÄÑÁ® ÀÖ¾î¾ß ÇÏ°í,
-            // Àç»ıÀÌ ³¡³ª¸é ½º½º·Î ÆÄ±«µÇµµ·Ï (Main ¸ğµâÀÇ 'Stop Action' -> 'Destroy') ¼³Á¤ÇÏ´Â °ÍÀÌ ÁÁ½À´Ï´Ù.
+            // íŒŒí‹°í´ ì´í™íŠ¸ë¥¼ í˜„ì¬ ìœ„ì¹˜ì™€ íšŒì „ê°’ìœ¼ë¡œ ì”¬ì— ìƒì„±(Instantiate)í•©ë‹ˆë‹¤.
+            // ì´ íŒŒí‹°í´ í”„ë¦¬íŒ¹ì€ 'Play On Awake'ê°€ ì¼œì ¸ ìˆì–´ì•¼ í•˜ê³ ,
+            // ì¬ìƒì´ ëë‚˜ë©´ ìŠ¤ìŠ¤ë¡œ íŒŒê´´ë˜ë„ë¡ (Main ëª¨ë“ˆì˜ 'Stop Action' -> 'Destroy') ì„¤ì •í•˜ëŠ” ê²ƒì´ ì¢‹ìŠµë‹ˆë‹¤.
             Instantiate(deathEffectParticle, transform.position, transform.rotation);
         }
 
-        Debug.Log(gameObject.name + "°¡ ÆÄ±«µÇ¾ú½À´Ï´Ù.");
+        Debug.Log(gameObject.name + "ê°€ íŒŒê´´ë˜ì—ˆìŠµë‹ˆë‹¤.");
 
-        // ÀÌ GameObject¸¦ ¾À¿¡¼­ ÆÄ±«ÇÕ´Ï´Ù.
+        // ì´ GameObjectë¥¼ ì”¬ì—ì„œ íŒŒê´´í•©ë‹ˆë‹¤.
         Destroy(gameObject);
     }
 
-    // --- Coroutines --- [Ãß°¡µÊ]
+    // --- Coroutines --- [ì¶”ê°€ë¨]
 
     /// <summary>
-    /// [Ãß°¡µÊ] ÇÇ°İ ½Ã ·»´õ·¯¸¦ ±ôºıÀÌ´Â È¿°ú
+    /// [ì¶”ê°€ë¨] í”¼ê²© ì‹œ ë Œë”ëŸ¬ë¥¼ ê¹œë¹¡ì´ëŠ” íš¨ê³¼
     /// </summary>
     private IEnumerator FlickerEffect()
     {
-        isFlickering = true; // Á¡¸ê ½ÃÀÛ
+        isFlickering = true; // ì ë©¸ ì‹œì‘
         float timer = 0f;
 
         while (timer < flickerDuration)
         {
-            // ·»´õ·¯¸¦ ²°´Ù°¡
+            // ë Œë”ëŸ¬ë¥¼ ê»ë‹¤ê°€
             visualRenderer.enabled = false;
-            flickerLight.enabled = false; // [Ãß°¡µÊ]
+            flickerLight.enabled = false; // [ì¶”ê°€ë¨]
             yield return new WaitForSeconds(flickerInterval);
             timer += flickerInterval;
 
-            // ´Ù½Ã ÄÒ´Ù
+            // ë‹¤ì‹œ ì¼ ë‹¤
             visualRenderer.enabled = true;
-            flickerLight.enabled = true; // [Ãß°¡µÊ]
+            flickerLight.enabled = true; // [ì¶”ê°€ë¨]
             yield return new WaitForSeconds(flickerInterval);
             timer += flickerInterval;
         }
 
-        // ÄÚ·çÆ¾ÀÌ ³¡³ª¸é ¹İµå½Ã ·»´õ·¯¸¦ ´Ù½Ã ÄÕ´Ï´Ù.
+        // ì½”ë£¨í‹´ì´ ëë‚˜ë©´ ë°˜ë“œì‹œ ë Œë”ëŸ¬ë¥¼ ë‹¤ì‹œ ì¼­ë‹ˆë‹¤.
         visualRenderer.enabled = true;
-        flickerLight.enabled = false; // [Ãß°¡µÊ]
-        isFlickering = false; // Á¡¸ê Á¾·á
+        flickerLight.enabled = false; // [ì¶”ê°€ë¨]
+        isFlickering = false; // ì ë©¸ ì¢…ë£Œ
     }
 }
 

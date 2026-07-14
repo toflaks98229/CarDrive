@@ -1,76 +1,76 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
 /// <summary>
-/// ÀÌ ¿ÀºêÁ§Æ®°¡ Ç×»ó ¸ŞÀÎ Ä«¸Ş¶ó¸¦ ¹Ù¶óº¸µµ·Ï ¸¸µì´Ï´Ù.
-/// ÁÖ·Î 3D °ø°£ÀÇ 2D ½ºÇÁ¶óÀÌÆ®(¿¹: ÀÌ¸§Ç¥, ÆÄÆ¼Å¬)¿¡ »ç¿ëµË´Ï´Ù.
-/// [¼öÁ¤µÊ] Ãà Àá±İ ±â´ÉÀÌ Ãß°¡µÇ¾ú½À´Ï´Ù.
+/// ì´ ì˜¤ë¸Œì íŠ¸ê°€ í•­ìƒ ë©”ì¸ ì¹´ë©”ë¼ë¥¼ ë°”ë¼ë³´ë„ë¡ ë§Œë“­ë‹ˆë‹¤.
+/// ì£¼ë¡œ 3D ê³µê°„ì˜ 2D ìŠ¤í”„ë¼ì´íŠ¸(ì˜ˆ: ì´ë¦„í‘œ, íŒŒí‹°í´)ì— ì‚¬ìš©ë©ë‹ˆë‹¤.
+/// [ìˆ˜ì •ë¨] ì¶• ì ê¸ˆ ê¸°ëŠ¥ì´ ì¶”ê°€ë˜ì—ˆìŠµë‹ˆë‹¤.
 /// </summary>
 public class Billboard : MonoBehaviour
 {
     // --- Public Member Variables ---
 
-    [Header("Ãà Àá±İ ¼³Á¤")]
-    [Tooltip("XÃà È¸ÀüÀ» Àá±Ş´Ï´Ù (»óÇÏ È¸Àü °íÁ¤)")]
+    [Header("ì¶• ì ê¸ˆ ì„¤ì •")]
+    [Tooltip("Xì¶• íšŒì „ì„ ì ê¸‰ë‹ˆë‹¤ (ìƒí•˜ íšŒì „ ê³ ì •)")]
     public bool lockXAxis = false;
 
-    [Tooltip("YÃà È¸ÀüÀ» Àá±Ş´Ï´Ù (ÁÂ¿ì È¸Àü °íÁ¤)")]
+    [Tooltip("Yì¶• íšŒì „ì„ ì ê¸‰ë‹ˆë‹¤ (ì¢Œìš° íšŒì „ ê³ ì •)")]
     public bool lockYAxis = false;
 
-    [Tooltip("ZÃà È¸ÀüÀ» Àá±Ş´Ï´Ù (±â¿ïÀÓ °íÁ¤)")]
+    [Tooltip("Zì¶• íšŒì „ì„ ì ê¸‰ë‹ˆë‹¤ (ê¸°ìš¸ì„ ê³ ì •)")]
     public bool lockZAxis = false;
 
     // --- Private Member Variables ---
 
     /// <summary>
-    /// ¸ŞÀÎ Ä«¸Ş¶óÀÇ Transform ÄÄÆ÷³ÍÆ® (¼º´ÉÀ» À§ÇØ Ä³½ÃµÊ)
+    /// ë©”ì¸ ì¹´ë©”ë¼ì˜ Transform ì»´í¬ë„ŒíŠ¸ (ì„±ëŠ¥ì„ ìœ„í•´ ìºì‹œë¨)
     /// </summary>
     private Transform mainCameraTransform;
 
     // --- Unity Event Functions ---
 
     /// <summary>
-    /// ½ºÅ©¸³Æ®°¡ Ã³À½ È°¼ºÈ­µÉ ¶§ È£ÃâµË´Ï´Ù.
+    /// ìŠ¤í¬ë¦½íŠ¸ê°€ ì²˜ìŒ í™œì„±í™”ë  ë•Œ í˜¸ì¶œë©ë‹ˆë‹¤.
     /// </summary>
     void Start()
     {
-        // ¸ŞÀÎ Ä«¸Ş¶ó¸¦ Ã£¾Æ¼­ TransformÀ» Ä³½Ã(ÀúÀå)ÇÕ´Ï´Ù.
-        // ÀÌ ½ºÅ©¸³Æ®°¡ ÀÛµ¿ÇÏ·Á¸é ¾À¿¡ 'MainCamera' ÅÂ±×°¡ ºÙÀº Ä«¸Ş¶ó°¡ ÀÖ¾î¾ß ÇÕ´Ï´Ù.
+        // ë©”ì¸ ì¹´ë©”ë¼ë¥¼ ì°¾ì•„ì„œ Transformì„ ìºì‹œ(ì €ì¥)í•©ë‹ˆë‹¤.
+        // ì´ ìŠ¤í¬ë¦½íŠ¸ê°€ ì‘ë™í•˜ë ¤ë©´ ì”¬ì— 'MainCamera' íƒœê·¸ê°€ ë¶™ì€ ì¹´ë©”ë¼ê°€ ìˆì–´ì•¼ í•©ë‹ˆë‹¤.
         if (Camera.main != null)
         {
             mainCameraTransform = Camera.main.transform;
         }
         else
         {
-            Debug.LogError("Billboard: ¾À¿¡¼­ 'MainCamera' ÅÂ±×¸¦ °¡Áø Ä«¸Ş¶ó¸¦ Ã£À» ¼ö ¾ø½À´Ï´Ù!");
-            this.enabled = false; // Ä«¸Ş¶ó°¡ ¾øÀ¸¸é ½ºÅ©¸³Æ® ºñÈ°¼ºÈ­
+            Debug.LogError("Billboard: ì”¬ì—ì„œ 'MainCamera' íƒœê·¸ë¥¼ ê°€ì§„ ì¹´ë©”ë¼ë¥¼ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤!");
+            this.enabled = false; // ì¹´ë©”ë¼ê°€ ì—†ìœ¼ë©´ ìŠ¤í¬ë¦½íŠ¸ ë¹„í™œì„±í™”
         }
     }
 
     /// <summary>
-    /// LateUpdate´Â ¸ğµç Update¿Í Ä«¸Ş¶ó ÀÌµ¿ÀÌ ³¡³­ ÈÄ¿¡ È£ÃâµË´Ï´Ù.
-    /// Ä«¸Ş¶ó°¡ ¿òÁ÷ÀÎ 'ÈÄ'¿¡ ¿ÀºêÁ§Æ®ÀÇ È¸ÀüÀ» Á¶ÀıÇØ¾ß ¿Ã¹Ù¸£°Ô ÀÛµ¿ÇÕ´Ï´Ù.
+    /// LateUpdateëŠ” ëª¨ë“  Updateì™€ ì¹´ë©”ë¼ ì´ë™ì´ ëë‚œ í›„ì— í˜¸ì¶œë©ë‹ˆë‹¤.
+    /// ì¹´ë©”ë¼ê°€ ì›€ì§ì¸ 'í›„'ì— ì˜¤ë¸Œì íŠ¸ì˜ íšŒì „ì„ ì¡°ì ˆí•´ì•¼ ì˜¬ë°”ë¥´ê²Œ ì‘ë™í•©ë‹ˆë‹¤.
     /// </summary>
     void LateUpdate()
     {
-        // Ä«¸Ş¶ó TransformÀÌ À¯È¿ÇÏÁö ¾ÊÀ¸¸é ½ÇÇàÇÏÁö ¾Ê½À´Ï´Ù.
+        // ì¹´ë©”ë¼ Transformì´ ìœ íš¨í•˜ì§€ ì•Šìœ¼ë©´ ì‹¤í–‰í•˜ì§€ ì•ŠìŠµë‹ˆë‹¤.
         if (mainCameraTransform == null) return;
 
-        // ¸ñÇ¥ È¸Àü°ª (Ä«¸Ş¶óÀÇ ÇöÀç È¸Àü)
+        // ëª©í‘œ íšŒì „ê°’ (ì¹´ë©”ë¼ì˜ í˜„ì¬ íšŒì „)
         Quaternion targetRotation = mainCameraTransform.rotation;
 
-        // ÇöÀç È¸Àü°ª (¿ÀºêÁ§Æ®ÀÇ ÇöÀç È¸Àü)À» ¿ÀÀÏ·¯ °¢µµ·Î º¯È¯
+        // í˜„ì¬ íšŒì „ê°’ (ì˜¤ë¸Œì íŠ¸ì˜ í˜„ì¬ íšŒì „)ì„ ì˜¤ì¼ëŸ¬ ê°ë„ë¡œ ë³€í™˜
         Vector3 currentEulerAngles = transform.rotation.eulerAngles;
 
-        // ¸ñÇ¥ È¸Àü°ª (¿ÀÀÏ·¯ °¢µµ)
+        // ëª©í‘œ íšŒì „ê°’ (ì˜¤ì¼ëŸ¬ ê°ë„)
         Vector3 targetEulerAngles = targetRotation.eulerAngles;
 
-        // bool °ª¿¡ µû¶ó ÃàÀ» ¼±ÅÃÀûÀ¸·Î Àû¿ë
-        // Àá±İ(true)ÀÌ¸é ÇöÀç °¢µµ¸¦ À¯ÁöÇÏ°í, ¾Æ´Ï¸é(false) ¸ñÇ¥ °¢µµ¸¦ µû¸§
+        // bool ê°’ì— ë”°ë¼ ì¶•ì„ ì„ íƒì ìœ¼ë¡œ ì ìš©
+        // ì ê¸ˆ(true)ì´ë©´ í˜„ì¬ ê°ë„ë¥¼ ìœ ì§€í•˜ê³ , ì•„ë‹ˆë©´(false) ëª©í‘œ ê°ë„ë¥¼ ë”°ë¦„
         float finalX = lockXAxis ? currentEulerAngles.x : targetEulerAngles.x;
         float finalY = lockYAxis ? currentEulerAngles.y : targetEulerAngles.y;
         float finalZ = lockZAxis ? currentEulerAngles.z : targetEulerAngles.z;
 
-        // ÃÖÁ¾ °è»êµÈ ¿ÀÀÏ·¯ °¢µµ¸¦ ÄõÅÍ´Ï¾ğÀ¸·Î º¯È¯ÇÏ¿© ¿ÀºêÁ§Æ®ÀÇ È¸Àü°ªÀ¸·Î Àû¿ë
+        // ìµœì¢… ê³„ì‚°ëœ ì˜¤ì¼ëŸ¬ ê°ë„ë¥¼ ì¿¼í„°ë‹ˆì–¸ìœ¼ë¡œ ë³€í™˜í•˜ì—¬ ì˜¤ë¸Œì íŠ¸ì˜ íšŒì „ê°’ìœ¼ë¡œ ì ìš©
         transform.rotation = Quaternion.Euler(finalX, finalY, finalZ);
     }
 }

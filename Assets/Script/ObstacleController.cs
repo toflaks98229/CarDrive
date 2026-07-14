@@ -1,8 +1,8 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
 /// <summary>
-/// Â÷·®°ú Ãæµ¹ ½Ã À§ÂÊÀ¸·Î Æ¨°Ü³ª°¡´Â Àå¾Ö¹° ½ºÅ©¸³Æ®ÀÔ´Ï´Ù.
-/// ÀÌ ½ºÅ©¸³Æ®°¡ Àû¿ëµÈ GameObject´Â ¹İµå½Ã Rigidbody¿Í Collider°¡ ÀÖ¾î¾ß ÇÕ´Ï´Ù.
+/// ì°¨ëŸ‰ê³¼ ì¶©ëŒ ì‹œ ìœ„ìª½ìœ¼ë¡œ íŠ•ê²¨ë‚˜ê°€ëŠ” ì¥ì• ë¬¼ ìŠ¤í¬ë¦½íŠ¸ì…ë‹ˆë‹¤.
+/// ì´ ìŠ¤í¬ë¦½íŠ¸ê°€ ì ìš©ëœ GameObjectëŠ” ë°˜ë“œì‹œ Rigidbodyì™€ Colliderê°€ ìˆì–´ì•¼ í•©ë‹ˆë‹¤.
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
 [RequireComponent(typeof(Collider))]
@@ -10,66 +10,66 @@ public class ObstacleController : MonoBehaviour
 {
     // --- Public Member Variables ---
 
-    [Header("Ãæµ¹ ¼³Á¤")]
-    [Tooltip("Â÷¿Í ºÎµúÇûÀ» ¶§ ¹ŞÀ» ÃÖ¼ÒÇÑÀÇ À§ÂÊ Èû")]
+    [Header("ì¶©ëŒ ì„¤ì •")]
+    [Tooltip("ì°¨ì™€ ë¶€ë”ªí˜”ì„ ë•Œ ë°›ì„ ìµœì†Œí•œì˜ ìœ„ìª½ í˜")]
     public float baseBounceForce = 10f;
 
-    [Tooltip("Ãæµ¹ ¼Óµµ¿¡ ºñ·ÊÇÏ¿© Ãß°¡µÉ ÈûÀÇ ¹èÀ²")]
+    [Tooltip("ì¶©ëŒ ì†ë„ì— ë¹„ë¡€í•˜ì—¬ ì¶”ê°€ë  í˜ì˜ ë°°ìœ¨")]
     public float speedToForceMultiplier = 2f;
 
-    [Tooltip("ÈûÀ» °¡ÇÏ´Â ¹æ½Ä (Impulse: ¼ø°£ÀûÀÎ Æø¹ß·Â, Force: Áö¼ÓÀûÀÎ Èû)")]
+    [Tooltip("í˜ì„ ê°€í•˜ëŠ” ë°©ì‹ (Impulse: ìˆœê°„ì ì¸ í­ë°œë ¥, Force: ì§€ì†ì ì¸ í˜)")]
     public ForceMode bounceForceMode = ForceMode.Impulse;
 
     // --- Private Member Variables ---
 
     /// <summary>
-    /// ÀÌ Àå¾Ö¹°ÀÇ Rigidbody ÄÄÆ÷³ÍÆ®
+    /// ì´ ì¥ì• ë¬¼ì˜ Rigidbody ì»´í¬ë„ŒíŠ¸
     /// </summary>
     private Rigidbody rb;
 
     /// <summary>
-    /// (¼±ÅÃ »çÇ×) ÇÑ ¹ø¸¸ Æ¨±â°Ô ÇÏ·Á¸é ÀÌ ÇÃ·¡±×¸¦ »ç¿ëÇÕ´Ï´Ù.
+    /// (ì„ íƒ ì‚¬í•­) í•œ ë²ˆë§Œ íŠ•ê¸°ê²Œ í•˜ë ¤ë©´ ì´ í”Œë˜ê·¸ë¥¼ ì‚¬ìš©í•©ë‹ˆë‹¤.
     /// </summary>
     private bool hasBeenHit = false;
 
     // --- Unity Event Functions ---
 
     /// <summary>
-    /// ½ºÅ©¸³Æ®°¡ Ã³À½ È°¼ºÈ­µÉ ¶§ È£ÃâµË´Ï´Ù.
+    /// ìŠ¤í¬ë¦½íŠ¸ê°€ ì²˜ìŒ í™œì„±í™”ë  ë•Œ í˜¸ì¶œë©ë‹ˆë‹¤.
     /// </summary>
     void Start()
     {
-        // Rigidbody ÄÄÆ÷³ÍÆ®¸¦ °¡Á®¿Í¼­ rb º¯¼ö¿¡ ÀúÀåÇÕ´Ï´Ù.
+        // Rigidbody ì»´í¬ë„ŒíŠ¸ë¥¼ ê°€ì ¸ì™€ì„œ rb ë³€ìˆ˜ì— ì €ì¥í•©ë‹ˆë‹¤.
         rb = GetComponent<Rigidbody>();
     }
 
     /// <summary>
-    /// ´Ù¸¥ Collider¿Í ¹°¸®Àû Ãæµ¹ÀÌ ½ÃÀÛµÉ ¶§ È£ÃâµË´Ï´Ù.
+    /// ë‹¤ë¥¸ Colliderì™€ ë¬¼ë¦¬ì  ì¶©ëŒì´ ì‹œì‘ë  ë•Œ í˜¸ì¶œë©ë‹ˆë‹¤.
     /// </summary>
-    /// <param name="collision">Ãæµ¹ °ü·Ã Á¤º¸¸¦ ´ã°í ÀÖ´Â Collision °´Ã¼</param>
+    /// <param name="collision">ì¶©ëŒ ê´€ë ¨ ì •ë³´ë¥¼ ë‹´ê³  ìˆëŠ” Collision ê°ì²´</param>
     private void OnCollisionEnter(Collision collision)
     {
-        // (¼±ÅÃ »çÇ×) ÀÌ¹Ì ºÎµúÇû´Ù¸é ´Ù½Ã ½ÇÇàÇÏÁö ¾ÊÀ½
+        // (ì„ íƒ ì‚¬í•­) ì´ë¯¸ ë¶€ë”ªí˜”ë‹¤ë©´ ë‹¤ì‹œ ì‹¤í–‰í•˜ì§€ ì•ŠìŒ
         // if (hasBeenHit) return;
 
-        // 1. Ãæµ¹ÇÑ ´ë»óÀÌ 'CarController' ÄÄÆ÷³ÍÆ®(È¤Àº ±× ÀÚ½Ä)¸¦ °¡Áö°í ÀÖ´ÂÁö È®ÀÎÇÕ´Ï´Ù.
+        // 1. ì¶©ëŒí•œ ëŒ€ìƒì´ 'CarController' ì»´í¬ë„ŒíŠ¸(í˜¹ì€ ê·¸ ìì‹)ë¥¼ ê°€ì§€ê³  ìˆëŠ”ì§€ í™•ì¸í•©ë‹ˆë‹¤.
         CarController car = collision.gameObject.GetComponentInParent<CarController>();
 
-        // 2. CarController¸¦ °¡Áø ´ë»ó(Â÷·®)°ú ºÎµúÈù °ÍÀÌ ¸Â´Ù¸é
+        // 2. CarControllerë¥¼ ê°€ì§„ ëŒ€ìƒ(ì°¨ëŸ‰)ê³¼ ë¶€ë”ªíŒ ê²ƒì´ ë§ë‹¤ë©´
         if (car != null)
         {
-            Debug.Log(gameObject.name + "°¡ " + collision.gameObject.name + "¿Í Ãæµ¹!");
+            Debug.Log(gameObject.name + "ê°€ " + collision.gameObject.name + "ì™€ ì¶©ëŒ!");
 
-            // 3. Ãæµ¹ ¼Óµµ¸¦ °è»êÇÕ´Ï´Ù. (relativeVelocity.magnitude´Â µÎ ¹°Ã¼ÀÇ »ó´ë ¼Óµµ Å©±â)
+            // 3. ì¶©ëŒ ì†ë„ë¥¼ ê³„ì‚°í•©ë‹ˆë‹¤. (relativeVelocity.magnitudeëŠ” ë‘ ë¬¼ì²´ì˜ ìƒëŒ€ ì†ë„ í¬ê¸°)
             float impactSpeed = collision.relativeVelocity.magnitude;
 
-            // 4. Ãæµ¹ ¼Óµµ¿¡ ±â¹İÇÑ µ¿ÀûÀÎ Èû(Æ¨°Ü³ª°¥ Èû)À» °è»êÇÕ´Ï´Ù.
+            // 4. ì¶©ëŒ ì†ë„ì— ê¸°ë°˜í•œ ë™ì ì¸ í˜(íŠ•ê²¨ë‚˜ê°ˆ í˜)ì„ ê³„ì‚°í•©ë‹ˆë‹¤.
             float dynamicForce = baseBounceForce + (impactSpeed * speedToForceMultiplier);
 
-            // 5. ÀÌ ¿ÀºêÁ§Æ®(Àå¾Ö¹°)ÀÇ Rigidbody¿¡ À§ÂÊ(Vector3.up)À¸·Î °è»êµÈ ÈûÀ» °¡ÇÕ´Ï´Ù.
+            // 5. ì´ ì˜¤ë¸Œì íŠ¸(ì¥ì• ë¬¼)ì˜ Rigidbodyì— ìœ„ìª½(Vector3.up)ìœ¼ë¡œ ê³„ì‚°ëœ í˜ì„ ê°€í•©ë‹ˆë‹¤.
             rb.AddForce(Vector3.up * dynamicForce, bounceForceMode);
 
-            // (¼±ÅÃ »çÇ×) ÇÑ ¹ø¸¸ Æ¨±âµµ·Ï ÇÃ·¡±× ¼³Á¤
+            // (ì„ íƒ ì‚¬í•­) í•œ ë²ˆë§Œ íŠ•ê¸°ë„ë¡ í”Œë˜ê·¸ ì„¤ì •
             // hasBeenHit = true;
         }
     }

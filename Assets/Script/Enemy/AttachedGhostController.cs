@@ -1,25 +1,25 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using System.Collections;
 
 /// <summary>
-/// [½Å±Ô] Â÷·®¿¡ ºÎÂøµÇ¾î ·ÎÄÃ ÁÂÇ¥·Î ÀÌµ¿ÇÏ¸ç ÁÖ±âÀûÀÎ ÇÇÇØ¸¦ ÁÖ´Â ±Í½ÅÀÔ´Ï´Ù.
-/// Rigidbody¸¦ »ç¿ëÇÏÁö ¾Ê°í ºÎ¸ğ(Â÷·®)ÀÇ ÀÚ½ÄÀ¸·Î ÀÛµ¿ÇÕ´Ï´Ù.
+/// [ì‹ ê·œ] ì°¨ëŸ‰ì— ë¶€ì°©ë˜ì–´ ë¡œì»¬ ì¢Œí‘œë¡œ ì´ë™í•˜ë©° ì£¼ê¸°ì ì¸ í”¼í•´ë¥¼ ì£¼ëŠ” ê·€ì‹ ì…ë‹ˆë‹¤.
+/// Rigidbodyë¥¼ ì‚¬ìš©í•˜ì§€ ì•Šê³  ë¶€ëª¨(ì°¨ëŸ‰)ì˜ ìì‹ìœ¼ë¡œ ì‘ë™í•©ë‹ˆë‹¤.
 /// </summary>
 public class AttachedGhostController : MonoBehaviour
 {
-    [Header("±Í½Å ÀÌµ¿ ¼³Á¤")]
-    [Tooltip("ºÎ¸ğ(Â÷·®)ÀÇ ·ÎÄÃ ÁÂÇ¥ ±âÁØ ¸ñÇ¥ ÁöÁ¡±îÁö ÀÌµ¿ÇÏ´Â ¼Óµµ")]
+    [Header("ê·€ì‹  ì´ë™ ì„¤ì •")]
+    [Tooltip("ë¶€ëª¨(ì°¨ëŸ‰)ì˜ ë¡œì»¬ ì¢Œí‘œ ê¸°ì¤€ ëª©í‘œ ì§€ì ê¹Œì§€ ì´ë™í•˜ëŠ” ì†ë„")]
     public float moveSpeed = 1.0f;
-    [Tooltip("¸ñÇ¥ ÁöÁ¡°ú ÀÌ °Å¸®¸¸Å­ °¡±î¿öÁö¸é °ø°İÀ» ½ÃÀÛÇÕ´Ï´Ù.")]
+    [Tooltip("ëª©í‘œ ì§€ì ê³¼ ì´ ê±°ë¦¬ë§Œí¼ ê°€ê¹Œì›Œì§€ë©´ ê³µê²©ì„ ì‹œì‘í•©ë‹ˆë‹¤.")]
     public float attackDistance = 1.0f;
 
-    [Header("±Í½Å °ø°İ ¼³Á¤")]
-    [Tooltip("°ø°İ ÁÖ±â (ÃÊ)")]
+    [Header("ê·€ì‹  ê³µê²© ì„¤ì •")]
+    [Tooltip("ê³µê²© ì£¼ê¸° (ì´ˆ)")]
     public float damageInterval = 1.0f;
-    [Tooltip("ÁÖ±â¸¶´Ù ÀÔÈú µ¥¹ÌÁö")]
+    [Tooltip("ì£¼ê¸°ë§ˆë‹¤ ì…í ë°ë¯¸ì§€")]
     public int damageToDeal = 5;
 
-    [Header("Ã¼·Â ¹× È¿°ú (EnemyController¿Í À¯»ç)")]
+    [Header("ì²´ë ¥ ë° íš¨ê³¼ (EnemyControllerì™€ ìœ ì‚¬)")]
     public float maxHealth = 50f;
     public ParticleSystem hitEffectParticle;
     public ParticleSystem deathEffectParticle;
@@ -31,23 +31,23 @@ public class AttachedGhostController : MonoBehaviour
     // --- Private Variables ---
     private float currentHealth;
     private bool isFlickering = false;
-    private Vector3 targetLocalPosition; // °ø°İÇÒ ¸ñÇ¥ ÁöÁ¡ (·ÎÄÃ ÁÂÇ¥)
-    private TextHealthBar carHealthBar;  // °ø°İÇÒ ´ë»ó (Â÷·®ÀÇ Ã¼·Â¹Ù)
+    private Vector3 targetLocalPosition; // ê³µê²©í•  ëª©í‘œ ì§€ì  (ë¡œì»¬ ì¢Œí‘œ)
+    private TextHealthBar carHealthBar;  // ê³µê²©í•  ëŒ€ìƒ (ì°¨ëŸ‰ì˜ ì²´ë ¥ë°”)
     private float damageTimer;
     private bool hasArrived = false;
 
     /// <summary>
-    /// ½ºÅ©¸³Æ®°¡ Ã³À½ È°¼ºÈ­µÉ ¶§ (ÁÖ·Î Start¿¡¼­) È£ÃâµË´Ï´Ù.
+    /// ìŠ¤í¬ë¦½íŠ¸ê°€ ì²˜ìŒ í™œì„±í™”ë  ë•Œ (ì£¼ë¡œ Startì—ì„œ) í˜¸ì¶œë©ë‹ˆë‹¤.
     /// </summary>
     void Start()
     {
-        // ·»´õ·¯ ÀÚµ¿ ÇÒ´ç (EnemyController¿¡¼­ °¡Á®¿È)
+        // ë Œë”ëŸ¬ ìë™ í• ë‹¹ (EnemyControllerì—ì„œ ê°€ì ¸ì˜´)
         if (visualRenderer == null)
         {
             visualRenderer = GetComponentInChildren<MeshRenderer>();
             if (visualRenderer == null) visualRenderer = GetComponentInChildren<SkinnedMeshRenderer>();
             if (visualRenderer == null) visualRenderer = GetComponentInChildren<Renderer>();
-            if (visualRenderer == null) Debug.LogWarning(gameObject.name + ": 'visualRenderer'°¡ ¾ø¾î Á¡¸ê È¿°ú°¡ ÀÛµ¿ÇÏÁö ¾Ê½À´Ï´Ù.");
+            if (visualRenderer == null) Debug.LogWarning(gameObject.name + ": 'visualRenderer'ê°€ ì—†ì–´ ì ë©¸ íš¨ê³¼ê°€ ì‘ë™í•˜ì§€ ì•ŠìŠµë‹ˆë‹¤.");
         }
 
         if (hitEffectParticle != null)
@@ -57,10 +57,10 @@ public class AttachedGhostController : MonoBehaviour
     }
 
     /// <summary>
-    /// GhostSpawner°¡ È£ÃâÇÏ¿© ÀÌ ±Í½ÅÀ» ÃÊ±âÈ­ÇÕ´Ï´Ù.
+    /// GhostSpawnerê°€ í˜¸ì¶œí•˜ì—¬ ì´ ê·€ì‹ ì„ ì´ˆê¸°í™”í•©ë‹ˆë‹¤.
     /// </summary>
-    /// <param name="targetHealthBar">°ø°İÇÒ Â÷·®ÀÇ Ã¼·Â¹Ù</param>
-    /// <param name="localTarget">°ø°İÇÒ ·ÎÄÃ ÁÂÇ¥</param>
+    /// <param name="targetHealthBar">ê³µê²©í•  ì°¨ëŸ‰ì˜ ì²´ë ¥ë°”</param>
+    /// <param name="localTarget">ê³µê²©í•  ë¡œì»¬ ì¢Œí‘œ</param>
     public void Initialize(TextHealthBar targetHealthBar, Vector3 localTarget)
     {
         this.carHealthBar = targetHealthBar;
@@ -70,46 +70,46 @@ public class AttachedGhostController : MonoBehaviour
     }
 
     /// <summary>
-    /// ¸Å ÇÁ·¹ÀÓ¸¶´Ù È£ÃâµË´Ï´Ù.
+    /// ë§¤ í”„ë ˆì„ë§ˆë‹¤ í˜¸ì¶œë©ë‹ˆë‹¤.
     /// </summary>
     void Update()
     {
         if (hasArrived)
         {
-            // 1. ¸ñÇ¥ ÁöÁ¡ µµÂø: ÁÖ±âÀû µ¥¹ÌÁö Ã³¸®
+            // 1. ëª©í‘œ ì§€ì  ë„ì°©: ì£¼ê¸°ì  ë°ë¯¸ì§€ ì²˜ë¦¬
             HandleProximityDamage();
         }
         else
         {
-            // 2. ÀÌµ¿ Áß: ¸ñÇ¥ ÁöÁ¡À¸·Î ·ÎÄÃ ÁÂÇ¥ ÀÌµ¿
+            // 2. ì´ë™ ì¤‘: ëª©í‘œ ì§€ì ìœ¼ë¡œ ë¡œì»¬ ì¢Œí‘œ ì´ë™
             HandleMovement();
         }
     }
 
     /// <summary>
-    /// ºÎ¸ğ(Â÷·®) ±âÁØ ·ÎÄÃ ÁÂÇ¥·Î ÀÌµ¿ÇÕ´Ï´Ù.
+    /// ë¶€ëª¨(ì°¨ëŸ‰) ê¸°ì¤€ ë¡œì»¬ ì¢Œí‘œë¡œ ì´ë™í•©ë‹ˆë‹¤.
     /// </summary>
     private void HandleMovement()
     {
-        if (transform.parent == null) return; // ºÎ¸ğ°¡ ¾øÀ¸¸é(¿À·ù) ÁßÁö
+        if (transform.parent == null) return; // ë¶€ëª¨ê°€ ì—†ìœ¼ë©´(ì˜¤ë¥˜) ì¤‘ì§€
 
-        // ·ÎÄÃ À§Ä¡¸¦ ¸ñÇ¥ ·ÎÄÃ À§Ä¡·Î ÀÌµ¿
+        // ë¡œì»¬ ìœ„ì¹˜ë¥¼ ëª©í‘œ ë¡œì»¬ ìœ„ì¹˜ë¡œ ì´ë™
         transform.localPosition = Vector3.MoveTowards(
             transform.localPosition,
             targetLocalPosition,
             moveSpeed * Time.deltaTime
         );
 
-        // ¸ñÇ¥ ÁöÁ¡¿¡ µµÂøÇß´ÂÁö È®ÀÎ
+        // ëª©í‘œ ì§€ì ì— ë„ì°©í–ˆëŠ”ì§€ í™•ì¸
         if (Vector3.Distance(transform.localPosition, targetLocalPosition) <= attackDistance)
         {
             hasArrived = true;
-            Debug.Log(gameObject.name + "°¡ Â÷·®¿¡ µµÂøÇß½À´Ï´Ù. °ø°İÀ» ½ÃÀÛÇÕ´Ï´Ù.");
+            Debug.Log(gameObject.name + "ê°€ ì°¨ëŸ‰ì— ë„ì°©í–ˆìŠµë‹ˆë‹¤. ê³µê²©ì„ ì‹œì‘í•©ë‹ˆë‹¤.");
         }
     }
 
     /// <summary>
-    /// ¸ñÇ¥ ÁöÁ¡¿¡ µµÂøÇßÀ» ¶§ ÁÖ±âÀûÀ¸·Î µ¥¹ÌÁö¸¦ ÀÔÈü´Ï´Ù.
+    /// ëª©í‘œ ì§€ì ì— ë„ì°©í–ˆì„ ë•Œ ì£¼ê¸°ì ìœ¼ë¡œ ë°ë¯¸ì§€ë¥¼ ì…í™ë‹ˆë‹¤.
     /// </summary>
     private void HandleProximityDamage()
     {
@@ -118,17 +118,17 @@ public class AttachedGhostController : MonoBehaviour
         {
             if (carHealthBar != null)
             {
-                Debug.Log(gameObject.name + "°¡ Â÷·®¿¡ µ¥¹ÌÁö¸¦ ÀÔÈü´Ï´Ù!");
+                Debug.Log(gameObject.name + "ê°€ ì°¨ëŸ‰ì— ë°ë¯¸ì§€ë¥¼ ì…í™ë‹ˆë‹¤!");
                 carHealthBar.TakeDamage(damageToDeal);
-                // (¼±ÅÃ »çÇ×) µ¥¹ÌÁö¸¦ ÁÙ ¶§¸¶´Ù È¿°ú(ÆÄÆ¼Å¬ µî) Àç»ı
+                // (ì„ íƒ ì‚¬í•­) ë°ë¯¸ì§€ë¥¼ ì¤„ ë•Œë§ˆë‹¤ íš¨ê³¼(íŒŒí‹°í´ ë“±) ì¬ìƒ
             }
-            damageTimer = damageInterval; // Å¸ÀÌ¸Ó ÃÊ±âÈ­
+            damageTimer = damageInterval; // íƒ€ì´ë¨¸ ì´ˆê¸°í™”
         }
     }
 
     /// <summary>
-    /// [Public] PlayerAttacker·ÎºÎÅÍ µ¥¹ÌÁö¸¦ ¹Ş½À´Ï´Ù.
-    /// (EnemyControllerÀÇ TakeDamage ·ÎÁ÷°ú µ¿ÀÏ)
+    /// [Public] PlayerAttackerë¡œë¶€í„° ë°ë¯¸ì§€ë¥¼ ë°›ìŠµë‹ˆë‹¤.
+    /// (EnemyControllerì˜ TakeDamage ë¡œì§ê³¼ ë™ì¼)
     /// </summary>
     public void TakeDamage(float amount)
     {
@@ -156,25 +156,25 @@ public class AttachedGhostController : MonoBehaviour
     }
 
     /// <summary>
-    /// ±Í½ÅÀÌ Á×¾úÀ» ¶§ Ã³¸®
-    /// (EnemyControllerÀÇ Die ·ÎÁ÷°ú µ¿ÀÏ)
+    /// ê·€ì‹ ì´ ì£½ì—ˆì„ ë•Œ ì²˜ë¦¬
+    /// (EnemyControllerì˜ Die ë¡œì§ê³¼ ë™ì¼)
     /// </summary>
     private void Die()
     {
         if (deathEffectParticle != null)
         {
-            // Áß¿ä: ÆÄÆ¼Å¬ÀÌ Â÷·®À» µû¶ó´Ù´ÏÁö ¾Êµµ·Ï ºÎ¸ğ¸¦ null·Î ¼³Á¤ÇÏ°Å³ª,
-            // ¿ùµå ÁÂÇ¥°è¿¡ »ı¼º(Instantiate)ÇÕ´Ï´Ù.
+            // ì¤‘ìš”: íŒŒí‹°í´ì´ ì°¨ëŸ‰ì„ ë”°ë¼ë‹¤ë‹ˆì§€ ì•Šë„ë¡ ë¶€ëª¨ë¥¼ nullë¡œ ì„¤ì •í•˜ê±°ë‚˜,
+            // ì›”ë“œ ì¢Œí‘œê³„ì— ìƒì„±(Instantiate)í•©ë‹ˆë‹¤.
             Instantiate(deathEffectParticle, transform.position, transform.rotation);
         }
 
-        Debug.Log(gameObject.name + "°¡ ÆÄ±«µÇ¾ú½À´Ï´Ù.");
-        Destroy(gameObject); // ÀÌ °ÔÀÓ ¿ÀºêÁ§Æ® ÆÄ±«
+        Debug.Log(gameObject.name + "ê°€ íŒŒê´´ë˜ì—ˆìŠµë‹ˆë‹¤.");
+        Destroy(gameObject); // ì´ ê²Œì„ ì˜¤ë¸Œì íŠ¸ íŒŒê´´
     }
 
     /// <summary>
-    /// ÇÇ°İ ½Ã Á¡¸ê È¿°ú
-    /// (EnemyControllerÀÇ FlickerEffect ·ÎÁ÷°ú µ¿ÀÏ)
+    /// í”¼ê²© ì‹œ ì ë©¸ íš¨ê³¼
+    /// (EnemyControllerì˜ FlickerEffect ë¡œì§ê³¼ ë™ì¼)
     /// </summary>
     private IEnumerator FlickerEffect()
     {

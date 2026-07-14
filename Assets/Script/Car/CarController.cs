@@ -1,50 +1,50 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
 /// <summary>
-/// [¸®ÆÑÅä¸µµÊ]
-/// ÀÚµ¿Â÷ÀÇ ÇÙ½É Á¶À²ÀÚ(Coordinator) Å¬·¡½ºÀÔ´Ï´Ù.
-/// CarInput, Powertrain, CarVisuals µî ºĞ¸®µÈ ÄÄÆ÷³ÍÆ®µéÀ» °ü¸®ÇÏ°í,
-/// ÃÖÁ¾ ¹°¸® °è»ê(ÅäÅ©, Á¶Çâ, ºê·¹ÀÌÅ© Àû¿ë)À» WheelCollider¿¡ ¸í·ÉÇÕ´Ï´Ù.
+/// [ë¦¬íŒ©í† ë§ë¨]
+/// ìë™ì°¨ì˜ í•µì‹¬ ì¡°ìœ¨ì(Coordinator) í´ë˜ìŠ¤ì…ë‹ˆë‹¤.
+/// CarInput, Powertrain, CarVisuals ë“± ë¶„ë¦¬ëœ ì»´í¬ë„ŒíŠ¸ë“¤ì„ ê´€ë¦¬í•˜ê³ ,
+/// ìµœì¢… ë¬¼ë¦¬ ê³„ì‚°(í† í¬, ì¡°í–¥, ë¸Œë ˆì´í¬ ì ìš©)ì„ WheelColliderì— ëª…ë ¹í•©ë‹ˆë‹¤.
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
 [RequireComponent(typeof(CarInput))]
 [RequireComponent(typeof(Powertrain))]
 [RequireComponent(typeof(CarVisuals))]
-[RequireComponent(typeof(CarCollisionHandler))] // Ãæµ¹ ÇÚµé·¯µµ ÇÊ¼ö ÄÄÆ÷³ÍÆ®·Î Ãß°¡
+[RequireComponent(typeof(CarCollisionHandler))] // ì¶©ëŒ í•¸ë“¤ëŸ¬ë„ í•„ìˆ˜ ì»´í¬ë„ŒíŠ¸ë¡œ ì¶”ê°€
 public class CarController : MonoBehaviour
 {
-    #region --- Enums (¿øº» À¯Áö) ---
+    #region --- Enums (ì›ë³¸ ìœ ì§€) ---
     public enum DriveType { FrontWheelDrive, RearWheelDrive, AllWheelDrive }
     public enum SteerType { FrontWheelSteer, AllWheelSteer }
     #endregion
 
-    [Header("ÇÙ½É µ¥ÀÌÅÍ ¹× ÄÄÆ÷³ÍÆ®")]
-    [Tooltip("Â÷·®ÀÇ ¼º´ÉÀ» °áÁ¤ÇÏ´Â CarData ScriptableObject")]
+    [Header("í•µì‹¬ ë°ì´í„° ë° ì»´í¬ë„ŒíŠ¸")]
+    [Tooltip("ì°¨ëŸ‰ì˜ ì„±ëŠ¥ì„ ê²°ì •í•˜ëŠ” CarData ScriptableObject")]
     public CarData carData;
-    public TextHealthBar healthBar; // Ã¼·Â¹Ù ÂüÁ¶´Â À¯Áö (PlayerInteractor°¡ »ç¿ë)
+    public TextHealthBar healthBar; // ì²´ë ¥ë°” ì°¸ì¡°ëŠ” ìœ ì§€ (PlayerInteractorê°€ ì‚¬ìš©)
 
-    [Header("ÀÚµ¿Â÷ ±¸µ¿/Á¶Çâ ¹æ½Ä ¼³Á¤")]
+    [Header("ìë™ì°¨ êµ¬ë™/ì¡°í–¥ ë°©ì‹ ì„¤ì •")]
     public DriveType driveType = DriveType.AllWheelDrive;
     public SteerType steerType = SteerType.FrontWheelSteer;
 
-    [Header("ÀÚµ¿Â÷ ¹°¸® ¼³Á¤")]
+    [Header("ìë™ì°¨ ë¬¼ë¦¬ ì„¤ì •")]
     public Vector3 centerOfMass = new Vector3(0, -0.5f, 0);
 
-    [Header("½Ãµ¿ ¼³Á¤")]
+    [Header("ì‹œë™ ì„¤ì •")]
     public KeyCode engineStartKey = KeyCode.E;
 
-    [Header("ÈÙ Äİ¶óÀÌ´õ (¹°¸®)")]
+    [Header("íœ  ì½œë¼ì´ë” (ë¬¼ë¦¬)")]
     public WheelCollider frontLeftWheelCollider;
     public WheelCollider frontRightWheelCollider;
     public WheelCollider rearLeftWheelCollider;
     public WheelCollider rearRightWheelCollider;
 
-    // --- ¸®ÆÑÅä¸µµÈ ÄÄÆ÷³ÍÆ® ÂüÁ¶ ---
+    // --- ë¦¬íŒ©í† ë§ëœ ì»´í¬ë„ŒíŠ¸ ì°¸ì¡° ---
     private Rigidbody rb;
     private CarInput input;
     private Powertrain powertrain;
     private CarVisuals visuals;
-    // CarCollisionHandler´Â µ¶¸³ÀûÀ¸·Î ÀÛµ¿ÇÏ¹Ç·Î ÂüÁ¶ ºÒÇÊ¿ä
+    // CarCollisionHandlerëŠ” ë…ë¦½ì ìœ¼ë¡œ ì‘ë™í•˜ë¯€ë¡œ ì°¸ì¡° ë¶ˆí•„ìš”
 
     // --- Private State Variables ---
     private float currentSpeed;
@@ -55,18 +55,18 @@ public class CarController : MonoBehaviour
 
     void Start()
     {
-        // ÇÊ¼ö ÄÄÆ÷³ÍÆ® °¡Á®¿À±â
+        // í•„ìˆ˜ ì»´í¬ë„ŒíŠ¸ ê°€ì ¸ì˜¤ê¸°
         rb = GetComponent<Rigidbody>();
         input = GetComponent<CarInput>();
         powertrain = GetComponent<Powertrain>();
         visuals = GetComponent<CarVisuals>();
 
-        // ÄÄÆ÷³ÍÆ® ÃÊ±âÈ­
+        // ì»´í¬ë„ŒíŠ¸ ì´ˆê¸°í™”
         rb.centerOfMass = centerOfMass;
         powertrain.Initialize(carData);
-        visuals.Initialize(carData.maxSteerAngle); // CarVisuals¿¡ ÃÖ´ë Á¶Çâ°¢ Àü´Ş
+        visuals.Initialize(carData.maxSteerAngle); // CarVisualsì— ìµœëŒ€ ì¡°í–¥ê° ì „ë‹¬
 
-        isEngineOn = false; // ½Ãµ¿ ²¨Áø »óÅÂ·Î ½ÃÀÛ
+        isEngineOn = false; // ì‹œë™ êº¼ì§„ ìƒíƒœë¡œ ì‹œì‘
     }
 
     void Update()
@@ -76,27 +76,27 @@ public class CarController : MonoBehaviour
 
     void FixedUpdate()
     {
-        currentSpeed = rb.velocity.magnitude * 3.6f; // m/s¸¦ km/h·Î º¯È¯
+        currentSpeed = rb.velocity.magnitude * 3.6f; // m/së¥¼ km/hë¡œ ë³€í™˜
 
-        // 1. ÀÔ·Â °¡Á®¿À±â (from CarInput)
+        // 1. ì…ë ¥ ê°€ì ¸ì˜¤ê¸° (from CarInput)
         float steerInput = input.SteerInput;
-        float throttleInput = isEngineOn ? input.ThrottleInput : 0f; // ½Ãµ¿ »óÅÂ¿¡ µû¶ó ÀÔ·Â Â÷´Ü
+        float throttleInput = isEngineOn ? input.ThrottleInput : 0f; // ì‹œë™ ìƒíƒœì— ë”°ë¼ ì…ë ¥ ì°¨ë‹¨
         bool brakingInput = input.IsBraking;
 
-        // 2. µ¿·Â°è ¾÷µ¥ÀÌÆ® ¹× ÅäÅ© °è»ê (from Powertrain)
+        // 2. ë™ë ¥ê³„ ì—…ë°ì´íŠ¸ ë° í† í¬ ê³„ì‚° (from Powertrain)
         float motorTorque = powertrain.CalculateMotorTorque(GetAverageWheelRPM(), throttleInput, currentSpeed, isEngineOn);
         powertrain.UpdateFuel(isEngineOn, throttleInput);
 
-        // 3. ¿¬·á »óÅÂ È®ÀÎ ¹× ½Ãµ¿ °ü¸®
+        // 3. ì—°ë£Œ ìƒíƒœ í™•ì¸ ë° ì‹œë™ ê´€ë¦¬
         if (isEngineOn && powertrain.IsFuelEmpty())
         {
             isEngineOn = false;
         }
 
-        // 4. Á¶Çâ°¢ °è»ê (¿øº» ·ÎÁ÷ À¯Áö)
+        // 4. ì¡°í–¥ê° ê³„ì‚° (ì›ë³¸ ë¡œì§ ìœ ì§€)
         HandleSteering(steerInput);
 
-        // 5. ¹°¸® Àû¿ë (¿øº» ·ÎÁ÷ À¯Áö)
+        // 5. ë¬¼ë¦¬ ì ìš© (ì›ë³¸ ë¡œì§ ìœ ì§€)
         HandleBraking(brakingInput, throttleInput);
         ApplyMotorTorque(motorTorque);
         ApplySteering();
@@ -104,13 +104,13 @@ public class CarController : MonoBehaviour
 
     void LateUpdate()
     {
-        // 6. ½Ã°¢Àû ¿ä¼Ò ¾÷µ¥ÀÌÆ® (to CarVisuals)
+        // 6. ì‹œê°ì  ìš”ì†Œ ì—…ë°ì´íŠ¸ (to CarVisuals)
         visuals.UpdateVisuals(currentSteerAngle);
     }
 
     // --- Public Methods (Getters & Actions) ---
 
-    #region --- UI ¹× ¿ÜºÎ µ¥ÀÌÅÍ ¹İÈ¯ ---
+    #region --- UI ë° ì™¸ë¶€ ë°ì´í„° ë°˜í™˜ ---
     public float GetCurrentSpeed() => currentSpeed;
     public float GetCurrentRPM() => powertrain.CurrentRPM;
     public float GetCurrentFuel() => powertrain.CurrentFuel;
@@ -120,7 +120,7 @@ public class CarController : MonoBehaviour
     #endregion
 
     /// <summary>
-    /// ¿£Áø ½Ãµ¿ Åä±Û (¿øº» ·ÎÁ÷ ¼öÁ¤)
+    /// ì—”ì§„ ì‹œë™ í† ê¸€ (ì›ë³¸ ë¡œì§ ìˆ˜ì •)
     /// </summary>
     public void ToggleEngine()
     {
@@ -135,10 +135,10 @@ public class CarController : MonoBehaviour
     }
 
     // --- Private Methods (Core Physics Logic) ---
-    // ÀÌ ¸Ş¼­µåµéÀº CarControllerÀÇ ÇÙ½É Ã¥ÀÓÀÌ¹Ç·Î À¯ÁöÇÕ´Ï´Ù.
+    // ì´ ë©”ì„œë“œë“¤ì€ CarControllerì˜ í•µì‹¬ ì±…ì„ì´ë¯€ë¡œ ìœ ì§€í•©ë‹ˆë‹¤.
 
     /// <summary>
-    /// Á¶Çâ °¢µµ¸¦ °è»êÇÕ´Ï´Ù (¿øº» HandleSteering)
+    /// ì¡°í–¥ ê°ë„ë¥¼ ê³„ì‚°í•©ë‹ˆë‹¤ (ì›ë³¸ HandleSteering)
     /// </summary>
     private void HandleSteering(float steerInput)
     {
@@ -149,13 +149,13 @@ public class CarController : MonoBehaviour
     }
 
     /// <summary>
-    /// ºê·¹ÀÌÅ©¸¦ Àû¿ëÇÕ´Ï´Ù (¿øº» HandleBraking ¼öÁ¤)
+    /// ë¸Œë ˆì´í¬ë¥¼ ì ìš©í•©ë‹ˆë‹¤ (ì›ë³¸ HandleBraking ìˆ˜ì •)
     /// </summary>
     private void HandleBraking(bool isBraking, float throttleInput)
     {
         float currentBrakeTorque = isBraking ? carData.brakeTorque : 0f;
 
-        // ¿£Áø ºê·¹ÀÌÅ© (°ü¼º ÁÖÇà ½Ã)
+        // ì—”ì§„ ë¸Œë ˆì´í¬ (ê´€ì„± ì£¼í–‰ ì‹œ)
         if (throttleInput == 0 && currentSpeed > 1f && !isBraking && isEngineOn)
         {
             currentBrakeTorque = 50f;
@@ -168,7 +168,7 @@ public class CarController : MonoBehaviour
     }
 
     /// <summary>
-    /// ¸ğÅÍ ÅäÅ©¸¦ ÈÙ¿¡ Àû¿ëÇÕ´Ï´Ù (¿øº» ApplyMotorTorque)
+    /// ëª¨í„° í† í¬ë¥¼ íœ ì— ì ìš©í•©ë‹ˆë‹¤ (ì›ë³¸ ApplyMotorTorque)
     /// </summary>
     private void ApplyMotorTorque(float torque)
     {
@@ -193,7 +193,7 @@ public class CarController : MonoBehaviour
     }
 
     /// <summary>
-    /// Á¶Çâ °¢µµ¸¦ ÈÙ¿¡ Àû¿ëÇÕ´Ï´Ù (¿øº» ApplySteering)
+    /// ì¡°í–¥ ê°ë„ë¥¼ íœ ì— ì ìš©í•©ë‹ˆë‹¤ (ì›ë³¸ ApplySteering)
     /// </summary>
     private void ApplySteering()
     {
@@ -215,7 +215,7 @@ public class CarController : MonoBehaviour
     }
 
     /// <summary>
-    /// Æò±Õ ÈÙ RPMÀ» °è»êÇÕ´Ï´Ù (¿øº» GetAverageWheelRPM)
+    /// í‰ê·  íœ  RPMì„ ê³„ì‚°í•©ë‹ˆë‹¤ (ì›ë³¸ GetAverageWheelRPM)
     /// </summary>
     private float GetAverageWheelRPM()
     {

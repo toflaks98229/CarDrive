@@ -1,28 +1,28 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
 /// <summary>
-/// [¸®ÆÑÅä¸µµÊ]
-/// MainCamera¿¡ ºÎÂøµÇ¾î ±¹¼ÒÀûÀÎ Èçµé¸² È¿°ú¸¦ Áİ´Ï´Ù.
-/// Initialize() ¸Ş¼­µå ´ë½Å, Start()¿¡¼­ Á÷Á¢ CarController¸¦ Ã£µµ·Ï ¼öÁ¤µÇ¾ú½À´Ï´Ù.
-/// Ãæ°İ È¿°ú(TriggerImpactShake)´Â CarCollisionHandler°¡ È£ÃâÇÕ´Ï´Ù.
+/// [ë¦¬íŒ©í† ë§ë¨]
+/// MainCameraì— ë¶€ì°©ë˜ì–´ êµ­ì†Œì ì¸ í”ë“¤ë¦¼ íš¨ê³¼ë¥¼ ì¤ë‹ˆë‹¤.
+/// Initialize() ë©”ì„œë“œ ëŒ€ì‹ , Start()ì—ì„œ ì§ì ‘ CarControllerë¥¼ ì°¾ë„ë¡ ìˆ˜ì •ë˜ì—ˆìŠµë‹ˆë‹¤.
+/// ì¶©ê²© íš¨ê³¼(TriggerImpactShake)ëŠ” CarCollisionHandlerê°€ í˜¸ì¶œí•©ë‹ˆë‹¤.
 /// </summary>
 public class CarCameraEffects : MonoBehaviour
 {
-    [Header("¿£Áø/ÁÖÇà Áøµ¿ È¿°ú")]
+    [Header("ì—”ì§„/ì£¼í–‰ ì§„ë™ íš¨ê³¼")]
     public float vibrationAmount = 0.01f;
     public float vibrationSpeed = 20f;
     public float steeringVibrationFactor = 0.5f;
 
-    [Header("½Ãµ¿ Áøµ¿ È¿°ú")]
+    [Header("ì‹œë™ ì§„ë™ íš¨ê³¼")]
     public float startupVibrationBoost = 2.0f;
     public float startupVibrationDecayRate = 3.0f;
 
-    [Header("¿ÜºÎ Ãæ°İ È¿°ú")]
+    [Header("ì™¸ë¶€ ì¶©ê²© íš¨ê³¼")]
     public float impactIntensity = 0.2f;
     public float impactDecayRate = 5.0f;
 
     // --- Private Member Variables ---
-    private CarController carController; // Â÷·®ÀÇ µ¥ÀÌÅÍ¸¦ ÂüÁ¶ÇÏ±â À§ÇÑ ÄÁÆ®·Ñ·¯
+    private CarController carController; // ì°¨ëŸ‰ì˜ ë°ì´í„°ë¥¼ ì°¸ì¡°í•˜ê¸° ìœ„í•œ ì»¨íŠ¸ë¡¤ëŸ¬
     private Vector3 originalLocalPos;
     private bool wasEngineOnLastFrame = false;
     private float currentVibrationSpeed = 0f;
@@ -33,11 +33,11 @@ public class CarCameraEffects : MonoBehaviour
         originalLocalPos = transform.localPosition;
         currentVibrationSpeed = vibrationSpeed;
 
-        // [¼öÁ¤µÊ] CarController¸¦ ¾À¿¡¼­ Á÷Á¢ Ã£½À´Ï´Ù.
+        // [ìˆ˜ì •ë¨] CarControllerë¥¼ ì”¬ì—ì„œ ì§ì ‘ ì°¾ìŠµë‹ˆë‹¤.
         carController = FindObjectOfType<CarController>();
         if (carController == null)
         {
-            Debug.LogError("CarCameraEffects: ¾À¿¡¼­ CarController¸¦ Ã£À» ¼ö ¾ø½À´Ï´Ù! ÁÖÇà Áøµ¿ È¿°ú°¡ ÀÛµ¿ÇÏÁö ¾Ê½À´Ï´Ù.");
+            Debug.LogError("CarCameraEffects: ì”¬ì—ì„œ CarControllerë¥¼ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤! ì£¼í–‰ ì§„ë™ íš¨ê³¼ê°€ ì‘ë™í•˜ì§€ ì•ŠìŠµë‹ˆë‹¤.");
             this.enabled = false;
         }
         else
@@ -48,7 +48,7 @@ public class CarCameraEffects : MonoBehaviour
 
     void LateUpdate()
     {
-        // ¿ÜºÎ Ãæ°İ È¿°ú (Ãæµ¹ ÇÚµé·¯°¡ currentImpactBoost °ªÀ» ¼³Á¤)
+        // ì™¸ë¶€ ì¶©ê²© íš¨ê³¼ (ì¶©ëŒ í•¸ë“¤ëŸ¬ê°€ currentImpactBoost ê°’ì„ ì„¤ì •)
         Vector3 impactOffset = Vector3.zero;
         if (currentImpactBoost > 0.01f)
         {
@@ -58,14 +58,14 @@ public class CarCameraEffects : MonoBehaviour
             currentImpactBoost = Mathf.Lerp(currentImpactBoost, 0f, Time.deltaTime * impactDecayRate);
         }
 
-        // CarController¸¦ Ã£Áö ¸øÇß´Ù¸é ÁÖÇà Áøµ¿Àº »ı·«ÇÕ´Ï´Ù.
+        // CarControllerë¥¼ ì°¾ì§€ ëª»í–ˆë‹¤ë©´ ì£¼í–‰ ì§„ë™ì€ ìƒëµí•©ë‹ˆë‹¤.
         if (carController == null)
         {
-            transform.localPosition = originalLocalPos + impactOffset; // Ãæ°İ È¿°ú¸¸ Àû¿ë
+            transform.localPosition = originalLocalPos + impactOffset; // ì¶©ê²© íš¨ê³¼ë§Œ ì ìš©
             return;
         }
 
-        // --- ÁÖÇà Áøµ¿ È¿°ú ---
+        // --- ì£¼í–‰ ì§„ë™ íš¨ê³¼ ---
         bool isEngineOn = carController.IsEngineOn();
 
         if (isEngineOn && !wasEngineOnLastFrame)
@@ -82,8 +82,8 @@ public class CarCameraEffects : MonoBehaviour
         if (isEngineOn)
         {
             intensityMultiplier = 1.0f;
-            // [¼öÁ¤µÊ] CarControllerÀÇ Input ÄÄÆ÷³ÍÆ®¸¦ Á÷Á¢ ÂüÁ¶ÇÏÁö ¾Ê°í, GetAxis¸¦ »ç¿ëÇÕ´Ï´Ù.
-            // ´õ ³ªÀº ¹æ¹ıÀº CarController¿¡ SteerInputÀ» ¹İÈ¯ÇÏ´Â public getter¸¦ ¸¸µå´Â °ÍÀÔ´Ï´Ù.
+            // [ìˆ˜ì •ë¨] CarControllerì˜ Input ì»´í¬ë„ŒíŠ¸ë¥¼ ì§ì ‘ ì°¸ì¡°í•˜ì§€ ì•Šê³ , GetAxisë¥¼ ì‚¬ìš©í•©ë‹ˆë‹¤.
+            // ë” ë‚˜ì€ ë°©ë²•ì€ CarControllerì— SteerInputì„ ë°˜í™˜í•˜ëŠ” public getterë¥¼ ë§Œë“œëŠ” ê²ƒì…ë‹ˆë‹¤.
             float steeringInputAmount = Mathf.Abs(Input.GetAxis("Horizontal"));
             intensityMultiplier += steeringInputAmount * steeringVibrationFactor;
         }
@@ -92,12 +92,12 @@ public class CarCameraEffects : MonoBehaviour
         float vibY = (Mathf.PerlinNoise(0f, Time.time * currentVibrationSpeed) - 0.5f) * vibrationAmount * intensityMultiplier;
         Vector3 vibrationOffset = new Vector3(vibX, vibY, 0);
 
-        // --- ÃÖÁ¾ È¿°ú Àû¿ë ---
+        // --- ìµœì¢… íš¨ê³¼ ì ìš© ---
         transform.localPosition = originalLocalPos + vibrationOffset + impactOffset;
     }
 
     /// <summary>
-    /// ¿ÜºÎ(CarCollisionHandler)¿¡¼­ È£ÃâÇÏ¿© °­ÇÑ Ãæ°İ È¿°ú¸¦ ¹ßµ¿½ÃÅµ´Ï´Ù.
+    /// ì™¸ë¶€(CarCollisionHandler)ì—ì„œ í˜¸ì¶œí•˜ì—¬ ê°•í•œ ì¶©ê²© íš¨ê³¼ë¥¼ ë°œë™ì‹œí‚µë‹ˆë‹¤.
     /// </summary>
     public void TriggerImpactShake()
     {
