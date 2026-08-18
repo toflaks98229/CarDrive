@@ -63,10 +63,21 @@ public class DrinkAnimation : MonoBehaviour
         rectTransform.anchoredPosition = hiddenPosition;
     }
 
+    // --- Public Properties ---
+
+    /// <summary>
+    /// 올라오고, 머물고, 내려가는 데 걸리는 전체 시간(초)입니다.
+    /// 마시기가 끝나는 시점에 빈 병을 던져야 하므로 호출부가 이 값을 봅니다.
+    /// </summary>
+    public float TotalDuration { get { return animationTime * 2f + visibleDuration; } }
+
+    /// <summary>지금 마시는 연출이 재생 중인지 여부입니다.</summary>
+    public bool IsAnimating { get { return isAnimating; } }
+
     // --- Public Methods ---
 
     /// <summary>
-    /// 외부(예: PlayerCameraController)에서 호출하여 애니메이션을 시작합니다.
+    /// 외부(예: BeverageConsumer)에서 호출하여 애니메이션을 시작합니다.
     /// </summary>
     public void PlayDrinkAnimation()
     {

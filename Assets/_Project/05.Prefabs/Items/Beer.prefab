@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 7148440146899018457}
   - component: {fileID: 964630050053717032}
   - component: {fileID: 7890885122695200117}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Beer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -97,6 +97,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Carryable
   displayName: "\uB9E5\uC8FC"
+  alignToHoldPose: 0
   holdEuler: {x: 0, y: 0, z: 0}
   lockRotationWhileHeld: 1
   heldLinearDamping: 12
@@ -118,7 +119,7 @@ GameObject:
   - component: {fileID: 7598719121415615764}
   - component: {fileID: 1338908721496180351}
   - component: {fileID: 2510761174348908582}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Model
   m_TagString: Untagged
   m_Icon: {fileID: 0}
