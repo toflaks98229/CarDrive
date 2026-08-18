@@ -72,20 +72,27 @@ public static class PixelGroundTextures
     /// <summary>
     /// 만들 레이어 목록입니다. 순서가 곧 알파맵의 레이어 번호입니다. (풀 0 · 흙 1 · 도로 2)
     /// 색감을 바꾸고 싶으면 여기 밝기·채도를 조정하고 "지면 텍스처 다시 만들기"로 다시 구우세요.
+    ///
+    /// <b>밝기는 '밤에 어둡게 보이려고' 낮추는 값이 아닙니다.</b>
+    /// 알베도는 재질이 빛을 얼마나 되쏘는지를 나타내는 성질이고, 시간대와 무관합니다.
+    /// 처음에는 밤 분위기를 내려고 0.42까지 낮췄는데, 그러면 <b>한낮에도 지면이 어둡습니다.</b>
+    /// (실측: 잔디 휘도 26.5%. 조명을 2.5배로 올려도 화면 밝기가 41%에 그쳤습니다)
+    /// 밤의 어둠은 SkyController가 주변광과 태양광을 낮춰서 만듭니다.
+    /// 그래서 여기서는 실제 알베도에 가까운 값을 씁니다. (잔디 약 48%, 아스팔트 약 28%)
     /// </summary>
     private static readonly Spec[] Sources =
     {
-        new Spec("Ground_Grass", "grass_top", 0.42f, 0.55f, 6f, new[]
+        new Spec("Ground_Grass", "grass_top", 0.76f, 0.55f, 6f, new[]
         {
             new Color32(0x2F, 0x3D, 0x26, 255), new Color32(0x3A, 0x4A, 0x2E, 255),
             new Color32(0x45, 0x57, 0x3A, 255), new Color32(0x50, 0x66, 0x49, 255)
         }),
-        new Spec("Ground_Dirt", "dirt", 0.45f, 0.50f, 6f, new[]
+        new Spec("Ground_Dirt", "dirt", 0.72f, 0.50f, 6f, new[]
         {
             new Color32(0x3D, 0x32, 0x26, 255), new Color32(0x4A, 0x3D, 0x2E, 255),
             new Color32(0x57, 0x49, 0x3A, 255), new Color32(0x66, 0x58, 0x49, 255)
         }),
-        new Spec("Ground_Road", "greystone", 0.55f, 0.35f, 4f, new[]
+        new Spec("Ground_Road", "greystone", 0.62f, 0.35f, 4f, new[]
         {
             new Color32(0x1C, 0x1F, 0x22, 255), new Color32(0x23, 0x26, 0x29, 255),
             new Color32(0x2B, 0x2F, 0x33, 255), new Color32(0x36, 0x3B, 0x40, 255)
@@ -93,6 +100,16 @@ public static class PixelGroundTextures
     };
 
     // --- Public Methods ---
+
+    /// <summary>지면 텍스처만 다시 만듭니다. 지형은 다시 굽지 않습니다.</summary>
+    [MenuItem("CarDrive/World/지면 텍스처 다시 만들기")]
+    public static void RebuildTextures()
+    {
+        TerrainLayer[] layers = CreateOrLoad(true);
+        AssetDatabase.SaveAssets();
+
+        Debug.Log("PixelGroundTextures: 레이어 " + layers.Length + "개를 다시 만들었습니다.");
+    }
 
     /// <summary>
     /// 지면 레이어 세 가지(풀·흙·도로)를 만들어 돌려줍니다.

@@ -73,6 +73,19 @@ public class SkyController : MonoBehaviour
     [Tooltip("달빛의 세기. 0이면 밤에 조명이 꺼져 헤드라이트 밖이 완전히 검어집니다.")]
     public float moonIntensity = 0.12f;
 
+    /// <summary>안개 색을 시간에 맞춰 조절할지 여부입니다.</summary>
+    [Header("안개 색")]
+    [Tooltip("체크하면 안개 색이 지평선 색을 따라갑니다. 밀도는 WeatherRig가 담당합니다.")]
+    public bool driveFogColor = true;
+
+    /// <summary>한낮의 안개 색입니다.</summary>
+    [Tooltip("한낮의 안개 색")]
+    public Color dayFogColor = new Color(0.62f, 0.66f, 0.72f);
+
+    /// <summary>한밤의 안개 색입니다. 밤하늘보다 밝으면 안개가 떠 보입니다.</summary>
+    [Tooltip("한밤의 안개 색. 밤하늘보다 밝게 두면 어둠 속에 회색 안개가 떠 보입니다.")]
+    public Color nightFogColor = new Color(0.045f, 0.055f, 0.085f);
+
     // --- Private Member Variables ---
 
     /// <summary>지금 조작 중인 하늘 머티리얼입니다.</summary>
@@ -106,6 +119,7 @@ public class SkyController : MonoBehaviour
         ApplySky(daylight);
         ApplySun(daylight);
         ApplyAmbient(daylight);
+        ApplyFogColor(daylight);
     }
 
     // --- Private Methods ---
@@ -166,6 +180,20 @@ public class SkyController : MonoBehaviour
         float max = TimeSystem.Instance != null ? TimeSystem.Instance.sunMaxIntensity : 1f;
         sun.intensity = Mathf.Max(max * daylight, moonIntensity);
         sun.enabled = true;
+    }
+
+    /// <summary>
+    /// 안개 색을 지평선 색에 맞춥니다. 밀도는 WeatherRig가 정합니다.
+    ///
+    /// 안개는 먼 곳이 하늘에 녹아드는 현상이라 지평선과 같은 색이어야 합니다.
+    /// 고정 회색으로 두면 밤에 안개만 밝게 떠서 어둠이 깨집니다.
+    /// </summary>
+    /// <param name="daylight">0이면 한밤, 1이면 한낮</param>
+    private void ApplyFogColor(float daylight)
+    {
+        if (!driveFogColor) return;
+
+        RenderSettings.fogColor = Color.Lerp(nightFogColor, dayFogColor, daylight);
     }
 
     /// <summary>
