@@ -18,7 +18,7 @@ CarDrive는 플레이어가 차량 운전석에 앉아 1인칭 시점으로 무�
 
 ## 주요 기능 / 시스템
 
-### 차량 시뮬레이션 (`Assets/Script/Car/`)
+### 차량 시뮬레이션 (`Assets/_Project/02.Scripts/Gameplay/Vehicle/`)
 - **컴포넌트 분리 구조**: `CarController`(조정자) + `CarInput`(입력) + `Powertrain`(동력계) + `CarVisuals`(휠 메시) + `CarCollisionHandler`(충돌) 로 역할이 나뉜 구조.
 - **CarData (ScriptableObject)**: 모터 토크, 브레이크 토크, 토크 곡선(AnimationCurve), 아이들/최대 RPM, 변속 임계 RPM, 기어비 리스트, 최대 연료·연료 소모율, 최대 조향각·조향 보조값을 에셋으로 관리.
 - **Powertrain**: 휠 RPM 기반 엔진 RPM 계산, 자동 변속(업/다운 시프트), 후진/중립 기어 처리, RPM·스로틀 비례 연료 소모. 연료가 0이 되면 시동이 꺼집니다.
@@ -30,12 +30,12 @@ CarDrive는 플레이어가 차량 운전석에 앉아 1인칭 시점으로 무�
 - 도로 프리팹 리스트에서 무작위 조각을 뽑아 `NextSpawnPoint` 앵커에 이어 붙이는 방식.
 - 플레이어가 도로 조각의 트리거에 진입하면 다음 조각을 생성하고, 활성 도로 수가 상한을 넘으면 가장 오래된 조각을 파괴(성능 관리).
 
-### 적 / 귀신 (`Assets/Script/Enemy/`)
+### 적 / 귀신 (`Assets/_Project/02.Scripts/Gameplay/Enemy/`)
 - **AttachedGhostController**: 차량의 자식 오브젝트로 스폰되어 로컬 좌표 기준으로 차량에 접근하고, 도착 후 주기적으로 차량 체력을 깎습니다. 피격 시 렌더러/라이트 점멸, 히트 파티클, 사망 파티클 처리.
 - **GhostSpawner**: 시동이 켜져 있을 때만 15~30초 랜덤 간격으로 뒤쪽/옆쪽(좌·우 앵커) 귀신을 스폰. 각 타입은 동시에 1마리로 제한.
 - **EnemyController**: Rigidbody 기반으로 `Player` 태그 대상을 추적하는 일반 적. 체력, 피격 점멸, 사망 이펙트 보유.
 
-### 플레이어 (`Assets/Script/Player/`)
+### 플레이어 (`Assets/_Project/02.Scripts/Gameplay/Player/`)
 - **PlayerCameraController**: 마우스 룩(상하 클램프, 선택적 좌우 각도 제한), 커서 잠금.
 - **PlayerAttacker**: 좌클릭으로 앙크를 들고 충전(기본 1초), 충전 완료 후 `SphereCastAll`로 전방 적을 감지해 초당 데미지를 적용. `EnemyController`와 `AttachedGhostController` 양쪽 모두 타격 처리.
 - **PlayerInteractor**: 카메라 전방 레이캐스트로 `BeverageBox` 감지 → E키로 음료 섭취(체력 회복 + 마시기 애니메이션), 대상이 없으면 차량 시동 토글.
@@ -47,11 +47,11 @@ CarDrive는 플레이어가 차량 운전석에 앉아 1인칭 시점으로 무�
 - **DrinkAnimation**, **UIElementShaker**, **Billboard**, **SpriteFlipper**: 음료 마시기 연출, 충격 시 UI 흔들림, 빌보드 스프라이트, 스프라이트 프레임 플립.
 - **CarCameraEffects**: 엔진 가동/시동 시 진동, 조향 강도 반영 진동, 충돌 시 임팩트 셰이크(Perlin 노이즈 기반). **CarCameraFollow**: 차량 추종 카메라.
 
-### 사운드 (`Assets/Script/Sound/`)
+### 사운드 (`Assets/_Project/02.Scripts/Systems/Sound/`)
 - `CarSoundController`: 엔진 시동/루프/정지 클립, RPM에 따른 루프 피치 보간, 충격 강도 기반 충돌 사운드.
 - `EnemySoundController`, `AttachedGhostSoundController`, `PlayerSoundController`, `EnvironmentSoundController`, `AudioUtility`.
 
-### 커스텀 렌더링 (`Assets/Render/`)
+### 커스텀 렌더링 (`Assets/_Project/04.Art/03.Shaders/`)
 - **PixelizeFeature / PixelizePass**: URP `ScriptableRendererFeature`로 화면을 저해상도로 다운샘플해 픽셀 아트 룩을 만듭니다 (URP-HighFidelity-Renderer에 등록됨).
 - **PaletteFeature / PalettePass**: 휘도 양자화 / 팔레트 텍스처 매핑 / 디더링을 지원하는 색상 감축 포스트 이펙트.
 - Shader Graph 셰이더: 스프라이트 라이트/디졸브/노이즈/애니메이션 서브그래프.
@@ -61,25 +61,32 @@ CarDrive는 플레이어가 차량 운전석에 앉아 1인칭 시점으로 무�
 ```
 CarDrive/
 ├─ Assets/
-│  ├─ Script/                  # 게임 로직 (C#)
-│  │  ├─ Car/                  # CarController, Powertrain, CarInput, CarVisuals,
-│  │  │                        # CarData(SO), CarCollisionHandler, CarUIController,
-│  │  │                        # CarCameraEffects, CarCameraFollow
-│  │  ├─ Player/               # PlayerCameraController, PlayerAttacker, PlayerInteractor
-│  │  ├─ Enemy/                # EnemyController, AttachedGhostController, GhostSpawner
-│  │  ├─ Sound/                # 차량/적/플레이어/환경 사운드 컨트롤러, AudioUtility
-│  │  ├─ RoadManager.cs        # 무한 도로 생성·삭제 관리자
-│  │  ├─ RoadSegment.cs        # 도로 조각 트리거 → 다음 도로 생성 요청
-│  │  ├─ BeverageBox.cs / Beverage.cs   # 음료 상자 및 음료 식별 컴포넌트
-│  │  ├─ ObstacleController.cs # 충돌 시 튕겨 나가는 장애물
-│  │  ├─ TextHealthBar.cs      # TMP 텍스트 체력 바
-│  │  └─ AnkhAnimation.cs / DrinkAnimation.cs / UIElementShaker.cs / Billboard.cs / ImageFlipper.cs
-│  ├─ Render/                  # 커스텀 URP 렌더러 피처(Pixelize, Palette) + Shader Graph
-│  ├─ Settings/                # URP 에셋 (Performant / Balanced / HighFidelity) 및 렌더러
-│  ├─ Scenes/SampleScene.unity # 메인 플레이 씬
-│  ├─ Data/                    # Car Data(SO), 프리팹(PlayerCar, Monster, Beer, Terrain, VFX 등), 이미지
-│  ├─ Imports/                 # 외부 에셋 (LowPolyRetroCars, Cartoon FX Remaster, tree_pack, Bottles 등)
-│  └─ TerrainSampleAssets/     # 지형 샘플 에셋
+│  ├─ _Project/                        # 자체 제작물 (외부 에셋과 분리)
+│  │  ├─ 01.Scenes/                    # SampleScene.unity (메인 플레이 씬)
+│  │  ├─ 02.Scripts/                   # 게임 로직 (C#)
+│  │  │  ├─ Common/                    # Billboard, ImageFlipper(SpriteFlipper), AudioUtility
+│  │  │  ├─ Gameplay/
+│  │  │  │  ├─ Vehicle/                # CarController, Powertrain, CarInput, CarVisuals,
+│  │  │  │  │                          # CarData(SO), CarCollisionHandler, CarUIController,
+│  │  │  │  │                          # CarCameraEffects, CarCameraFollow
+│  │  │  │  ├─ Player/                 # PlayerCameraController, PlayerAttacker, PlayerInteractor
+│  │  │  │  ├─ Enemy/                  # EnemyController, AttachedGhostController, GhostSpawner
+│  │  │  │  ├─ Road/                   # RoadManager, RoadSegment, ObstacleController
+│  │  │  │  └─ Item/                   # BeverageBox, Beverage
+│  │  │  ├─ Systems/Sound/             # 차량/적/플레이어/환경 사운드 컨트롤러
+│  │  │  └─ UI/                        # TextHealthBar, AnkhAnimation, DrinkAnimation, UIElementShaker
+│  │  ├─ 03.DataAssets/                # Car Data(SO), New Terrain(TerrainData)
+│  │  ├─ 04.Art/
+│  │  │  ├─ 01.Images/                 # 스프라이트 + RenderTextures(미러) 및 전용 머티리얼
+│  │  │  └─ 03.Shaders/                # Shader Graph, 머티리얼,
+│  │  │                                # 커스텀 URP 렌더러 피처(Pixelize, Palette)
+│  │  ├─ 05.Prefabs/                   # Player, Monster, Prop/Tree, Effects, Items, Map, UI
+│  │  ├─ 07.Settings/                  # URP 에셋 (Performant / Balanced / HighFidelity) 및 렌더러
+│  │  ├─ 09.Docs/                      # TODO.md 등 문서
+│  │  └─ 06.Sound, 08.Behavior, 10.Tests  # 예약된 빈 슬롯 (.gitkeep)
+│  ├─ Imports/                         # 외부 에셋 (LowPolyRetroCars, Cartoon FX Remaster, tree_pack, Bottles 등)
+│  ├─ TerrainSampleAssets/             # 지형 샘플 에셋
+│  └─ TextMesh Pro/, TutorialInfo/     # 패키지 기본 제공 에셋
 ├─ ProjectSettings/            # Unity 프로젝트 설정 (ProductName: CarDrive)
 ├─ Packages/manifest.json      # 패키지 의존성 (URP 14.0.12 등)
 ├─ BUILD/                      # Windows 빌드 산출물 (CarDrive.exe)
@@ -90,7 +97,7 @@ CarDrive/
 
 ### 에디터에서 실행
 1. Unity Hub에서 **Unity 2022.3.62f2** 를 설치합니다.
-2. `CarDrive` 폴더를 프로젝트로 열고 `Assets/Scenes/SampleScene.unity` 씬을 엽니다.
+2. `CarDrive` 폴더를 프로젝트로 열고 `Assets/_Project/01.Scenes/SampleScene.unity` 씬을 엽니다.
 3. Play 버튼을 눌러 실행합니다.
 
 ### 빌드 실행

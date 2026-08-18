@@ -1,0 +1,7 @@
+﻿<Solution>
+  <Project Path="LogiUnityBridge.Editor.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="CFXREditor.csproj" />
+  <Project Path="Assembly-CSharp-Editor.csproj" />
+  <Project Path="CFXRRuntime.csproj" />
+</Solution>
