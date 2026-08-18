@@ -24,6 +24,9 @@ public class PlayerAttacker : MonoBehaviour
     [Tooltip("앙크 공격이 감지할 적 레이어")]
     public LayerMask enemyLayer;
 
+    [Tooltip("조준 광선을 쏠 기준. 비워두면 이 오브젝트가 카메라인지 확인하고, 아니면 Camera.main을 씁니다.")]
+    public Transform aimSource;
+
     [Tooltip("한 번에 판정할 수 있는 최대 콜라이더 수. 버퍼를 미리 잡아 두므로 " +
              "공격 중에도 프레임마다 새로 할당하지 않습니다.")]
     public int maxCollidersPerHit = 16;
@@ -65,7 +68,8 @@ public class PlayerAttacker : MonoBehaviour
     /// </summary>
     void Start()
     {
-        cameraTransform = transform; // 이 스크립트가 카메라에 붙어있다고 가정
+        // "카메라에 붙어 있다"는 가정을 주석이 아니라 코드로 확인합니다.
+        cameraTransform = PlayerAim.Resolve(aimSource, this);
         ankhChargeTimer = ankhChargeTime;
 
         hitBuffer = new RaycastHit[Mathf.Max(1, maxCollidersPerHit)];
