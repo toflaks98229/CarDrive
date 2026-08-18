@@ -18,7 +18,11 @@
 # Unity 직렬화 에셋 (YAML 텍스트)
 *.unity      text
 *.prefab     text
-*.asset      text
+# .asset 은 타입에 따라 YAML 이거나 바이너리입니다.
+# TerrainData 는 ForceText 직렬화에서도 항상 바이너리라, text 로 강제하면
+# git 이 줄바꿈을 변환하며 파일을 깨뜨립니다. (실제로 New Terrain.asset 이 그렇게 손상되었습니다)
+# text=auto 로 두면 git 이 NUL 바이트를 보고 파일마다 알아서 판단합니다.
+*.asset      text=auto
 *.mat        text
 *.anim       text
 *.controller text
