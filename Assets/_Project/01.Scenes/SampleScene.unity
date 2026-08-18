@@ -17,16 +17,16 @@ RenderSettings:
   m_Fog: 1
   m_FogColor: {r: 0.31132078, g: 0.31132078, b: 0.31132078, a: 1}
   m_FogMode: 3
-  m_FogDensity: 0.05
+  m_FogDensity: 0.012
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
   m_AmbientSkyColor: {r: 0.212, g: 0.227, b: 0.259, a: 1}
   m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
   m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
   m_AmbientIntensity: 1
-  m_AmbientMode: 0
+  m_AmbientMode: 1
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
+  m_SkyboxMaterial: {fileID: 2100000, guid: 9a227d1793033aa4486957a1e799772c, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -7108,6 +7108,7 @@ GameObject:
   - component: {fileID: 443595869}
   - component: {fileID: 443595870}
   - component: {fileID: 443595871}
+  - component: {fileID: 443595872}
   m_Layer: 0
   m_Name: _GameSystems
   m_TagString: Untagged
@@ -7323,6 +7324,30 @@ MonoBehaviour:
   onLoaded:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &443595872
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 443595863}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e778784b6d8d31649be73db7e35d70be, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SkyController
+  skyMaterial: {fileID: 2100000, guid: 9a227d1793033aa4486957a1e799772c, type: 2}
+  sun: {fileID: 410087040}
+  cloudsHideStars: 1
+  driveAmbient: 1
+  dayAmbientSky: {r: 0.42, g: 0.47, b: 0.55, a: 1}
+  nightAmbientSky: {r: 0.055, g: 0.065, b: 0.095, a: 1}
+  groundAmbientScale: 0.35
+  weatherDarkFloor: 0.55
+  dayLightColor: {r: 1, g: 0.96, b: 0.87, a: 1}
+  duskLightColor: {r: 1, g: 0.66, b: 0.38, a: 1}
+  moonLightColor: {r: 0.55, g: 0.66, b: 0.95, a: 1}
+  moonIntensity: 0.12
 --- !u!4 &446511180 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4866138398215067577, guid: 2be49b372c828a54980dd780d9a734dc,
@@ -15901,7 +15926,9 @@ MonoBehaviour:
   controlVisibility: 1
   visibilityCamera: {fileID: 0}
   minVisibilityFactor: 0.35
-  headlights: []
+  headlights:
+  - {fileID: 3020598419645708139}
+  - {fileID: 3020598419645708138}
 --- !u!4 &1401148558
 Transform:
   m_ObjectHideFlags: 0
@@ -28994,6 +29021,18 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 0}
   m_SourcePrefab: {fileID: 100100000, guid: 2be49b372c828a54980dd780d9a734dc, type: 3}
+--- !u!108 &3020598419645708138 stripped
+Light:
+  m_CorrespondingSourceObject: {fileID: 8248412281044380184, guid: 2be49b372c828a54980dd780d9a734dc,
+    type: 3}
+  m_PrefabInstance: {fileID: 3020598419645708137}
+  m_PrefabAsset: {fileID: 0}
+--- !u!108 &3020598419645708139 stripped
+Light:
+  m_CorrespondingSourceObject: {fileID: 1350759382186503967, guid: 2be49b372c828a54980dd780d9a734dc,
+    type: 3}
+  m_PrefabInstance: {fileID: 3020598419645708137}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &3020598419645708140 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5568486801845567823, guid: 2be49b372c828a54980dd780d9a734dc,
