@@ -7348,6 +7348,9 @@ MonoBehaviour:
   duskLightColor: {r: 1, g: 0.66, b: 0.38, a: 1}
   moonLightColor: {r: 0.55, g: 0.66, b: 0.95, a: 1}
   moonIntensity: 0.12
+  driveFogColor: 1
+  dayFogColor: {r: 0.62, g: 0.66, b: 0.72, a: 1}
+  nightFogColor: {r: 0.045, g: 0.055, b: 0.085, a: 1}
 --- !u!4 &446511180 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4866138398215067577, guid: 2be49b372c828a54980dd780d9a734dc,
@@ -15311,8 +15314,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 629e183ded4f34043a44089343b9135c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WorldStreamer
-  tilePrefabs:
-  - {fileID: 282248526779110736, guid: 9be11272b76dc974fa82365a648f43b9, type: 3}
+  tilePrefabs: []
   nextPointName: NextSpawnPoint
   fallbackTileSize: 100
   origin: {fileID: 0}
@@ -15920,7 +15922,6 @@ MonoBehaviour:
   maxParticleScale: 7
   controlRenderFog: 1
   maxFogDensity: 0.05
-  fogColor: {r: 0.55, g: 0.57, b: 0.6, a: 1}
   controlAmbient: 0
   minAmbientFactor: 0.35
   controlVisibility: 1

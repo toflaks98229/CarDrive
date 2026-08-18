@@ -150,6 +150,11 @@ public static class SkyAndLightSetup
         string outDir = "Logs/SkyCapture";
         Directory.CreateDirectory(outDir);
 
+        // 이 도구는 머티리얼 프로퍼티를 직접 건드립니다. 그대로 두면 에셋이 수정된 채로 남아
+        // 커밋할 때마다 의미 없는 변경이 따라붙습니다. 끝나면 되돌립니다.
+        float savedDay = sky.GetFloat("_DayFactor");
+        Vector4 savedSun = sky.GetVector("_SunDirection");
+
         GameObject camGo = new GameObject("CaptureCam");
         Camera cam = camGo.AddComponent<Camera>();
         cam.clearFlags = CameraClearFlags.Skybox;
@@ -204,6 +209,10 @@ public static class SkyAndLightSetup
         rt.Release();
         Object.DestroyImmediate(rt);
 
+        sky.SetFloat("_DayFactor", savedDay);
+        sky.SetVector("_SunDirection", savedSun);
+        AssetDatabase.SaveAssets();
+
         Debug.Log("CAPTURE: 완료 -> " + outDir);
     }
 
@@ -227,6 +236,10 @@ public static class SkyAndLightSetup
 
         string outDir = "Logs/LightDiag";
         Directory.CreateDirectory(outDir);
+
+        // 머티리얼을 건드린 뒤 되돌립니다. (Capture 와 같은 이유)
+        float savedDay = sky != null ? sky.GetFloat("_DayFactor") : 0f;
+        Vector4 savedSun = sky != null ? sky.GetVector("_SunDirection") : Vector4.zero;
 
         // 한낮으로 고정합니다.
         if (sky != null)
@@ -311,6 +324,52 @@ public static class SkyAndLightSetup
         Object.DestroyImmediate(shot);
         rt.Release();
         Object.DestroyImmediate(rt);
+
+        if (sky != null)
+        {
+            sky.SetFloat("_DayFactor", savedDay);
+            sky.SetVector("_SunDirection", savedSun);
+            AssetDatabase.SaveAssets();
+        }
+    }
+
+    /// <summary>
+    /// 빌드에 끌려 들어가던 구 타일 프리팹 참조를 끊습니다.
+    ///
+    /// 월드는 이제 미리 구운 터레인(bakedRoot)을 쓰므로 WorldStreamer 의 tilePrefabs 는
+    /// 실행 중에 쓰이지 않습니다. 그런데 참조가 남아 있으면 그 프리팹과 프리팹이 물고 있는
+    /// TerrainData 가 빌드에 포함됩니다. 그 TerrainData 가 손상되어 빌드가 실패했습니다.
+    /// <c>Unity.exe -batchmode -quit -executeMethod SkyAndLightSetup.DropLegacyTilesFromCommandLine</c>
+    /// </summary>
+    public static void DropLegacyTilesFromCommandLine()
+    {
+        UnityEngine.SceneManagement.Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+
+        WorldStreamer streamer = Object.FindAnyObjectByType<WorldStreamer>();
+        if (streamer == null)
+        {
+            Debug.LogError("DROP: WorldStreamer 를 찾지 못했습니다.");
+            EditorApplication.Exit(1);
+            return;
+        }
+
+        if (streamer.bakedRoot == null)
+        {
+            Debug.LogError("DROP: bakedRoot 가 비어 있습니다. 구운 월드가 없으면 tilePrefabs 를 지우면 안 됩니다.");
+            EditorApplication.Exit(1);
+            return;
+        }
+
+        int before = streamer.tilePrefabs != null ? streamer.tilePrefabs.Count : 0;
+
+        Undo.RecordObject(streamer, "구 타일 참조 제거");
+        if (streamer.tilePrefabs != null) streamer.tilePrefabs.Clear();
+        EditorUtility.SetDirty(streamer);
+
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene);
+
+        Debug.Log("DROP: tilePrefabs 에서 " + before + "개를 비웠습니다. (bakedRoot 사용 중)");
     }
 
     // --- Private Methods ---
@@ -482,7 +541,7 @@ public static class SkyAndLightSetup
     {
         List<Light> result = new List<Light>();
 
-        Vehicle[] vehicles = Object.FindObjectsByType<Vehicle>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        Vehicle[] vehicles = Object.FindObjectsByType<Vehicle>(FindObjectsInactive.Include);
         for (int v = 0; v < vehicles.Length; v++)
         {
             Light[] lights = vehicles[v].GetComponentsInChildren<Light>(true);
