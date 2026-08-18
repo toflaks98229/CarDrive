@@ -210,17 +210,23 @@ public class GhostSpawner : MonoBehaviour
     {
         Debug.Log(prefab.name + " 스폰 시도...");
 
-        // 1. 지정된 앵커의 자식으로 귀신을 생성(Instantiate)합니다.
-        // 부모를 'parentAnchor'로 설정합니다.
-        GameObject ghostObj = Instantiate(prefab, spawnWorldPosition, transform.rotation, parentAnchor);
+        // 1. 지정된 앵커의 자식으로 귀신을 꺼냅니다.
+        //    풀에서 재사용하므로 Instantiate 대신 Get을 씁니다.
+        GameObject ghostObj = PrefabPool.Get(prefab, spawnWorldPosition, transform.rotation, parentAnchor);
+        if (ghostObj == null) return;
 
         // 2. 귀신 컨트롤러 스크립트를 가져와서 초기화합니다.
         AttachedGhostController ghostController = ghostObj.GetComponent<AttachedGhostController>();
         if (ghostController != null)
         {
+            // 쓰러질 때 알려 달라고 걸어 둡니다. 이것이 없으면 귀신이 스스로 파괴되고,
+            // 자리도 비워지지 않아 다음 귀신이 영영 스폰되지 않습니다.
+            ghostController.onDespawned = HandleGhostDespawned;
+
+            // Initialize가 진행 상태까지 되돌리므로, 재사용된 귀신도 새것처럼 시작합니다.
             ghostController.Initialize(carHealth, targetLocalOffset);
 
-            // 3. [수정] 관리 목록에 추가합니다. (부모 설정 로직 제거)
+            // 3. 관리 목록에 추가합니다.
             if (isRearGhost)
             {
                 currentRearGhost = ghostController;
@@ -233,8 +239,29 @@ public class GhostSpawner : MonoBehaviour
         else
         {
             Debug.LogError(prefab.name + " 프리팹에 AttachedGhostController 스크립트가 없습니다!", prefab);
-            Destroy(ghostObj); // 잘못된 프리팹이므로 제거
+            PrefabPool.Release(ghostObj); // 잘못된 프리팹이므로 되돌려 놓습니다.
         }
+    }
+
+    /// <summary>
+    /// 귀신이 쓰러졌을 때 자리를 비우고 풀로 돌려보냅니다.
+    ///
+    /// 예전에는 귀신이 스스로 Destroy되고, 스포너는 참조가 null이 되는 것으로
+    /// 빈자리를 알아챘습니다. 이제는 파괴되지 않으므로 <b>여기서 명시적으로 비워야</b>
+    /// 다음 귀신이 스폰됩니다.
+    /// </summary>
+    /// <param name="ghost">쓰러진 귀신</param>
+    private void HandleGhostDespawned(AttachedGhostController ghost)
+    {
+        if (ghost == null) return;
+
+        if (currentRearGhost == ghost) currentRearGhost = null;
+        if (currentSideGhost == ghost) currentSideGhost = null;
+
+        // 다음에 꺼내 쓸 때 다시 걸어 주므로 지금은 떼어 둡니다.
+        ghost.onDespawned = null;
+
+        PrefabPool.Release(ghost.gameObject);
     }
 }
 
