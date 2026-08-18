@@ -22,50 +22,27 @@ public class PlayerInteractor : MonoBehaviour
     [Tooltip("조준 광선을 쏠 기준. 비워두면 이 오브젝트가 카메라인지 확인하고, 아니면 Camera.main을 씁니다.")]
     public Transform aimSource;
 
-    [Tooltip("음료 마시기 애니메이션을 재생할 UI 컨트롤러")]
-    public DrinkAnimation drinkAnimator; // (DrinkAnimation 스크립트가 필요합니다)
-
     [Tooltip("상호작용 사운드를 재생할 컨트롤러. 비워두면 같은 오브젝트에서 찾습니다.")]
     public PlayerSoundController soundController;
 
-    [Header("상호작용 효과")]
-    [Tooltip("음료 마실 때 회복할 체력량")]
-    public float healAmount = 10f;
-
-    [Tooltip("음료로 회복할 플레이어 체력. 비워두면 씬에서 PlayerHealth를 찾습니다. " +
-             "차량 내구도는 VehicleHealth라 타입이 달라 여기에 들어올 수 없습니다. " +
-             "(예전에는 이 자리가 비면 차량 체력바로 대신해서, 음료를 마시면 차가 수리되었습니다)")]
-    public PlayerHealth playerHealth;
-
-    [Header("니즈 연동")]
-    [Tooltip("니즈를 관리하는 시스템. 비워두면 씬에서 자동으로 찾습니다.")]
-    public NeedsSystem needsSystem;
-
-    [Tooltip("음료를 마셨을 때 해소되는 갈증")]
-    public float beverageThirstRelief = 0.5f;
-
-    [Tooltip("음료를 마셨을 때 차오르는 배뇨")]
-    public float beverageUrineGain = 0.25f;
-
     [Header("문구 (다국어 대응)")]
-    [Tooltip("{0}에는 키 이름이 들어갑니다.")]
-    public string beverageFormat = "{0}: 음료 마시기";
-
     [Tooltip("{0}에는 키 이름, {1}에는 대상의 promptLabel이 들어갑니다.")]
     public string satisfierFormat = "{0}: {1}";
 
+    [Header("연동")]
+    [Tooltip("마시는 중에는 상호작용을 막습니다. 비워두면 같은 오브젝트와 씬에서 찾습니다.")]
+    public BeverageConsumer beverageConsumer;
+
 
     // --- Private Member Variables ---
-    private BeverageBox currentBeverageBox;   // 음료 상자는 회복·애니메이션이 얽혀 있어 따로 다룹니다.
-    private IInteractable currentInteractable; // 그 밖의 모든 상호작용 대상 (문·운전대·침대 등)
+
+    /// <summary>지금 조준점에 걸린 상호작용 대상입니다. (문·운전대·음료·침대 등)</summary>
+    private IInteractable currentInteractable;
 
     /// <summary>조준 광선을 쏠 기준 Transform입니다. 보통 메인 카메라입니다.</summary>
     private Transform cameraTransform;
 
     // --- Public Properties ---
-
-    /// <summary>지금 조준점에 걸린 음료 상자입니다. (없으면 null)</summary>
-    public BeverageBox CurrentBeverageBox { get { return currentBeverageBox; } }
 
     /// <summary>지금 조준점에 걸린 상호작용 대상입니다. (없으면 null)</summary>
     public IInteractable CurrentInteractable { get { return currentInteractable; } }
@@ -73,12 +50,11 @@ public class PlayerInteractor : MonoBehaviour
     /// <summary>조준점에 무언가 상호작용 가능한 것이 걸려 있는지 여부입니다.</summary>
     public bool HasTarget
     {
-        get
-        {
-            if (currentBeverageBox != null) return true;
-            return currentInteractable != null && currentInteractable.CanInteract();
-        }
+        get { return currentInteractable != null && currentInteractable.CanInteract(); }
     }
+
+    /// <summary>마시는 중이라 상호작용을 받지 않는 상태인지 여부입니다.</summary>
+    public bool IsBlocked { get { return beverageConsumer != null && beverageConsumer.IsBusy; } }
 
     /// <summary>
     /// 지금 상호작용 키로 할 수 있는 일을 문장으로 돌려줍니다. 없으면 빈 문자열입니다.
@@ -86,7 +62,8 @@ public class PlayerInteractor : MonoBehaviour
     /// </summary>
     public string GetInteractionPrompt()
     {
-        if (currentBeverageBox != null) return string.Format(beverageFormat, interactionKey);
+        // 마시는 중에는 아무 안내도 띄우지 않습니다. 눌러도 받지 않기 때문입니다.
+        if (IsBlocked) return "";
 
         if (currentInteractable != null && currentInteractable.CanInteract())
         {
@@ -109,32 +86,9 @@ public class PlayerInteractor : MonoBehaviour
         // 사운드는 있으면 쓰고 없으면 조용히 넘어갑니다.
         if (soundController == null) soundController = GetComponent<PlayerSoundController>();
 
-        // --- 참조 확인 ---
-        // 이 컴포넌트는 차량 프리팹 안에 있고 플레이어 체력은 씬에 있어
-        // 인스펙터로 직접 연결할 수 없습니다. 그래서 실행 중에 찾습니다.
-        // PlayerHealth는 플레이어 전용 타입이라 차량 내구도가 잡힐 일이 없습니다.
-        if (playerHealth == null)
-        {
-            playerHealth = FindAnyObjectByType<PlayerHealth>();
-        }
-        if (playerHealth == null)
-        {
-            Debug.LogWarning("PlayerInteractor: PlayerHealth를 찾지 못해 음료로 회복할 수 없습니다.", this);
-        }
-
-        if (drinkAnimator == null)
-        {
-            Debug.LogWarning("PlayerInteractor: DrinkAnimator가 할당되지 않았습니다. 음료 마시기 애니메이션이 작동하지 않습니다.");
-        }
-
-        if (needsSystem == null)
-        {
-            needsSystem = FindAnyObjectByType<NeedsSystem>();
-        }
-        if (needsSystem == null)
-        {
-            Debug.LogWarning("PlayerInteractor: NeedsSystem을 찾을 수 없습니다. 니즈 해소가 작동하지 않습니다.");
-        }
+        // 마시는 중에는 상호작용을 막아야 하므로 그 상태를 알려 줄 컴포넌트를 찾아 둡니다.
+        if (beverageConsumer == null) beverageConsumer = GetComponent<BeverageConsumer>();
+        if (beverageConsumer == null) beverageConsumer = FindAnyObjectByType<BeverageConsumer>();
     }
 
     /// <summary>
@@ -170,17 +124,13 @@ public class PlayerInteractor : MonoBehaviour
 
         if (!didHit)
         {
-            currentBeverageBox = null;
             currentInteractable = null;
             return;
         }
 
         // 콜라이더가 자식에 있을 수 있으므로 부모까지 올라가며 찾습니다.
-        // 차량 안에 실린 음료 상자는 그 차에 타고 있을 때만 잡힙니다.
-        // (레이캐스트가 Interactable 레이어만 보기 때문에 차체를 그대로 통과합니다)
-        BeverageBox box = hit.collider.GetComponentInParent<BeverageBox>();
-        currentBeverageBox = (box != null && box.IsReachable()) ? box : null;
-
+        // 음료와 음료 상자도 IInteractable이라 여기서 함께 잡힙니다.
+        // (차 안에 있는 것은 각자 CanInteract에서 탑승 여부를 확인합니다)
         currentInteractable = hit.collider.GetComponentInParent<IInteractable>();
     }
 
@@ -191,44 +141,20 @@ public class PlayerInteractor : MonoBehaviour
     private void HandleInteractionInput()
     {
         // 배뇨 해소(P)는 UrineRelief가 따로 처리합니다.
-        if (Input.GetKeyDown(interactionKey))
+        if (!Input.GetKeyDown(interactionKey)) return;
+
+        // 마시고 던지기가 끝날 때까지는 받지 않습니다.
+        // 그러지 않으면 E를 연타해 상자를 순식간에 비울 수 있습니다.
+        if (IsBlocked) return;
+
+        // 문 = 탑승, 운전대 = 시동, 음료·상자 = 마시기, 침대·화장실 = 니즈 해소.
+        // 대상이 무엇인지 여기서 구분하지 않습니다.
+        if (currentInteractable != null && currentInteractable.CanInteract())
         {
-            // 1. 음료 상자 상호작용
-            if (currentBeverageBox != null)
-            {
-                // 상자가 비어 있으면 아무 효과도 없어야 합니다.
-                // (예전에는 꺼내지 못해도 회복과 갈증 해소가 그대로 적용되었습니다)
-                if (!currentBeverageBox.TakeBeverage())
-                {
-                    if (soundController != null) soundController.PlayInteractionFailSound();
-                    return;
-                }
-
-                if (drinkAnimator != null)
-                {
-                    drinkAnimator.PlayDrinkAnimation();
-                }
-
-                if (soundController != null) soundController.PlayDrinkSound();
-
-                // 음료는 플레이어를 회복시킵니다. 차량 내구도는 손대지 않습니다.
-                if (playerHealth != null) playerHealth.Heal(healAmount);
-
-                // 마시면 갈증이 풀리는 대신 배뇨가 차오릅니다.
-                if (needsSystem != null)
-                {
-                    needsSystem.Satisfy(NeedType.Thirst, beverageThirstRelief);
-                    needsSystem.Add(NeedType.Urine, beverageUrineGain);
-                }
-            }
-            // 2. 그 밖의 상호작용 대상 (문 = 탑승, 운전대 = 시동, 침대·화장실·샤워 등)
-            else if (currentInteractable != null && currentInteractable.CanInteract())
-            {
-                currentInteractable.Interact();
-            }
-
-            // 조준점에 아무것도 걸리지 않았다면 아무 일도 일어나지 않습니다.
-            // (예전에는 여기서 시동이 걸렸지만, 이제 운전대를 봐야만 걸립니다)
+            currentInteractable.Interact();
+            return;
         }
+
+        // 조준점에 아무것도 걸리지 않았다면 아무 일도 일어나지 않습니다.
     }
 }
