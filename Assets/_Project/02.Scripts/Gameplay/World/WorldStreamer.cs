@@ -83,6 +83,19 @@ public class WorldStreamer : MonoBehaviour
     [Tooltip("배치 무작위 시드. 같은 값이면 항상 같은 세계가 깔립니다.")]
     public int layoutSeed = 20260817;
 
+    /// <summary>
+    /// 에디터 도구(WorldTerrainBaker)로 미리 구운 타일들의 부모입니다.
+    ///
+    /// 지정하면 타일을 <b>새로 만들지 않고</b> 이 아래에 이미 있는 것을 그대로 씁니다.
+    /// 터레인은 프리팹을 복제해서 쓸 수 없습니다. 복제본이 모두 같은 TerrainData를
+    /// 가리켜 지형이 그대로 반복되고, 회전도 되지 않아 길 방향을 맞출 수 없기 때문입니다.
+    /// 그래서 터레인 월드는 미리 구워 두고 여기서는 켜고 끄기만 합니다.
+    /// </summary>
+    [Header("미리 구운 월드")]
+    [Tooltip("에디터 도구로 미리 구운 타일들의 부모. 지정하면 타일을 새로 만들지 않고 " +
+             "이 아래에 있는 것을 그대로 씁니다. (CarDrive > World > 터레인 월드 굽기)")]
+    public Transform bakedRoot;
+
     /// <summary>거리 판정의 기준이 될 대상입니다. 비워두면 메인 카메라를 씁니다.</summary>
     [Header("스트리밍")]
     [Tooltip("따라다닐 대상. 비워두면 메인 카메라를 씁니다.")]
@@ -131,9 +144,11 @@ public class WorldStreamer : MonoBehaviour
     /// </summary>
     void Start()
     {
-        if (tilePrefabs == null || tilePrefabs.Count == 0)
+        // 미리 구운 월드를 쓸 때는 타일을 만들지 않으므로 프리팹이 필요 없습니다.
+        if (bakedRoot == null && (tilePrefabs == null || tilePrefabs.Count == 0))
         {
-            Debug.LogError("WorldStreamer: 타일 프리팹이 없어 월드를 깔 수 없습니다.", this);
+            Debug.LogError("WorldStreamer: 타일 프리팹이 없어 월드를 깔 수 없습니다. " +
+                           "미리 구운 월드를 쓰려면 bakedRoot를 연결하세요.", this);
             enabled = false;
             return;
         }
@@ -207,24 +222,72 @@ public class WorldStreamer : MonoBehaviour
     {
         Vector3 center = origin != null ? origin.position : transform.position;
 
-        tileRoot = new GameObject("WorldTiles").transform;
-        tileRoot.SetParent(transform, false);
-        tileRoot.position = Vector3.zero;
-
         // 시드를 고정해 매번 같은 세계가 나오게 합니다.
         Random.State savedState = Random.state;
         Random.InitState(layoutSeed);
 
         CreatePlace(villageName, LocationKind.Village, center, villageRadius);
 
-        for (int r = 0; r < routes.Count; r++)
+        if (bakedRoot != null)
         {
-            BuildRoute(center, routes[r]);
+            // 미리 구운 터레인을 그대로 씁니다. 타일은 만들지 않고 장소만 세웁니다.
+            AdoptBakedTiles();
+
+            for (int r = 0; r < routes.Count; r++)
+            {
+                CreateRouteEndPlace(center, routes[r]);
+            }
+        }
+        else
+        {
+            tileRoot = new GameObject("WorldTiles").transform;
+            tileRoot.SetParent(transform, false);
+            tileRoot.position = Vector3.zero;
+
+            for (int r = 0; r < routes.Count; r++)
+            {
+                BuildRoute(center, routes[r]);
+            }
         }
 
         Random.state = savedState;
 
         Debug.Log("WorldStreamer: 타일 " + tiles.Count + "개, 장소 " + WorldLocation.All.Count + "곳을 깔았습니다.");
+    }
+
+    /// <summary>
+    /// 미리 구워 둔 타일들을 스트리밍 목록에 담습니다. 무엇도 새로 만들지 않습니다.
+    /// </summary>
+    private void AdoptBakedTiles()
+    {
+        tileRoot = bakedRoot;
+
+        for (int i = 0; i < bakedRoot.childCount; i++)
+        {
+            Transform child = bakedRoot.GetChild(i);
+            if (child != null) tiles.Add(child.gameObject);
+        }
+
+        if (tiles.Count == 0)
+        {
+            Debug.LogWarning("WorldStreamer: bakedRoot 아래에 타일이 없습니다. " +
+                             "CarDrive > World > 터레인 월드 굽기 를 먼저 실행하세요.", this);
+        }
+    }
+
+    /// <summary>
+    /// 길 끝의 장소만 만듭니다. 타일은 이미 구워져 있으므로 깔지 않습니다.
+    /// </summary>
+    /// <param name="center">마을 중심 위치</param>
+    /// <param name="route">장소를 만들 길</param>
+    private void CreateRouteEndPlace(Vector3 center, WorldRoute route)
+    {
+        if (string.IsNullOrEmpty(route.endPlaceName)) return;
+
+        Vector3 dir = route.direction.sqrMagnitude > 0.0001f ? route.direction.normalized : Vector3.forward;
+        Vector3 end = center + route.startOffset + dir * (fallbackTileSize * route.tileCount);
+
+        CreatePlace(route.endPlaceName, LocationKind.Site, end - dir * (fallbackTileSize * 0.5f), 45f);
     }
 
     /// <summary>
@@ -310,13 +373,23 @@ public class WorldStreamer : MonoBehaviour
     /// </summary>
     private void ClearWorld()
     {
-        for (int i = 0; i < tiles.Count; i++)
+        // 미리 구운 월드는 에디터에서 만든 씬 오브젝트입니다. 여기서 파괴하면 안 됩니다.
+        // 목록에서 놓기만 하면 AdoptBakedTiles가 다시 담습니다.
+        if (bakedRoot != null)
         {
-            if (tiles[i] != null) DestroyImmediate(tiles[i]);
+            tiles.Clear();
+            tileRoot = null;
         }
-        tiles.Clear();
+        else
+        {
+            for (int i = 0; i < tiles.Count; i++)
+            {
+                if (tiles[i] != null) DestroyImmediate(tiles[i]);
+            }
+            tiles.Clear();
 
-        if (tileRoot != null) DestroyImmediate(tileRoot.gameObject);
+            if (tileRoot != null) DestroyImmediate(tileRoot.gameObject);
+        }
 
         // 장소도 함께 정리합니다.
         WorldLocation[] places = GetComponentsInChildren<WorldLocation>(true);
