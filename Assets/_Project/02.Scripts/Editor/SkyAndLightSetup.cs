@@ -207,6 +207,112 @@ public static class SkyAndLightSetup
         Debug.Log("CAPTURE: 완료 -> " + outDir);
     }
 
+    /// <summary>
+    /// 한낮에 맵이 왜 어두운지 알아보기 위해, 조명 조합을 바꿔 가며 렌더링하고
+    /// 지면의 실제 밝기를 재서 로그로 남깁니다.
+    /// <c>Unity.exe -batchmode -quit -executeMethod SkyAndLightSetup.DiagnoseFromCommandLine</c>
+    /// </summary>
+    public static void DiagnoseFromCommandLine()
+    {
+        EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+
+        Material sky = RenderSettings.skybox;
+        Light sun = RenderSettings.sun;
+        if (sun == null)
+        {
+            SkyController c = Object.FindAnyObjectByType<SkyController>();
+            if (c != null) sun = c.sun;
+        }
+        if (sun == null) { Debug.LogError("DIAG: 태양광을 찾지 못했습니다."); EditorApplication.Exit(1); return; }
+
+        string outDir = "Logs/LightDiag";
+        Directory.CreateDirectory(outDir);
+
+        // 한낮으로 고정합니다.
+        if (sky != null)
+        {
+            sky.SetFloat("_DayFactor", 1f);
+            sky.SetVector("_SunDirection", new Vector4(0.2f, 0.95f, 0.2f, 0f).normalized);
+        }
+        sun.transform.rotation = Quaternion.Euler(60f, 30f, 0f);
+        sun.color = new Color(1f, 0.96f, 0.87f);
+
+        GameObject camGo = new GameObject("DiagCam");
+        Camera cam = camGo.AddComponent<Camera>();
+        cam.clearFlags = CameraClearFlags.Skybox;
+        cam.fieldOfView = 60f;
+        // 북쪽 길을 내려다봅니다. 지면이 화면 대부분을 차지해야 밝기를 잴 수 있습니다.
+        cam.transform.position = new Vector3(6f, 26f, 40f);
+        cam.transform.rotation = Quaternion.Euler(18f, 0f, 0f);
+
+        // 이름, 주변광 배율, 태양 세기
+        // 낮과 밤을 함께 재야 합니다. 낮만 보고 밝기를 올리면 밤이 같이 밝아져
+        // 헤드라이트가 의미를 잃습니다.
+        object[][] configs =
+        {
+            new object[] { "낮_한낮",   1.0f, 1.6f, true  },
+            new object[] { "밤_한밤",   1.0f, 1.6f, false }
+        };
+
+        Color dayAmbient = new Color(0.42f, 0.47f, 0.55f);
+        Color nightAmbient = new Color(0.055f, 0.065f, 0.095f);
+        float moonIntensity = 0.12f;
+        RenderTexture rt = new RenderTexture(480, 270, 24, RenderTextureFormat.ARGB32);
+        Texture2D shot = new Texture2D(480, 270, TextureFormat.RGB24, false);
+
+        for (int i = 0; i < configs.Length; i++)
+        {
+            string name = (string)configs[i][0];
+            float ambScale = (float)configs[i][1];
+            float sunMax = (float)configs[i][2];
+            bool isDay = (bool)configs[i][3];
+
+            Color amb = (isDay ? dayAmbient : nightAmbient) * ambScale;
+
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
+            RenderSettings.ambientSkyColor = amb;
+            RenderSettings.ambientEquatorColor = amb * 0.7f;
+            RenderSettings.ambientGroundColor = amb * 0.35f;
+
+            sun.intensity = isDay ? sunMax : moonIntensity;
+            sun.color = isDay ? new Color(1f, 0.96f, 0.87f) : new Color(0.55f, 0.66f, 0.95f);
+            sun.transform.rotation = isDay ? Quaternion.Euler(60f, 30f, 0f) : Quaternion.Euler(-40f, 30f, 0f);
+
+            if (sky != null) sky.SetFloat("_DayFactor", isDay ? 1f : 0f);
+
+            RenderSettings.fogColor = isDay
+                ? new Color(0.62f, 0.66f, 0.72f)
+                : new Color(0.045f, 0.055f, 0.085f);
+
+            cam.targetTexture = rt;
+            cam.Render();
+
+            RenderTexture prev = RenderTexture.active;
+            RenderTexture.active = rt;
+            shot.ReadPixels(new Rect(0, 0, 480, 270), 0, 0);
+            shot.Apply();
+            RenderTexture.active = prev;
+
+            // 화면 아래쪽 절반만 재면 대부분 지면입니다.
+            Color[] px = shot.GetPixels(0, 0, 480, 135);
+            float lum = 0f;
+            for (int p = 0; p < px.Length; p++)
+            {
+                lum += 0.2126f * px[p].r + 0.7152f * px[p].g + 0.0722f * px[p].b;
+            }
+            lum /= px.Length;
+
+            File.WriteAllBytes(outDir + "/" + name + ".png", shot.EncodeToPNG());
+            Debug.Log("DIAG " + name + ": 지면 평균 밝기 " + (lum * 255f).ToString("F1") + " / 255  (" + (lum * 100f).ToString("F1") + "%)");
+        }
+
+        cam.targetTexture = null;
+        Object.DestroyImmediate(camGo);
+        Object.DestroyImmediate(shot);
+        rt.Release();
+        Object.DestroyImmediate(rt);
+    }
+
     // --- Private Methods ---
 
     /// <summary>
@@ -271,6 +377,17 @@ public static class SkyAndLightSetup
         // 밤이 잠깐 밝게 보입니다.
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
         report.Add("  주변광 모드: Skybox -> Trilight (SkyController가 색을 몰아 줍니다)");
+
+        // 한낮 태양 세기입니다. Linear 컬러 스페이스에서 1.0 은 정오치고 약합니다.
+        // 자동 노출이 없는 파이프라인이라 이 값이 그대로 화면 밝기가 됩니다.
+        TimeSystem time = Object.FindAnyObjectByType<TimeSystem>();
+        if (time != null && time.sunMaxIntensity < 1.5f)
+        {
+            Undo.RecordObject(time, "하늘과 조명 설정");
+            report.Add("  태양 최대 세기: " + time.sunMaxIntensity.ToString("F2") + " -> 1.60");
+            time.sunMaxIntensity = 1.6f;
+            EditorUtility.SetDirty(time);
+        }
     }
 
     /// <summary>

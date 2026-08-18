@@ -86,8 +86,7 @@ public class WeatherRig : MonoBehaviour
     [Tooltip("FogDensity가 1일 때의 안개 밀도")]
     public float maxFogDensity = 0.05f;
 
-    [Tooltip("안개 색")]
-    public Color fogColor = new Color(0.55f, 0.57f, 0.6f);
+    // 안개 색 필드는 없앴습니다. SkyController가 시간대에 맞춰 정합니다.
 
     [Header("어두워짐")]
     [Tooltip("체크하면 Darkness에 맞춰 환경광을 낮춥니다. 흐린 날이 눈에 보이게 됩니다.")]
@@ -424,7 +423,15 @@ public class WeatherRig : MonoBehaviour
         RenderSettings.fog = density > 0.01f;
         RenderSettings.fogMode = FogMode.ExponentialSquared;
         RenderSettings.fogDensity = maxFogDensity * density;
-        RenderSettings.fogColor = fogColor;
+
+        // 안개 '색'은 SkyController가 정합니다.
+        //
+        // 여기서 고정색을 쓰면 밤에도 밝은 회색 안개가 떠서, 밤하늘보다 안개가 밝은
+        // 이상한 그림이 됩니다. 안개는 먼 곳이 하늘에 녹아드는 현상이므로
+        // 지평선 색을 따라가야 합니다.
+        //
+        // 두 컴포넌트 모두 LateUpdate에서 도는데 실행 순서는 보장되지 않습니다.
+        // 그래서 <b>밀도는 날씨가, 색은 하늘이</b> 갖도록 나눴습니다.
     }
 
     /// <summary>
