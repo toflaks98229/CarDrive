@@ -7,29 +7,19 @@
 public static class AudioUtility
 {
     /// <summary>
-    /// 지정된 위치에 임시 AudioSource를 생성하여 클립을 한 번 재생합니다.
-    /// 오브젝트가 파괴된 후에도 사운드가 계속 재생되도록 보장합니다.
+    /// 지정된 위치에서 클립을 한 번 재생합니다.
+    /// 소리를 낸 오브젝트가 곧바로 파괴되어도 끝까지 들립니다.
+    ///
+    /// 예전에는 소리 한 번마다 GameObject를 만들고 클립 길이만큼 뒤에 파괴했습니다.
+    /// 앙크 피격음이 0.25초, 귀신 공격음이 1초 간격으로 이 경로를 타므로
+    /// 전투 내내 할당과 파괴가 이어졌습니다. 이제는 AudioSource를 돌려 씁니다.
     /// </summary>
     /// <param name="clip">재생할 AudioClip</param>
     /// <param name="position">재생할 월드 좌표</param>
     /// <param name="volume">볼륨 (0.0f ~ 1.0f)</param>
     public static void PlayClipAtPoint(AudioClip clip, Vector3 position, float volume = 1.0f)
     {
-        if (clip == null) return;
-
-        // 임시 게임 오브젝트 생성
-        GameObject tempAudioPlayer = new GameObject($"OneShotAudio_{clip.name}");
-        tempAudioPlayer.transform.position = position;
-
-        // AudioSource 컴포넌트 추가 및 설정
-        AudioSource audioSource = tempAudioPlayer.AddComponent<AudioSource>();
-        audioSource.clip = clip;
-        audioSource.volume = volume;
-        audioSource.spatialBlend = 1.0f; // 3D 사운드로 설정
-        audioSource.Play();
-
-        // 클립 재생이 끝나면 임시 오브젝트 파괴
-        Object.Destroy(tempAudioPlayer, clip.length);
+        OneShotAudioPool.Play(clip, position, volume);
     }
 
     /// <summary>

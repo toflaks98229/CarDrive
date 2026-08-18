@@ -59,6 +59,18 @@ public class AttachedGhostController : MonoBehaviour, IDamageable, IHostile
     /// <summary>죽는 연출이 시작되었는지 여부입니다. 죽는 도중 다시 죽지 않도록 막습니다.</summary>
     private bool isDying = false;
 
+    /// <summary>
+    /// 쓰러져 물러날 때 알립니다. 스폰한 쪽(GhostSpawner)이 자리를 비우고 풀로 돌려보냅니다.
+    /// 연결되어 있지 않으면 예전처럼 스스로 파괴됩니다.
+    /// </summary>
+    public System.Action<AttachedGhostController> onDespawned;
+
+    /// <summary>점멸 전 라이트의 원래 상태입니다. 풀로 돌아갈 때 이 값으로 되돌립니다.</summary>
+    private bool lightDefaultEnabled;
+
+    /// <summary>라이트의 원래 상태를 기억해 두었는지 여부입니다.</summary>
+    private bool lightDefaultCached;
+
     // --- IDamageable ---
 
     /// <summary>이미 쓰러졌는지 여부입니다.</summary>
@@ -94,6 +106,31 @@ public class AttachedGhostController : MonoBehaviour, IDamageable, IHostile
         {
             hitEffectParticle.Stop();
         }
+
+        // 풀에서 재사용될 때 되돌릴 기준입니다.
+        // Start는 인스턴스당 한 번만 돌기 때문에 여기서 기억해 두면 계속 유효합니다.
+        if (flickerLight != null)
+        {
+            lightDefaultEnabled = flickerLight.enabled;
+            lightDefaultCached = true;
+        }
+    }
+
+    /// <summary>
+    /// 풀로 돌아갈 때 연출 상태를 정리합니다.
+    ///
+    /// 점멸하는 도중에 죽으면 코루틴이 끊기면서 렌더러가 꺼진 채로 남습니다.
+    /// 파괴되던 시절에는 문제가 아니었지만, 이제는 그 상태로 다시 꺼내 쓰게 되므로
+    /// <b>보이지 않는 귀신</b>이 나타납니다. 그래서 나갈 때 반드시 되돌립니다.
+    /// </summary>
+    void OnDisable()
+    {
+        StopAllCoroutines();
+        isFlickering = false;
+
+        if (visualRenderer != null) visualRenderer.enabled = true;
+        if (flickerLight != null && lightDefaultCached) flickerLight.enabled = lightDefaultEnabled;
+        if (hitEffectParticle != null) hitEffectParticle.Stop();
     }
 
     /// <summary>
@@ -107,6 +144,15 @@ public class AttachedGhostController : MonoBehaviour, IDamageable, IHostile
         this.targetLocalPosition = localTarget;
         this.currentHealth = maxHealth;
         this.damageTimer = damageInterval;
+
+        // 풀에서 다시 꺼내 쓰는 경우 지난번 진행 상태가 그대로 남아 있습니다.
+        // 파괴되지 않으므로 필드가 초기화되지 않는다는 점을 반드시 염두에 두어야 합니다.
+        hasArrived = false;
+        isDying = false;
+        lastDamageSoundTime = -99f;
+
+        // 다른 차량에 붙을 수 있으므로 차체 흔들림 참조도 다시 찾게 합니다.
+        carImpactShake = null;
     }
 
     /// <summary>
@@ -242,8 +288,11 @@ public class AttachedGhostController : MonoBehaviour, IDamageable, IHostile
             Instantiate(deathEffectParticle, transform.position, transform.rotation);
         }
 
-        Debug.Log(gameObject.name + "가 파괴되었습니다.");
-        Destroy(gameObject); // 이 게임 오브젝트 파괴
+        Debug.Log(gameObject.name + "가 쓰러졌습니다.");
+
+        // 스폰한 쪽이 풀로 돌려보냅니다. 연결되어 있지 않으면 예전처럼 파괴합니다.
+        if (onDespawned != null) onDespawned(this);
+        else Destroy(gameObject);
     }
 
     /// <summary>
