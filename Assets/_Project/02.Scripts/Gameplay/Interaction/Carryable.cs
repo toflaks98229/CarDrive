@@ -18,9 +18,20 @@ public class Carryable : MonoBehaviour
     [Tooltip("조준했을 때 안내에 쓸 이름")]
     public string displayName = "물건";
 
-    /// <summary>들고 있는 동안 유지할 회전(도)입니다. 손에 든 각도를 잡을 때 씁니다.</summary>
+    /// <summary>
+    /// 체크하면 들어 올릴 때 <see cref="holdEuler"/> 각도로 맞춥니다.
+    /// 꺼 두면 집어 든 순간의 각도를 그대로 유지합니다. (기본값)
+    /// </summary>
     [Header("들었을 때의 자세")]
-    [Tooltip("들고 있는 동안 유지할 회전(도). 손에 든 각도를 잡을 때 씁니다.")]
+    [Tooltip("체크하면 들어 올릴 때 아래 각도로 맞춥니다. " +
+             "꺼 두면 집어 든 순간의 각도를 그대로 유지합니다.")]
+    public bool alignToHoldPose = false;
+
+    /// <summary>
+    /// 들어 올릴 때 맞출 회전(도)입니다.
+    /// <see cref="alignToHoldPose"/>를 켰을 때만 쓰입니다.
+    /// </summary>
+    [Tooltip("들어 올릴 때 맞출 회전(도). 위 항목을 켰을 때만 쓰입니다.")]
     public Vector3 holdEuler = Vector3.zero;
 
     /// <summary>들고 있는 동안 회전을 고정할지 여부입니다.</summary>
