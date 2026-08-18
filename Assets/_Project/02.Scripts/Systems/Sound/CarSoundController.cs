@@ -52,6 +52,16 @@ public class CarSoundController : MonoBehaviour
     [Tooltip("최대 RPM일 때의 엔진 피치")]
     public float maxPitch = 2.5f;
 
+    /// <summary>스로틀에서 발을 뗐을 때의 엔진 볼륨입니다.</summary>
+    [Tooltip("스로틀에서 발을 뗐을 때의 엔진 볼륨")]
+    [Range(0f, 1f)]
+    public float minVolume = 0.5f;
+
+    /// <summary>스로틀을 끝까지 밟았을 때의 엔진 볼륨입니다.</summary>
+    [Tooltip("스로틀을 끝까지 밟았을 때의 엔진 볼륨")]
+    [Range(0f, 1f)]
+    public float maxVolume = 1.0f;
+
     // --- Private Member Variables ---
 
     /// <summary>RPM과 시동 상태를 읽어 올 차량 컨트롤러입니다. 같은 GameObject에서 가져옵니다.</summary>
@@ -136,7 +146,10 @@ public class CarSoundController : MonoBehaviour
         engineSource.pitch = Mathf.Lerp(minPitch, maxPitch, rpmRatio);
 
         // 볼륨 조절 (스로틀 입력에 따라)
-        float throttleInput = Mathf.Abs(Input.GetAxis("Vertical"));
-        engineSource.volume = Mathf.Lerp(0.5f, 1.0f, throttleInput);
+        // 전역 Input이 아니라 이 차량의 CarController에서 읽습니다. 그래야
+        //  (1) 차가 여러 대여도 각자 자기 스로틀에만 반응하고,
+        //  (2) GameInputGate로 입력이 막히면 CarInput이 0을 내주므로 볼륨도 함께 잦아듭니다.
+        float throttleInput = Mathf.Abs(carController.GetThrottleInput());
+        engineSource.volume = Mathf.Lerp(minVolume, maxVolume, throttleInput);
     }
 }

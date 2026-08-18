@@ -84,6 +84,14 @@ public class CarController : MonoBehaviour
     /// <summary>지금 바퀴에 적용 중인 조향 각도(도)입니다.</summary>
     private float currentSteerAngle;
 
+    /// <summary>
+    /// 이번 물리 프레임에 실제로 적용된 스로틀 값입니다. 시동이 꺼져 있으면 0입니다.
+    ///
+    /// 사운드처럼 스로틀을 참고해야 하는 쪽이 전역 Input을 다시 읽지 않도록 여기서 내보냅니다.
+    /// 입력을 읽는 곳은 CarInput 한 군데여야 합니다.
+    /// </summary>
+    private float currentThrottle;
+
     /// <summary>시동이 걸려 있는지 여부입니다. 연료가 떨어지면 자동으로 꺼집니다.</summary>
     private bool isEngineOn = false;
 
@@ -141,6 +149,9 @@ public class CarController : MonoBehaviour
         float throttleInput = isEngineOn ? input.ThrottleInput : 0f; // 시동 상태에 따라 입력 차단
         bool brakingInput = input.IsBraking;
 
+        // 계기판·사운드가 참고할 수 있도록 실제로 적용한 스로틀을 남겨 둡니다.
+        currentThrottle = throttleInput;
+
         // 2. 동력계 업데이트 및 토크 계산 (from Powertrain)
         float motorTorque = powertrain.CalculateMotorTorque(GetAverageWheelRPM(), throttleInput, currentSpeed, isEngineOn);
         powertrain.UpdateFuel(isEngineOn, throttleInput);
@@ -194,6 +205,7 @@ public class CarController : MonoBehaviour
     #region --- UI 및 외부 데이터 반환 ---
     public float GetCurrentSpeed() => currentSpeed;
     public float GetCurrentRPM() => powertrain.CurrentRPM;
+    public float GetThrottleInput() => currentThrottle;
     public float GetCurrentFuel() => powertrain.CurrentFuel;
     public float GetMaxFuel() => carData != null ? carData.maxFuel : 0;
     public bool IsEngineOn() => isEngineOn;
