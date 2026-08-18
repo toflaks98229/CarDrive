@@ -32,6 +32,32 @@ public static class PixelGroundTextures
     /// <summary>원본이 없을 때 절차적으로 만들 텍스처의 한 변 픽셀 수입니다.</summary>
     private const int FallbackSize = 64;
 
+    /// <summary>
+    /// 최종 텍스처의 한 변 픽셀 수입니다.
+    /// PSX의 텍스처는 대개 64x64였습니다. 텍스처 페이지가 256x256뿐이라
+    /// 그 안에 여러 장을 욱여넣어야 했기 때문입니다.
+    /// </summary>
+    private const int PsxSize = 64;
+
+    /// <summary>
+    /// 채널당 색 단계 수입니다. PSX는 15비트 색(채널당 5비트 = 32단계)이었습니다.
+    /// </summary>
+    private const int PsxLevels = 32;
+
+    /// <summary>
+    /// 4x4 오더드 디더 행렬(베이어)입니다.
+    ///
+    /// 색이 32단계뿐이면 완만한 그라데이션에 굵은 띠가 생깁니다. 그 시절에는 이 행렬로
+    /// 픽셀을 번갈아 흩뿌려 눈속임했고, <b>그 자글자글한 무늬가 PSX 텍스처의 인상</b>입니다.
+    /// </summary>
+    private static readonly int[,] Bayer4 =
+    {
+        {  0,  8,  2, 10 },
+        { 12,  4, 14,  6 },
+        {  3, 11,  1,  9 },
+        { 15,  7, 13,  5 }
+    };
+
     // --- Layer specs ---
 
     /// <summary>
@@ -54,17 +80,21 @@ public static class PixelGroundTextures
         /// <summary>월드에서 한 장이 덮는 크기(m)입니다.</summary>
         public float tileMeters;
 
+        /// <summary>덧씌울 잡티의 세기입니다. 깔끔한 무늬를 그 시절처럼 거칠게 만듭니다.</summary>
+        public float grain;
+
         /// <summary>원본이 없을 때 쓸 대체 팔레트입니다.</summary>
         public Color32[] fallback;
 
         public Spec(string name, string source, float brightness, float saturation,
-                    float tileMeters, Color32[] fallback)
+                    float tileMeters, float grain, Color32[] fallback)
         {
             this.name = name;
             this.source = source;
             this.brightness = brightness;
             this.saturation = saturation;
             this.tileMeters = tileMeters;
+            this.grain = grain;
             this.fallback = fallback;
         }
     }
@@ -82,17 +112,17 @@ public static class PixelGroundTextures
     /// </summary>
     private static readonly Spec[] Sources =
     {
-        new Spec("Ground_Grass", "grass_top", 0.76f, 0.55f, 6f, new[]
+        new Spec("Ground_Grass", "grass_top", 0.76f, 0.55f, 6f, 0.16f, new[]
         {
             new Color32(0x2F, 0x3D, 0x26, 255), new Color32(0x3A, 0x4A, 0x2E, 255),
             new Color32(0x45, 0x57, 0x3A, 255), new Color32(0x50, 0x66, 0x49, 255)
         }),
-        new Spec("Ground_Dirt", "dirt", 0.72f, 0.50f, 6f, new[]
+        new Spec("Ground_Dirt", "dirt", 0.72f, 0.50f, 6f, 0.20f, new[]
         {
             new Color32(0x3D, 0x32, 0x26, 255), new Color32(0x4A, 0x3D, 0x2E, 255),
             new Color32(0x57, 0x49, 0x3A, 255), new Color32(0x66, 0x58, 0x49, 255)
         }),
-        new Spec("Ground_Road", "greystone", 0.62f, 0.35f, 4f, new[]
+        new Spec("Ground_Road", "greystone", 0.62f, 0.35f, 4f, 0.13f, new[]
         {
             new Color32(0x1C, 0x1F, 0x22, 255), new Color32(0x23, 0x26, 0x29, 255),
             new Color32(0x2B, 0x2F, 0x33, 255), new Color32(0x36, 0x3B, 0x40, 255)
@@ -151,6 +181,13 @@ public static class PixelGroundTextures
         if (built != null)
         {
             Grade(built, spec.brightness, spec.saturation);
+
+            // 여기부터가 PSX 처리입니다. 원본의 깔끔한 무늬를 그 시절 규격으로 깎습니다.
+            Texture2D shrunk = Downsample(built, PsxSize);
+            Object.DestroyImmediate(built);
+            built = shrunk;
+
+            ApplyPsxLook(built, spec.grain, spec.name.GetHashCode());
         }
         else
         {
@@ -230,6 +267,90 @@ public static class PixelGroundTextures
             r = Mathf.Clamp01((lum + (r - lum) * saturation) * brightness);
             g = Mathf.Clamp01((lum + (g - lum) * saturation) * brightness);
             b = Mathf.Clamp01((lum + (b - lum) * saturation) * brightness);
+
+            pixels[i] = new Color32((byte)(r * 255f), (byte)(g * 255f), (byte)(b * 255f), 255);
+        }
+
+        tex.SetPixels32(pixels);
+        tex.Apply();
+    }
+
+    /// <summary>
+    /// 텍스처를 정해진 크기로 줄입니다.
+    ///
+    /// 부드럽게 섞지 않고 <b>점 추출</b>로 줄입니다. 평균을 내면 무늬가 뭉개져
+    /// 흐릿해지는데, 그 시절 텍스처는 오히려 알갱이가 또렷했습니다.
+    /// </summary>
+    /// <param name="source">줄일 텍스처</param>
+    /// <param name="size">결과 한 변의 픽셀 수</param>
+    /// <returns>줄여서 만든 새 텍스처</returns>
+    private static Texture2D Downsample(Texture2D source, int size)
+    {
+        Texture2D result = new Texture2D(size, size, TextureFormat.RGBA32, true);
+        Color32[] src = source.GetPixels32();
+        Color32[] dst = new Color32[size * size];
+
+        int sw = source.width;
+        int sh = source.height;
+
+        for (int y = 0; y < size; y++)
+        {
+            int sy = y * sh / size;
+            for (int x = 0; x < size; x++)
+            {
+                int sx = x * sw / size;
+                dst[y * size + x] = src[sy * sw + sx];
+            }
+        }
+
+        result.SetPixels32(dst);
+        result.Apply();
+        return result;
+    }
+
+    /// <summary>
+    /// 그 시절 규격으로 깎습니다. 잡티를 얹고, 오더드 디더를 섞고, 15비트 색으로 줄입니다.
+    ///
+    /// 원본은 색면이 넓고 경계가 깔끔한 카툰 타일입니다. 그대로 두면 아무리 작게 줄여도
+    /// 요즘 그림처럼 보입니다. PSX 텍스처의 인상은 <b>거친 알갱이와 디더 무늬</b>에서 나옵니다.
+    /// </summary>
+    /// <param name="tex">깎을 텍스처</param>
+    /// <param name="grain">덧씌울 잡티의 세기(0~1)</param>
+    /// <param name="seed">난수 씨앗</param>
+    private static void ApplyPsxLook(Texture2D tex, float grain, int seed)
+    {
+        Color32[] pixels = tex.GetPixels32();
+        int w = tex.width;
+
+        float steps = PsxLevels - 1;
+        float step = 1f / steps;
+
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            int x = i % w;
+            int y = i / w;
+
+            float r = pixels[i].r / 255f;
+            float g = pixels[i].g / 255f;
+            float b = pixels[i].b / 255f;
+
+            // 1. 잡티. 색면이 넓은 곳을 거칠게 만듭니다.
+            if (grain > 0f)
+            {
+                float n = (Hash(x, y, seed) - 0.5f) * 2f * grain;
+                r = Mathf.Clamp01(r + n);
+                g = Mathf.Clamp01(g + n);
+                b = Mathf.Clamp01(b + n);
+            }
+
+            // 2. 오더드 디더. 양자화 직전에 격자 무늬만큼 밀어 두면
+            //    단계 사이가 점으로 흩어져 띠가 보이지 않습니다.
+            float dither = ((Bayer4[y & 3, x & 3] + 0.5f) / 16f - 0.5f) * step;
+
+            // 3. 15비트 색으로 줄입니다.
+            r = Mathf.Round(Mathf.Clamp01(r + dither) * steps) / steps;
+            g = Mathf.Round(Mathf.Clamp01(g + dither) * steps) / steps;
+            b = Mathf.Round(Mathf.Clamp01(b + dither) * steps) / steps;
 
             pixels[i] = new Color32((byte)(r * 255f), (byte)(g * 255f), (byte)(b * 255f), 255);
         }
@@ -324,7 +445,8 @@ public static class PixelGroundTextures
         importer.anisoLevel = 4;                     // 비스듬히 보이는 노면이 뭉개지지 않게 합니다.
         importer.sRGBTexture = true;
         importer.alphaSource = TextureImporterAlphaSource.None;
-        importer.textureCompression = TextureImporterCompression.Uncompressed; // 4색 가까운 그림이라 압축하면 밴딩이 생깁니다.
+        importer.textureCompression = TextureImporterCompression.Uncompressed; // 디더 무늬는 압축하면 뭉개집니다.
+        importer.maxTextureSize = 64;   // 그 시절 텍스처 크기를 넘지 않게 못 박아 둡니다.
 
         importer.SaveAndReimport();
     }
