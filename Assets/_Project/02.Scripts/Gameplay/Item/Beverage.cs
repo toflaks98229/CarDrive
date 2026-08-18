@@ -14,10 +14,16 @@ public class Beverage : MonoBehaviour, IInteractable
 {
     // --- Public Member Variables ---
 
-    /// <summary>조준했을 때 표시할 문구입니다.</summary>
+    /// <summary>
+    /// 조준했을 때 표시할 문구입니다.
+    ///
+    /// 상자를 조준하든 병을 조준하든 <b>같은 문구가 나와야 합니다.</b>
+    /// 그래서 문구는 여기 한 곳에만 두고, 상자는 자기가 내줄 병의 것을 그대로 씁니다.
+    /// (BeverageBox.GetInteractionLabel 참고)
+    /// </summary>
     [Header("표시")]
-    [Tooltip("조준했을 때 표시할 문구")]
-    public string promptLabel = "마시기";
+    [Tooltip("조준했을 때 표시할 문구. 상자를 조준했을 때도 이 문구가 나옵니다.")]
+    public string promptLabel = "음료 마시기";
 
     // --- Public Properties ---
 

@@ -22,11 +22,6 @@ public class BeverageBox : MonoBehaviour, IInteractable
              "차량 안의 상자는 그 차에 타고 있을 때만 꺼낼 수 있습니다.")]
     public Vehicle vehicle;
 
-    /// <summary>조준했을 때 표시할 문구입니다.</summary>
-    [Header("표시")]
-    [Tooltip("조준했을 때 표시할 문구")]
-    public string promptLabel = "음료 마시기";
-
     /// <summary>상자에서 이 거리보다 멀어지면 빠져나간 것으로 봅니다.</summary>
     [Header("상자 밖으로 굴러 나간 병")]
     [Tooltip("상자 중심에서 이 거리(m)보다 멀어지면 빠져나간 것으로 보고 목록에서 뺍니다.")]
@@ -95,11 +90,18 @@ public class BeverageBox : MonoBehaviour, IInteractable
         return HasBeverage() && IsReachable();
     }
 
-    /// <summary>화면에 표시할 동작 이름입니다.</summary>
-    /// <returns>인스펙터에서 설정한 안내 문구</returns>
+    /// <summary>
+    /// 화면에 표시할 동작 이름입니다.
+    ///
+    /// 상자는 자기 문구를 따로 갖지 않고 <b>내줄 병의 문구</b>를 그대로 씁니다.
+    /// 병이 상자 안에 빽빽이 들어 있어 조준점이 상자에 걸릴 때도 있고 병에 걸릴 때도 있는데,
+    /// 문구를 양쪽에 따로 두면 겨누는 위치에 따라 안내가 바뀌어 보입니다.
+    /// </summary>
+    /// <returns>다음에 꺼낼 병의 안내 문구. 남은 병이 없으면 빈 문자열입니다.</returns>
     public string GetInteractionLabel()
     {
-        return promptLabel;
+        Beverage next = PeekBeverage();
+        return next != null ? next.GetInteractionLabel() : "";
     }
 
     /// <summary>앞에 있는 음료를 하나 꺼내 마십니다.</summary>
