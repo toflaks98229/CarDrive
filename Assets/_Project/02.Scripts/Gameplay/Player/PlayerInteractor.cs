@@ -176,7 +176,11 @@ public class PlayerInteractor : MonoBehaviour
         }
 
         // 콜라이더가 자식에 있을 수 있으므로 부모까지 올라가며 찾습니다.
-        currentBeverageBox = hit.collider.GetComponentInParent<BeverageBox>();
+        // 차량 안에 실린 음료 상자는 그 차에 타고 있을 때만 잡힙니다.
+        // (레이캐스트가 Interactable 레이어만 보기 때문에 차체를 그대로 통과합니다)
+        BeverageBox box = hit.collider.GetComponentInParent<BeverageBox>();
+        currentBeverageBox = (box != null && box.IsReachable()) ? box : null;
+
         currentInteractable = hit.collider.GetComponentInParent<IInteractable>();
     }
 

@@ -104,6 +104,12 @@ public class PlayerCarrier : MonoBehaviour
     /// <summary>조준·손 위치·던지는 방향의 기준입니다. 보통 메인 카메라입니다.</summary>
     private Transform aimTransform;
 
+    /// <summary>
+    /// 손 기준으로 본 물건의 회전입니다. 집어 든 순간의 각도를 기억해 두었다가
+    /// 들고 있는 동안 그대로 유지합니다. 그래서 <b>들어 올릴 때 물건이 홱 돌아가지 않습니다.</b>
+    /// </summary>
+    private Quaternion heldRotationOffset = Quaternion.identity;
+
     // --- Unity Event Functions ---
 
     /// <summary>
@@ -161,10 +167,10 @@ public class PlayerCarrier : MonoBehaviour
         if (velocity.magnitude > maxFollowSpeed) velocity = velocity.normalized * maxFollowSpeed;
         body.linearVelocity = velocity;
 
-        // 회전: 손 방향으로 맞춥니다.
+        // 회전: 집어 들 때의 자세를 손을 따라 그대로 유지합니다.
         if (Held.lockRotationWhileHeld)
         {
-            Quaternion target = holdPoint.rotation * Quaternion.Euler(Held.holdEuler);
+            Quaternion target = holdPoint.rotation * heldRotationOffset;
             body.MoveRotation(Quaternion.Slerp(body.rotation, target, rotationSpeed * Time.fixedDeltaTime));
             body.angularVelocity = Vector3.zero;
         }
@@ -196,6 +202,11 @@ public class PlayerCarrier : MonoBehaviour
         }
 
         Held = target;
+
+        // 집어 든 순간의 각도를 손 기준으로 기억해 둡니다.
+        // 이렇게 해야 물건이 들리면서 제멋대로 정렬되지 않고, 놓여 있던 자세 그대로 딸려옵니다.
+        heldRotationOffset = ResolveHeldRotation(target);
+
         target.OnPickedUp();
         IgnorePlayerCollision(target, true);
 
@@ -226,6 +237,23 @@ public class PlayerCarrier : MonoBehaviour
     }
 
     // --- Private Methods ---
+
+    /// <summary>
+    /// 들고 있는 동안 유지할 회전을 손 기준으로 계산합니다.
+    /// </summary>
+    /// <param name="target">집어 든 물건</param>
+    /// <returns>
+    /// 기본적으로 집어 든 순간의 각도(손 기준)입니다.
+    /// alignToHoldPose를 켠 물건만 지정된 자세로 맞춥니다.
+    /// </returns>
+    private Quaternion ResolveHeldRotation(Carryable target)
+    {
+        if (target.alignToHoldPose) return Quaternion.Euler(target.holdEuler);
+        if (holdPoint == null) return Quaternion.identity;
+
+        // 손 기준으로 본 현재 각도. 손이 움직여도 이 관계가 유지됩니다.
+        return Quaternion.Inverse(holdPoint.rotation) * target.Body.rotation;
+    }
 
     /// <summary>
     /// 조준점에 걸린 물건을 갱신합니다. 들고 있는 동안에는 새 대상을 찾지 않습니다.
