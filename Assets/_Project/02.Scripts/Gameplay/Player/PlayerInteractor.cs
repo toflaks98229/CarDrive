@@ -19,6 +19,9 @@ public class PlayerInteractor : MonoBehaviour
     [Tooltip("상호작용 레이캐스트가 감지할 레이어")]
     public LayerMask interactionLayer;
 
+    [Tooltip("조준 광선을 쏠 기준. 비워두면 이 오브젝트가 카메라인지 확인하고, 아니면 Camera.main을 씁니다.")]
+    public Transform aimSource;
+
     [Tooltip("음료 마시기 애니메이션을 재생할 UI 컨트롤러")]
     public DrinkAnimation drinkAnimator; // (DrinkAnimation 스크립트가 필요합니다)
 
@@ -99,7 +102,9 @@ public class PlayerInteractor : MonoBehaviour
     /// </summary>
     void Start()
     {
-        cameraTransform = transform; // 이 스크립트가 카메라에 붙어있다고 가정
+        // "카메라에 붙어 있다"는 가정을 주석이 아니라 코드로 확인합니다.
+        // 프리팹을 정리하다 다른 오브젝트로 옮겨가면 예전에는 조용히 엉뚱한 곳을 조준했습니다.
+        cameraTransform = PlayerAim.Resolve(aimSource, this);
 
         // 사운드는 있으면 쓰고 없으면 조용히 넘어갑니다.
         if (soundController == null) soundController = GetComponent<PlayerSoundController>();

@@ -24,6 +24,9 @@ public class PlayerCarrier : MonoBehaviour
     public int carryMouseButton = 0;
 
     [Header("조준")]
+    [Tooltip("조준 광선을 쏠 기준. 비워두면 이 오브젝트가 카메라인지 확인하고, 아니면 Camera.main을 씁니다.")]
+    public Transform aimSource;
+
     [Tooltip("이 거리 안에서 화면 중앙에 걸린 물건만 집을 수 있습니다.")]
     public float pickupDistance = 2.5f;
 
@@ -98,6 +101,9 @@ public class PlayerCarrier : MonoBehaviour
     /// </summary>
     private readonly List<Collider> ignoredColliders = new List<Collider>();
 
+    /// <summary>조준·손 위치·던지는 방향의 기준입니다. 보통 메인 카메라입니다.</summary>
+    private Transform aimTransform;
+
     // --- Unity Event Functions ---
 
     /// <summary>
@@ -105,6 +111,10 @@ public class PlayerCarrier : MonoBehaviour
     /// </summary>
     void Start()
     {
+        // "카메라에 붙어 있다"는 가정을 주석이 아니라 코드로 확인합니다.
+        // 손 위치를 이 기준의 자식으로 만들기 때문에 반드시 먼저 정해야 합니다.
+        aimTransform = PlayerAim.Resolve(aimSource, this);
+
         if (holdPoint == null) CreateHoldPoint();
         if (playerCollider == null) playerCollider = FindAnyObjectByType<CharacterController>();
     }
@@ -208,7 +218,8 @@ public class PlayerCarrier : MonoBehaviour
 
         if (throwForward && throwImpulse > 0f && dropped.Body != null)
         {
-            dropped.Body.AddForce(transform.forward * throwImpulse, ForceMode.VelocityChange);
+            Transform aim = aimTransform != null ? aimTransform : transform;
+            dropped.Body.AddForce(aim.forward * throwImpulse, ForceMode.VelocityChange);
         }
 
         Debug.Log("PlayerCarrier: " + dropped.displayName + "을(를) 내려놓았습니다.");
@@ -226,8 +237,8 @@ public class PlayerCarrier : MonoBehaviour
         // 원근 카메라에서 카메라 정면 = 화면 중앙이므로 이 레이가 곧 조준점입니다.
         RaycastHit hit;
         bool didHit = Physics.Raycast(
-            transform.position,
-            transform.forward,
+            aimTransform.position,
+            aimTransform.forward,
             out hit,
             pickupDistance,
             carryableLayers,
@@ -244,7 +255,7 @@ public class PlayerCarrier : MonoBehaviour
     private void CreateHoldPoint()
     {
         GameObject go = new GameObject("HoldPoint");
-        go.transform.SetParent(transform, false);
+        go.transform.SetParent(aimTransform, false);
         go.transform.localPosition = new Vector3(0f, holdHeightOffset, holdDistance);
         go.transform.localRotation = Quaternion.identity;
         holdPoint = go.transform;

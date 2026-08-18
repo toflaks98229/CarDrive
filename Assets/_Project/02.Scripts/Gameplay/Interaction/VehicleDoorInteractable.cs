@@ -81,10 +81,9 @@ public class VehicleDoorInteractable : MonoBehaviour, IInteractable
         if (modeController.Mode == PlayerMode.Driving && vehicle.IsOccupied)
         {
             // 왜 못 내리는지 알려 줍니다. 예전에는 조용히 실패하고 로그만 남았습니다.
-            if (vehicle.controller != null && vehicle.controller.GetCurrentSpeed() > modeController.maxExitSpeed)
-            {
-                return tooFastLabel;
-            }
+            // 속도 판정은 PlayerModeController가 소유합니다. 여기서 따로 계산하면
+            // 안내 문구와 실제 하차 조건이 서로 어긋날 수 있습니다.
+            if (!modeController.CanExitVehicle()) return tooFastLabel;
             return exitLabel;
         }
 
