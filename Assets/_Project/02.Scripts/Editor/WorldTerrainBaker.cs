@@ -38,9 +38,6 @@ public class WorldTerrainBaker : EditorWindow
     [Tooltip("배치를 읽어 올 WorldStreamer. 마을 반경과 길 구성을 그대로 씁니다.")]
     private WorldStreamer streamer;
 
-    [Tooltip("터레인 레이어(지면 텍스처)를 복사해 올 원본 TerrainData. 비워두면 단색으로 나옵니다.")]
-    private TerrainData layerSource;
-
     // --- Settings : 타일 ---
 
     private int tileSize = 100;
@@ -87,6 +84,15 @@ public class WorldTerrainBaker : EditorWindow
 
     [Tooltip("마을 주변으로 몇 칸까지 타일을 깔지. 마을 반경이 길보다 넓을 때 생기는 빈 곳을 메웁니다.")]
     private int villagePadTiles = 1;
+
+    [Tooltip("노면 가장자리가 흐려지는 폭(m). 높이 평탄화와 달리 짧아야 도로처럼 보입니다.")]
+    private float roadEdgeBlend = 3.5f;
+
+    [Tooltip("노면 바깥으로 흙이 드러나는 갓길 폭(m). 도로가 '깔린 것'처럼 보이게 합니다.")]
+    private float roadShoulderWidth = 9f;
+
+    [Tooltip("체크하면 지면 텍스처를 다시 만듭니다. 팔레트를 고쳤을 때만 켜세요.")]
+    private bool rebuildTextures = false;
 
     private Vector2 scroll;
     private string lastReport = "";
@@ -182,7 +188,68 @@ public class WorldTerrainBaker : EditorWindow
         string northRoad = ProfileLine(map, new Vector3(0f, 0f, 0f), new Vector3(0f, 0f, 800f), "북쪽 길");
         string eastRoad = ProfileLine(map, new Vector3(0f, 0f, 0f), new Vector3(700f, 0f, 0f), "동쪽 길");
 
-        // 3) 지형 — 도로에서 벗어난 곳에 기복이 있는가
+        // 3) 노면 — 도로 위와 도로 밖에서 도로 레이어가 얼마나 칠해졌는가
+        string roadPaint = "노면 도포: 레이어가 3개 미만이라 측정 안 함";
+        Terrain probe;
+        if (map.TryGetValue(new Vector2Int(0, 3), out probe) && probe.terrainData.terrainLayers.Length >= 3)
+        {
+            TerrainData pd = probe.terrainData;
+            int ares = pd.alphamapResolution;
+            float[,,] am = pd.GetAlphamaps(0, 0, ares, ares);
+
+            float onRoad = 0f, offRoad = 0f;
+            int onN = 0, offN = 0;
+            float astep = pd.size.x / ares;
+
+            for (int z = 0; z < ares; z++)
+            {
+                for (int x = 0; x < ares; x++)
+                {
+                    // 이 타일은 x 0..100 이고 도로 중심선은 월드 x = 0 입니다.
+                    float wx = probe.transform.position.x + (x + 0.5f) * astep;
+                    float d = Mathf.Abs(wx - 0f);
+
+                    if (d < 6f) { onRoad += am[z, x, 2]; onN++; }
+                    else if (d > 45f) { offRoad += am[z, x, 2]; offN++; }
+                }
+            }
+
+            float[] layerAvg = new float[pd.terrainLayers.Length];
+            for (int z = 0; z < ares; z++)
+            {
+                for (int x = 0; x < ares; x++)
+                {
+                    for (int l = 0; l < layerAvg.Length; l++) layerAvg[l] += am[z, x, l];
+                }
+            }
+            string avgText = "";
+            for (int l = 0; l < layerAvg.Length; l++)
+            {
+                avgText += (l > 0 ? " / " : "") + "L" + l + " " +
+                           (layerAvg[l] / (ares * ares)).ToString("P0");
+            }
+
+            float maxSteep = 0f, sumSteep = 0f;
+            int steepN = 0;
+            for (int z = 0; z < 64; z++)
+            {
+                for (int x = 0; x < 64; x++)
+                {
+                    float st = pd.GetSteepness(x / 63f, z / 63f);
+                    maxSteep = Mathf.Max(maxSteep, st);
+                    sumSteep += st; steepN++;
+                }
+            }
+            avgText += "  |  경사 평균 " + (sumSteep / steepN).ToString("F1") +
+                       "도, 최대 " + maxSteep.ToString("F1") + "도";
+
+            roadPaint = "노면 도포: 도로 위 " + (onN > 0 ? onRoad / onN : 0f).ToString("P0") +
+                        ", 도로 밖(45m+) " + (offN > 0 ? offRoad / offN : 0f).ToString("P0") +
+                        "  |  층평균 " + avgText +
+                        "  |  alphamapLayers=" + pd.alphamapLayers + " res=" + ares;
+        }
+
+        // 4) 지형 — 도로에서 벗어난 곳에 기복이 있는가
         float lo = float.MaxValue, hi = float.MinValue, heightY = 1f;
         foreach (KeyValuePair<Vector2Int, Terrain> e in map)
         {
@@ -206,6 +273,7 @@ public class WorldTerrainBaker : EditorWindow
             "이음매 최대 오차: " + worstSeam.ToString("F6") + " m",
             northRoad,
             eastRoad,
+            roadPaint,
             "지형 높이 범위: " + (lo * heightY).ToString("F1") + " ~ " + (hi * heightY).ToString("F1") + " m",
             "======================================"
         };
@@ -293,9 +361,6 @@ public class WorldTerrainBaker : EditorWindow
         streamer = (WorldStreamer)EditorGUILayout.ObjectField(
             new GUIContent("WorldStreamer", "배치(마을 반경·길 구성)를 읽어 옵니다."),
             streamer, typeof(WorldStreamer), true);
-        layerSource = (TerrainData)EditorGUILayout.ObjectField(
-            new GUIContent("레이어 원본", "지면 텍스처를 복사해 올 기존 TerrainData"),
-            layerSource, typeof(TerrainData), false);
 
         EditorGUILayout.Space(6f);
         EditorGUILayout.LabelField("타일", EditorStyles.boldLabel);
@@ -320,6 +385,9 @@ public class WorldTerrainBaker : EditorWindow
         roadFalloff = EditorGUILayout.FloatField("갓길 폭(m)", roadFalloff);
         roadUndulation = EditorGUILayout.Slider("도로 기복", roadUndulation, 0f, 0.15f);
         villagePadTiles = EditorGUILayout.IntSlider("마을 주변 타일", villagePadTiles, 0, 3);
+        roadEdgeBlend = EditorGUILayout.Slider("노면 가장자리(m)", roadEdgeBlend, 0.5f, 15f);
+        roadShoulderWidth = EditorGUILayout.Slider("갓길 흙 폭(m)", roadShoulderWidth, 0f, 30f);
+        rebuildTextures = EditorGUILayout.Toggle("지면 텍스처 다시 만들기", rebuildTextures);
 
         EditorGUILayout.Space(10f);
 
@@ -370,7 +438,9 @@ public class WorldTerrainBaker : EditorWindow
         root.position = Vector3.zero;
         Undo.RegisterCreatedObjectUndo(root.gameObject, "터레인 월드 굽기");
 
-        TerrainLayer[] layers = layerSource != null ? layerSource.terrainLayers : null;
+        // 지면 레이어는 만들어 씁니다. 저장소의 TerrainSampleAssets는 4K 포토리얼이라
+        // 세로 215픽셀로 줄여 출력하는 이 게임에는 디테일이 전부 사라져 어울리지 않습니다.
+        TerrainLayer[] layers = PixelGroundTextures.CreateOrLoad(rebuildTextures);
         Material material = FindTerrainMaterial();
 
         Dictionary<Vector2Int, Terrain> built = new Dictionary<Vector2Int, Terrain>();
@@ -447,16 +517,24 @@ public class WorldTerrainBaker : EditorWindow
                 heights[zi, xi] = SampleHeight(wx, wz, center, roads);
             }
         }
+        // 에셋으로 먼저 만든 다음에 칠해야 합니다.
+        //
+        // 높이맵은 TerrainData 안에 그대로 들어가지만, 알파맵(어느 레이어를 얼마나 칠했는지)은
+        // <b>Texture2D 서브에셋</b>으로 저장됩니다. 아직 에셋이 아닌 TerrainData에 칠하면
+        // 그 텍스처를 붙일 곳이 없어 저장되지 않고, 다시 읽을 때 기본값(0번 레이어 100%)으로
+        // 돌아옵니다. 실제로 이 순서를 뒤집었을 때 지형은 멀쩡한데 도로만 칠해지지 않았습니다.
+        string path = OutputFolder + "/Tile_" + coord.x + "_" + coord.y + ".asset";
+        AssetDatabase.CreateAsset(data, path);
+
         data.SetHeights(0, 0, heights);
 
         if (layers != null && layers.Length > 0)
         {
             data.terrainLayers = layers;
-            PaintBySlope(data, layers.Length);
+            PaintSurfaces(data, tileOrigin, center, roads, layers.Length);
         }
 
-        string path = OutputFolder + "/Tile_" + coord.x + "_" + coord.y + ".asset";
-        AssetDatabase.CreateAsset(data, path);
+        EditorUtility.SetDirty(data);
 
         GameObject go = Terrain.CreateTerrainGameObject(data);
         go.name = "Tile_" + coord.x + "_" + coord.y;
@@ -694,23 +772,37 @@ public class WorldTerrainBaker : EditorWindow
     }
 
     /// <summary>
-    /// 경사에 따라 지면 텍스처를 칠합니다. 완만한 곳은 첫 번째 레이어, 가파른 곳은 두 번째 레이어입니다.
-    /// 레이어가 하나뿐이면 전부 그 레이어로 채웁니다.
+    /// 지면을 칠합니다. 레이어 순서는 풀(0) · 흙(1) · 도로(2)입니다.
+    ///
+    ///  - 도로: 중심선에서 가까운 좁은 띠. <b>높이 평탄화보다 훨씬 좁게</b> 칠합니다.
+    ///    평탄화는 갓길까지 완만하게 눌러야 하지만, 노면까지 그만큼 넓으면
+    ///    도로가 아니라 그냥 넓은 회색 벌판으로 보입니다.
+    ///  - 흙: 비탈과 마을 부지. 마을은 사람이 밟아 다져진 땅으로 봅니다.
+    ///  - 풀: 그 밖의 전부.
     /// </summary>
     /// <param name="data">칠할 대상</param>
+    /// <param name="tileOrigin">이 타일의 월드 원점</param>
+    /// <param name="center">마을 중심</param>
+    /// <param name="roads">도로 목록</param>
     /// <param name="layerCount">사용할 레이어 수</param>
-    private void PaintBySlope(TerrainData data, int layerCount)
+    private void PaintSurfaces(TerrainData data, Vector3 tileOrigin, Vector3 center,
+                               List<RoadSegment> roads, int layerCount)
     {
         int res = Mathf.Max(16, alphamapResolution);
         data.alphamapResolution = res;
 
         float[,,] maps = new float[res, res, layerCount];
+        float step = (float)tileSize / res;
 
         for (int z = 0; z < res; z++)
         {
+            // 알파맵 텍셀은 격자의 '가운데'를 대표합니다.
+            float wz = tileOrigin.z + (z + 0.5f) * step;
             float nz = (float)z / (res - 1);
+
             for (int x = 0; x < res; x++)
             {
+                float wx = tileOrigin.x + (x + 0.5f) * step;
                 float nx = (float)x / (res - 1);
 
                 if (layerCount == 1)
@@ -719,13 +811,39 @@ public class WorldTerrainBaker : EditorWindow
                     continue;
                 }
 
-                // GetSteepness는 (x, z) 순서의 정규화 좌표를 받습니다.
-                float steep = data.GetSteepness(nx, nz) / 90f;
-                float rock = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.18f, 0.45f, steep));
+                // 도로 — 노면은 좁게, 가장자리는 짧게 흐립니다.
+                // 그 바깥으로는 흙이 드러난 갓길을 둡니다. 그래야 도로가 풀밭에 얹힌
+                // 회색 띠가 아니라 실제로 깔린 길처럼 보입니다.
+                float road = 0f;
+                float shoulder = 0f;
+                for (int i = 0; i < roads.Count; i++)
+                {
+                    float t;
+                    float d = roads[i].DistanceTo(wx, wz, out t);
+                    road = Mathf.Max(road, Falloff(d, roadHalfWidth, roadEdgeBlend));
+                    shoulder = Mathf.Max(shoulder,
+                        Falloff(d, roadHalfWidth + roadEdgeBlend, roadShoulderWidth));
+                }
 
-                maps[z, x, 0] = 1f - rock;
-                maps[z, x, 1] = rock;
-                for (int l = 2; l < layerCount; l++) maps[z, x, l] = 0f;
+                // 흙 — 완만한 비탈에서도 드러나야 합니다.
+                // 이 월드는 기복이 20m 남짓이라 예전 임계(14도~38도)에는 아예 닿지 않았습니다.
+                float steep = data.GetSteepness(nx, nz) / 90f;
+                float slope = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.05f, 0.16f, steep));
+
+                float toVillage = new Vector2(wx - center.x, wz - center.z).magnitude;
+                float village = Falloff(toVillage, villageRadius * 0.8f, villageRadius * 0.5f);
+
+                float dirt = Mathf.Clamp01(Mathf.Max(Mathf.Max(slope, village), shoulder));
+
+                // 도로가 가장 위에 옵니다.
+                float roadW = Mathf.Clamp01(road);
+                float dirtW = dirt * (1f - roadW);
+                float grassW = Mathf.Max(0f, 1f - roadW - dirtW);
+
+                maps[z, x, 0] = grassW;
+                if (layerCount > 1) maps[z, x, 1] = dirtW;
+                if (layerCount > 2) maps[z, x, 2] = roadW;
+                for (int l = 3; l < layerCount; l++) maps[z, x, l] = 0f;
             }
         }
 
@@ -767,18 +885,6 @@ public class WorldTerrainBaker : EditorWindow
         if (streamer == null) streamer = Object.FindAnyObjectByType<WorldStreamer>();
         if (streamer != null) villageRadius = streamer.villageRadius;
 
-        if (layerSource == null)
-        {
-            string[] found = AssetDatabase.FindAssets("t:TerrainData", new[] { "Assets/_Project/03.DataAssets/Terrain" });
-            for (int i = 0; i < found.Length; i++)
-            {
-                string path = AssetDatabase.GUIDToAssetPath(found[i]);
-                if (path.Contains("/Generated/")) continue;
-
-                layerSource = AssetDatabase.LoadAssetAtPath<TerrainData>(path);
-                break;
-            }
-        }
     }
 
     /// <summary>기존 터레인 프리팹이 쓰던 머티리얼을 그대로 씁니다.</summary>
