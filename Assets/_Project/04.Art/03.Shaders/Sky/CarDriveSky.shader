@@ -36,7 +36,7 @@ Shader "CarDrive/Sky"
         _StarBrightness("별 밝기", Range(0, 3)) = 1.1
 
         [Header(Look)]
-        _Bands         ("색 계단 수", Range(2, 64)) = 18
+        _Bands         ("색 계단 수", Range(2, 256)) = 256
         _DayFactor     ("낮 정도 (0 밤 ~ 1 낮)", Range(0, 1)) = 1
         _StarFade      ("별 가림 (구름)", Range(0, 1)) = 0
     }

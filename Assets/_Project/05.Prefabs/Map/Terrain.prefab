@@ -80,6 +80,7 @@ Terrain:
   m_AllowAutoConnect: 1
   m_EnableHeightmapRayTracing: 1
   m_EnableTreesAndDetailsRayTracing: 0
+  m_EnableHeightmapLODFrustumCulling: 1
   m_TreeMotionVectorModeOverride: 3
 --- !u!154 &595592846537215549
 TerrainCollider:
@@ -162,6 +163,11 @@ MeshRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 2
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -183,9 +189,11 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!65 &452154735454314618
 BoxCollider:
@@ -215,10 +223,10 @@ Rigidbody:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4815480148572128076}
-  serializedVersion: 4
+  serializedVersion: 5
   m_Mass: 50
-  m_Drag: 0
-  m_AngularDrag: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
@@ -250,6 +258,8 @@ MonoBehaviour:
   baseBounceForce: 10
   speedToForceMultiplier: 10
   bounceForceMode: 1
+  soundController: {fileID: 0}
+  soundFullVolumeSpeed: 12
 --- !u!1 &5926887964211403589
 GameObject:
   m_ObjectHideFlags: 0
@@ -311,6 +321,11 @@ MeshRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 2
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -332,9 +347,11 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!65 &4550772317802038599
 BoxCollider:
@@ -364,10 +381,10 @@ Rigidbody:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5926887964211403589}
-  serializedVersion: 4
+  serializedVersion: 5
   m_Mass: 50
-  m_Drag: 0
-  m_AngularDrag: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
@@ -399,6 +416,8 @@ MonoBehaviour:
   baseBounceForce: 10
   speedToForceMultiplier: 10
   bounceForceMode: 1
+  soundController: {fileID: 0}
+  soundFullVolumeSpeed: 12
 --- !u!1 &6455749769342172759
 GameObject:
   m_ObjectHideFlags: 0
@@ -955,7 +974,11 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8158000222138660689, guid: b44542f127350f244b059f7fd357d02c,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6429226700488575654}
   m_SourcePrefab: {fileID: 100100000, guid: b44542f127350f244b059f7fd357d02c, type: 3}
 --- !u!4 &428101276125934542 stripped
 Transform:
@@ -963,6 +986,29 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 525596394519623411}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &8537772490958602658 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8158000222138660689, guid: b44542f127350f244b059f7fd357d02c,
+    type: 3}
+  m_PrefabInstance: {fileID: 525596394519623411}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6429226700488575654
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8537772490958602658}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 03a5f88679a49fa4599f22327fdd66f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GrassPusher
+  radius: 0.6
+  leavesMark: 0
+  mass: 0
+  secondsPerKilogram: 0.05
+  markSecondsRange: {x: 3, y: 60}
 --- !u!1001 &714099080869486123
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2139,7 +2185,11 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8158000222138660689, guid: b44542f127350f244b059f7fd357d02c,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6241222893265324857}
   m_SourcePrefab: {fileID: 100100000, guid: b44542f127350f244b059f7fd357d02c, type: 3}
 --- !u!4 &2728444444401635449 stripped
 Transform:
@@ -2147,6 +2197,29 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 2839169032710739268}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &6219973338641637909 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8158000222138660689, guid: b44542f127350f244b059f7fd357d02c,
+    type: 3}
+  m_PrefabInstance: {fileID: 2839169032710739268}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6241222893265324857
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6219973338641637909}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 03a5f88679a49fa4599f22327fdd66f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GrassPusher
+  radius: 0.6
+  leavesMark: 0
+  mass: 0
+  secondsPerKilogram: 0.05
+  markSecondsRange: {x: 3, y: 60}
 --- !u!1001 &2845194593232292792
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3545,8 +3618,35 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8158000222138660689, guid: b44542f127350f244b059f7fd357d02c,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7173330529751257367}
   m_SourcePrefab: {fileID: 100100000, guid: b44542f127350f244b059f7fd357d02c, type: 3}
+--- !u!1 &3915954246304491988 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8158000222138660689, guid: b44542f127350f244b059f7fd357d02c,
+    type: 3}
+  m_PrefabInstance: {fileID: 5147414645380259461}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &7173330529751257367
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3915954246304491988}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 03a5f88679a49fa4599f22327fdd66f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GrassPusher
+  radius: 0.6
+  leavesMark: 0
+  mass: 0
+  secondsPerKilogram: 0.05
+  markSecondsRange: {x: 3, y: 60}
 --- !u!4 &5031904710089071544 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 196927984961176893, guid: b44542f127350f244b059f7fd357d02c,
@@ -4137,8 +4237,35 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8158000222138660689, guid: b44542f127350f244b059f7fd357d02c,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8249674241365171920}
   m_SourcePrefab: {fileID: 100100000, guid: b44542f127350f244b059f7fd357d02c, type: 3}
+--- !u!1 &2733930404076446489 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8158000222138660689, guid: b44542f127350f244b059f7fd357d02c,
+    type: 3}
+  m_PrefabInstance: {fileID: 6109087595671327816}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &8249674241365171920
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2733930404076446489}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 03a5f88679a49fa4599f22327fdd66f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GrassPusher
+  radius: 0.6
+  leavesMark: 0
+  mass: 0
+  secondsPerKilogram: 0.05
+  markSecondsRange: {x: 3, y: 60}
 --- !u!4 &6231985969215426933 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 196927984961176893, guid: b44542f127350f244b059f7fd357d02c,

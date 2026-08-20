@@ -73,3 +73,13 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# 프로파일러 캡처 (수백 MB 단위라 저장소에 넣지 않습니다)
+/ProfilerCaptures/
+
+# 씬·프리팹을 손으로 고치기 전에 남기는 백업
+*.bak-*
+
+# 유료 에셋 스토어 패키지 (429MB). 저장소에 넣지 않고 에셋 스토어에서 다시 받습니다.
+/[Aa]ssets/Feel/
+/[Aa]ssets/Feel.meta

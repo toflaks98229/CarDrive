@@ -134,21 +134,6 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &2827856882340958592
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 836821986329773083}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a3c10f95e013bcb4cb189d47a0a454fa, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  animationTime: 0.3
-  visibleDuration: 2
-  hiddenYOffset: -600
 --- !u!1 &952314789386761446
 GameObject:
   m_ObjectHideFlags: 0
@@ -406,3 +391,18 @@ MonoBehaviour:
   shakeDuration: 0.1
   shakeMagnitude: 5
   shakeSpeed: 50
+--- !u!114 &2827856882340958592
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 836821986329773083}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3c10f95e013bcb4cb189d47a0a454fa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animationTime: 0.3
+  visibleDuration: 2
+  hiddenYOffset: -600

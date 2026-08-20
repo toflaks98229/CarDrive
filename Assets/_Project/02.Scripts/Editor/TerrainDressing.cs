@@ -1,0 +1,373 @@
+using System.Collections.Generic;
+using UnityEditor;
+using UnityEngine;
+using CarDrive.Systems;
+
+namespace CarDrive.EditorTools
+{
+    /// <summary>
+    /// 갓 구운 터레인에 <b>옷을 입힙니다.</b> 지면 머티리얼 · 지면 레이어 · 화면 오차 · 풀입니다.
+    ///
+    /// ── 왜 따로 떼어 두었는가 ──
+    ///
+    /// <see cref="WorldTerrainBaker"/> 는 구울 때 <c>TerrainData</c> 를 새로 만듭니다.
+    /// 높이와 지면 텍스처는 다시 계산하지만 <b>풀과 지면 설정은 알지 못합니다.</b>
+    /// 그것들은 룩 도구가 나중에 따로 입혀 준 것이기 때문입니다.
+    ///
+    /// 그래서 예전에는 한 번 구울 때마다 다음이 조용히 사라졌습니다.
+    ///
+    ///  · <b>풀</b> — 디테일 프로토타입과 심어 둔 밀도 지도가 통째로 없어집니다.
+    ///  · <b>지면 레이어</b> — Ground 에서 Default 로 돌아갑니다.
+    ///    충돌 행렬에서 Prop 은 Default 와 부딪히지 않으므로,
+    ///    <b>병 같은 소품이 지면을 뚫고 떨어집니다.</b>
+    ///  · <b>지면 머티리얼</b> — 지도 프리팹에 박힌 옛 참조로 되돌아갑니다.
+    ///  · 화면 오차와 베이스맵 거리 — 기본값으로 돌아가 능선이 각지고 먼 지면이 흐려집니다.
+    ///
+    /// 아는 사람만 아는 절차였고, 잊으면 위 상태로 남았습니다.
+    /// 이제 굽기가 마지막에 이것을 부릅니다. <b>한 번 구우면 끝입니다.</b>
+    /// </summary>
+    public static class TerrainDressing
+    {
+        // --- Constants ---
+
+        /// <summary>풀 포기 프리팹 경로입니다.</summary>
+        public const string GrassPrefabPath = "Assets/_Project/04.Art/02.Models/Generated/GrassTuft.prefab";
+
+        /// <summary>우리 에셋인지 가리는 기준 경로입니다.</summary>
+        private const string ProjectRoot = "Assets/_Project/";
+
+        /// <summary>지도 프리팹입니다. 지면 머티리얼을 찾는 마지막 수단입니다.</summary>
+        private const string MapPrefabFolder = "Assets/_Project/05.Prefabs/Map";
+
+        /// <summary>타일 한 장의 디테일 격자 해상도입니다. 타일이 100m이므로 한 칸이 약 0.39m입니다.</summary>
+        private const int DetailResolution = 256;
+
+        /// <summary>
+        /// 한 조각(patch)이 담을 격자 수입니다. 이 단위로 잘라 컬링하고, <b>조각 하나가 그리기 한 번</b>입니다.
+        /// 64면 타일 한 장이 4x4=16 조각입니다. 32로 두면 64 조각이 되어 그리기 명령이 4배로 늡니다.
+        /// </summary>
+        private const int DetailPerPatch = 64;
+
+        /// <summary>
+        /// LOD가 바뀔 때 지형이 최대 몇 픽셀까지 튈 수 있는지입니다.
+        /// 기본값 5에서도 능선이 계단처럼 각져 보입니다. 2로 낮춰 실루엣을 매끄럽게 합니다.
+        /// </summary>
+        private const float HeightmapPixelError = 2f;
+
+        /// <summary>
+        /// 이 거리 너머의 지면을 통짜 텍스처로 대체하는 거리입니다.
+        /// 크게 잡아 사실상 끕니다. 대체되면 우리 셰이더가 아니라 흐릿한 이미지가 보입니다.
+        /// </summary>
+        private const float BasemapDistance = 20000f;
+
+        /// <summary>
+        /// 알려진 지면 머티리얼들입니다. 깔려 있던 것을 알아내지 못했을 때 앞에서부터 씁니다.
+        ///
+        /// 순서는 룩이 바뀌어 온 순서를 거꾸로 둔 것입니다. 가장 최근 룩이 앞입니다.
+        /// 이 목록에 기대는 것은 <b>비상 수단</b>입니다. 보통은 깔려 있던 것을 그대로 물려받습니다.
+        /// </summary>
+        private static readonly string[] KnownTerrainMaterials =
+        {
+            "Assets/_Project/04.Art/03.Shaders/Toon/CarDriveToonTerrain.mat",
+            "Assets/_Project/04.Art/03.Shaders/PSX/PSXTerrain.mat",
+            "Assets/_Project/04.Art/03.Shaders/LowPoly/LowPolyTerrain.mat",
+        };
+
+        /// <summary>만질 만한 값들은 설정 에셋에 있습니다. (CarDrive 메뉴의 월드 창)</summary>
+        private static CarDriveWorldSettings Settings { get { return CarDriveWorldSettings.Instance; } }
+
+        // --- Public Methods ---
+
+        /// <summary>
+        /// 이미 깔려 있는 터레인에 옷을 다시 입힙니다. 굽지 않고 단장만 합니다.
+        ///
+        /// 굽기가 알아서 부르므로 보통은 쓸 일이 없습니다.
+        /// 풀이 사라졌거나 소품이 지면을 뚫을 때, 굽지 않고 되돌리는 용도입니다.
+        /// </summary>
+        [MenuItem("CarDrive/World/지면 단장 다시 입히기")]
+        public static void ApplyToScene()
+        {
+            List<string> report = new List<string>();
+
+            Terrain[] terrains = Object.FindObjectsByType<Terrain>(FindObjectsInactive.Include);
+
+            Material material = ResolveMaterial(terrains, report);
+            GameObject grass = ResolveGrassPrefab(terrains, report);
+
+            Apply(terrains, material, grass, report);
+
+            AssetDatabase.SaveAssets();
+
+            Debug.Log("TerrainDressing:" + System.Environment.NewLine +
+                      string.Join(System.Environment.NewLine, report));
+        }
+
+        /// <summary>
+        /// 명령줄에서 씬을 열고 단장한 뒤 저장합니다.
+        /// <c>Unity.exe -batchmode -quit -executeMethod CarDrive.EditorTools.TerrainDressing.ApplyFromCommandLine</c>
+        /// </summary>
+        public static void ApplyFromCommandLine()
+        {
+            UnityEngine.SceneManagement.Scene scene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(
+                "Assets/_Project/01.Scenes/SampleScene.unity",
+                UnityEditor.SceneManagement.OpenSceneMode.Single);
+
+            ApplyToScene();
+
+            UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(scene);
+            UnityEditor.SceneManagement.EditorSceneManager.SaveScene(scene);
+            AssetDatabase.SaveAssets();
+        }
+
+        /// <summary>
+        /// 지금 씬에 깔려 있는 지면 머티리얼을 알아냅니다.
+        ///
+        /// <b>깔려 있던 것을 그대로 물려받는 것이 첫 번째입니다.</b> 그래야 어떤 룩으로 맞춰
+        /// 두었든 다시 구워도 그대로 남습니다. 어느 룩이 켜져 있는지 코드가 알 필요가 없습니다.
+        /// </summary>
+        /// <param name="existing">굽기 전에 깔려 있던 터레인들</param>
+        /// <param name="report">진행 내용을 적을 목록</param>
+        /// <returns>쓸 지면 머티리얼. 하나도 못 찾으면 null 입니다.</returns>
+        public static Material ResolveMaterial(Terrain[] existing, List<string> report)
+        {
+            // 1) 이미 깔려 있던 것.
+            if (existing != null)
+            {
+                for (int i = 0; i < existing.Length; i++)
+                {
+                    if (existing[i] == null) continue;
+
+                    Material mat = existing[i].materialTemplate;
+                    if (!IsOurs(mat)) continue;
+
+                    report.Add("· 지면 머티리얼: 깔려 있던 것을 물려받습니다 — " + mat.name);
+                    return mat;
+                }
+            }
+
+            // 2) 알려진 룩 머티리얼.
+            for (int i = 0; i < KnownTerrainMaterials.Length; i++)
+            {
+                Material mat = AssetDatabase.LoadAssetAtPath<Material>(KnownTerrainMaterials[i]);
+                if (mat == null) continue;
+
+                report.Add("! 지면 머티리얼: 깔려 있던 것을 알아내지 못해 " + mat.name + " 을 씁니다.");
+                report.Add("  다른 룩을 쓰고 있었다면 해당 룩 적용을 다시 실행하세요.");
+                return mat;
+            }
+
+            // 3) 지도 프리팹에 박힌 것. 옛 참조일 수 있어 마지막에 둡니다.
+            string[] guids = AssetDatabase.FindAssets("t:Prefab", new[] { MapPrefabFolder });
+            for (int i = 0; i < guids.Length; i++)
+            {
+                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(guids[i]));
+                if (prefab == null) continue;
+
+                Terrain t = prefab.GetComponentInChildren<Terrain>(true);
+                if (t == null || t.materialTemplate == null) continue;
+
+                report.Add("! 지면 머티리얼: 지도 프리팹의 " + t.materialTemplate.name + " 을 씁니다.");
+                return t.materialTemplate;
+            }
+
+            report.Add("! 지면 머티리얼을 찾지 못했습니다. 유니티 기본값이 그대로 보입니다.");
+            return null;
+        }
+
+        /// <summary>
+        /// 지금 심겨 있는 풀 프리팹을 알아냅니다.
+        /// </summary>
+        /// <param name="existing">굽기 전에 깔려 있던 터레인들</param>
+        /// <param name="report">진행 내용을 적을 목록</param>
+        /// <returns>쓸 풀 프리팹. 없으면 null 입니다.</returns>
+        public static GameObject ResolveGrassPrefab(Terrain[] existing, List<string> report)
+        {
+            if (existing != null)
+            {
+                for (int i = 0; i < existing.Length; i++)
+                {
+                    if (existing[i] == null || existing[i].terrainData == null) continue;
+
+                    DetailPrototype[] protos = existing[i].terrainData.detailPrototypes;
+                    for (int p = 0; p < protos.Length; p++)
+                    {
+                        if (protos[p] == null || protos[p].prototype == null) continue;
+
+                        report.Add("· 풀: 심겨 있던 " + protos[p].prototype.name + " 을 물려받습니다.");
+                        return protos[p].prototype;
+                    }
+                }
+            }
+
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(GrassPrefabPath);
+
+            report.Add(prefab != null
+                ? "· 풀: " + GrassPrefabPath + " 를 씁니다."
+                : "! 풀 프리팹이 없습니다. 로우폴리 코지 룩으로 전환을 한 번 실행하면 만들어집니다.");
+
+            return prefab;
+        }
+
+        /// <summary>
+        /// 터레인들에 옷을 입힙니다.
+        /// </summary>
+        /// <param name="terrains">입힐 터레인들</param>
+        /// <param name="material">지면 머티리얼. null 이면 건드리지 않습니다.</param>
+        /// <param name="grassPrefab">풀 프리팹. null 이면 풀을 심지 않습니다.</param>
+        /// <param name="report">진행 내용을 적을 목록</param>
+        public static void Apply(Terrain[] terrains, Material material, GameObject grassPrefab,
+                                 List<string> report)
+        {
+            if (terrains == null || terrains.Length == 0)
+            {
+                report.Add("! 입힐 터레인이 없습니다.");
+                return;
+            }
+
+            int groundLayer = LayerMask.NameToLayer("Ground");
+            long planted = 0;
+
+            for (int i = 0; i < terrains.Length; i++)
+            {
+                Terrain terrain = terrains[i];
+                if (terrain == null) continue;
+
+                Undo.RecordObject(terrain, "지면 단장");
+                Undo.RecordObject(terrain.gameObject, "지면 단장");
+
+                if (material != null) terrain.materialTemplate = material;
+
+                terrain.basemapDistance = BasemapDistance;
+                terrain.heightmapPixelError = HeightmapPixelError;
+
+                // 병 같은 Prop 이 지면을 뚫고 떨어지지 않게 Ground 레이어에 올립니다.
+                // 충돌 행렬에서 Prop 은 Default 와 부딪히지 않도록 꺼져 있고,
+                // 부딪히도록 켜져 있는 지면 레이어는 Ground 뿐입니다.
+                if (groundLayer >= 0) terrain.gameObject.layer = groundLayer;
+
+                terrain.detailObjectDistance = Settings.detailDistance;
+                terrain.detailObjectDensity = Settings.detailDensity;
+
+                if (grassPrefab != null) planted += PlantGrass(terrain, grassPrefab);
+
+                EditorUtility.SetDirty(terrain);
+            }
+
+            report.Add("· 터레인 " + terrains.Length + "장에 옷을 입혔습니다. " +
+                       "(화면 오차 " + HeightmapPixelError + ", 베이스맵 " + BasemapDistance + "m)");
+
+            report.Add(groundLayer >= 0
+                ? "· 지면 레이어: Ground(" + groundLayer + ") — 소품이 지면을 뚫지 않습니다."
+                : "! Ground 레이어가 없습니다. 소품이 지면을 뚫고 떨어집니다.");
+
+            if (grassPrefab != null)
+            {
+                report.Add("· 풀 심은 칸 " + planted + "개. 그리는 거리 " + Settings.detailDistance +
+                           "m / 밀도 배율 " + Settings.detailDensity);
+            }
+        }
+
+        /// <summary>
+        /// 터레인 한 장에 풀을 심습니다.
+        ///
+        /// 잔디가 칠해진 만큼만 심고 도로와 갓길은 비웁니다.
+        /// 알파맵은 [z, x, 레이어] 순서이고 0번이 잔디, 2번이 도로입니다.
+        /// </summary>
+        /// <param name="terrain">심을 터레인</param>
+        /// <param name="grassPrefab">풀 포기 프리팹</param>
+        /// <returns>한 포기라도 심은 격자 칸 수</returns>
+        public static long PlantGrass(Terrain terrain, GameObject grassPrefab)
+        {
+            TerrainData data = terrain.terrainData;
+            if (data == null) return 0;
+
+            DetailPrototype proto = new DetailPrototype();
+            proto.prototype = grassPrefab;
+            proto.usePrototypeMesh = true;
+            proto.useInstancing = true;
+            proto.renderMode = DetailRenderMode.VertexLit;
+            proto.minWidth = 0.85f;
+            proto.maxWidth = 1.45f;
+            proto.minHeight = 0.75f;
+            proto.maxHeight = 1.5f;
+            proto.noiseSpread = 0.4f;
+            proto.healthyColor = Color.white;
+            proto.dryColor = Color.white;
+
+            // 자리를 흩뜨리지 않으면 격자에 줄 맞춰 심겨 <b>바둑판 무늬</b>가 그대로 보입니다.
+            // 포기끼리 경계가 안 보이게 하는 데 이 값이 결정적입니다.
+            proto.positionJitter = 1f;
+
+            // 비탈에서는 조금 눕혀야 땅에 붙어 보입니다. 다 눕히면 누워 버립니다.
+            proto.alignToGround = 0.35f;
+
+            // SetDetailResolution 은 심어 둔 것을 지우므로 반드시 칠하기 전에 부릅니다.
+            data.SetDetailResolution(DetailResolution, DetailPerPatch);
+
+            // 밀도값의 <b>의미</b>를 정합니다. 이것을 안 맞추면 심어도 안 보입니다.
+            // 덮개 모드에서는 값이 0~255의 덮인 비율이라, 포기 수로 넣은 1~3은 거의 0이 됩니다.
+            // 포기 수 모드에서는 값이 그대로 '이 칸에 심을 포기 수'가 됩니다.
+            data.SetDetailScatterMode(DetailScatterMode.InstanceCountMode);
+            data.detailPrototypes = new DetailPrototype[] { proto };
+            data.RefreshPrototypes();
+
+            int res = data.detailResolution;
+            int ares = data.alphamapResolution;
+
+            float[,,] alpha = data.GetAlphamaps(0, 0, ares, ares);
+            int[,] map = new int[res, res];
+            long planted = 0;
+
+            int maxPerCell = Settings.maxPerCell;
+            float threshold = Settings.grassThreshold;
+
+            for (int z = 0; z < res; z++)
+            {
+                int az = Mathf.Clamp(Mathf.FloorToInt((z + 0.5f) / res * ares), 0, ares - 1);
+
+                for (int x = 0; x < res; x++)
+                {
+                    int ax = Mathf.Clamp(Mathf.FloorToInt((x + 0.5f) / res * ares), 0, ares - 1);
+
+                    float grass = alpha[az, ax, 0];
+                    if (grass < threshold) continue;
+
+                    // 잔디가 옅어지는 가장자리에서는 포기 수도 함께 줄여, 풀밭이 끝나는 자리에
+                    // 선이 생기지 않고 성글게 흩어지며 사라지게 합니다.
+                    //
+                    // 0 에서 시작해 올려야 가장자리가 <b>정말로</b> 성글어집니다.
+                    // 1 부터 시작하면 임계값 바로 안쪽까지 빠짐없이 심겨 그 자리에 선이 남습니다.
+                    float t = Mathf.InverseLerp(threshold, 1f, grass);
+                    int count = Mathf.RoundToInt(Mathf.Lerp(0f, maxPerCell, t * t));
+                    if (count <= 0) continue;
+
+                    map[z, x] = count;
+                    planted++;
+                }
+            }
+
+            data.SetDetailLayer(0, 0, 0, map);
+            EditorUtility.SetDirty(data);
+
+            return planted;
+        }
+
+        // --- Private Methods ---
+
+        /// <summary>
+        /// 우리가 만든 에셋인지 봅니다.
+        ///
+        /// 유니티가 기본으로 물려 주는 터레인 머티리얼은 패키지 안에 있어 이 경로 밖입니다.
+        /// 그것을 물려받으면 룩이 통째로 사라지므로 걸러야 합니다.
+        /// </summary>
+        /// <param name="mat">확인할 머티리얼</param>
+        /// <returns>프로젝트 안의 에셋이면 true 입니다.</returns>
+        private static bool IsOurs(Material mat)
+        {
+            if (mat == null) return false;
+
+            string path = AssetDatabase.GetAssetPath(mat);
+            return !string.IsNullOrEmpty(path) && path.StartsWith(ProjectRoot);
+        }
+    }
+}

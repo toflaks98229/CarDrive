@@ -118,6 +118,8 @@ MonoBehaviour:
   - {fileID: -7011558710299706105}
   - {fileID: -7923379766561001016}
   - {fileID: 8320257614437659504}
+  - {fileID: 0}
+  - {fileID: 0}
 --- !u!114 &849379129802519247
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -133,7 +135,7 @@ MonoBehaviour:
   active: 1
   mode:
     m_OverrideState: 1
-    m_Value: 2
+    m_Value: 1
   neutralHDRRangeReductionMode:
     m_OverrideState: 0
     m_Value: 2
