@@ -31,9 +31,13 @@ namespace CarDrive.EditorTools
         /// <param name="prefabs">종 순서에 맞춘 프리팹. null인 자리는 건너뜁니다.</param>
         /// <param name="detailResolution">디테일 격자 해상도</param>
         /// <param name="detailPerPatch">패치당 격자 수</param>
+        /// <param name="instancesPerSpecies">
+        /// 종별로 심은 <b>포기 수</b>를 더해 넣을 곳입니다. 길이는 <paramref name="species"/> 와 같아야 합니다.
+        /// 드로우 콜이 포기 수로 정해지므로, 이 값이 곧 그리기 비용입니다. null 이어도 됩니다.
+        /// </param>
         /// <returns>심은 칸의 수</returns>
         public static long Paint(Terrain terrain, List<VegetationSpecies> species, GameObject[] prefabs,
-                                 int detailResolution, int detailPerPatch)
+                                 int detailResolution, int detailPerPatch, long[] instancesPerSpecies)
         {
             TerrainData data = terrain != null ? terrain.terrainData : null;
             if (data == null || species == null || prefabs == null) return 0;
@@ -60,7 +64,7 @@ namespace CarDrive.EditorTools
             data.detailPrototypes = protos.ToArray();
             data.RefreshPrototypes();
 
-            return PaintLayers(terrain, data, species, speciesIndex, detailResolution);
+            return PaintLayers(terrain, data, species, speciesIndex, detailResolution, instancesPerSpecies);
         }
 
         // --- Private Methods ---
@@ -107,9 +111,10 @@ namespace CarDrive.EditorTools
         /// <param name="species">종 목록</param>
         /// <param name="speciesIndex">디테일 레이어 순서 → 종 색인</param>
         /// <param name="resolution">디테일 격자 해상도</param>
+        /// <param name="instancesPerSpecies">종별 포기 수를 더해 넣을 곳. null 이어도 됩니다.</param>
         /// <returns>무언가 심긴 칸의 수</returns>
         private static long PaintLayers(Terrain terrain, TerrainData data, List<VegetationSpecies> species,
-                                        List<int> speciesIndex, int resolution)
+                                        List<int> speciesIndex, int resolution, long[] instancesPerSpecies)
         {
             CarDriveWorldSettings settings = CarDriveWorldSettings.Instance;
 
@@ -165,11 +170,18 @@ namespace CarDrive.EditorTools
                         VegetationSpecies spec = species[speciesIndex[layer]];
 
                         int count = ResolveCount(spec, budget / weightSum, steepness, worldY,
-                                                 terrainPosition, x01, z01, data.size);
+                                                 terrainPosition, x01, z01, data.size, x, z);
                         if (count <= 0) continue;
 
                         maps[layer][z, x] = count;
                         any = true;
+
+                        // 드로우 콜이 포기 수로 정해지므로 여기서 세어 둡니다.
+                        if (instancesPerSpecies != null)
+                        {
+                            int index = speciesIndex[layer];
+                            if (index < instancesPerSpecies.Length) instancesPerSpecies[index] += count;
+                        }
                     }
 
                     if (any) planted++;
@@ -198,9 +210,12 @@ namespace CarDrive.EditorTools
         /// <param name="x01">지형 안에서의 가로 비율</param>
         /// <param name="z01">지형 안에서의 세로 비율</param>
         /// <param name="size">지형의 크기</param>
+        /// <param name="cellX">격자 가로 색인. 소수점 밀도를 흩뿌리는 데 씁니다.</param>
+        /// <param name="cellZ">격자 세로 색인</param>
         /// <returns>심을 포기 수</returns>
         private static int ResolveCount(VegetationSpecies spec, float share, float steepness, float worldY,
-                                        Vector3 terrainPosition, float x01, float z01, Vector3 size)
+                                        Vector3 terrainPosition, float x01, float z01, Vector3 size,
+                                        int cellX, int cellZ)
         {
             if (steepness > spec.maxSlope || steepness < spec.minSlope) return 0;
             if (worldY > spec.maxHeight || worldY < spec.minHeight) return 0;
@@ -225,7 +240,41 @@ namespace CarDrive.EditorTools
                 density *= Mathf.InverseLerp(spec.patchThreshold, 1f, noise);
             }
 
-            return Mathf.RoundToInt(density);
+            // <b>소수점 아래를 반올림하면 비중이 낮은 종이 통째로 사라집니다.</b>
+            //
+            // 밀도 0.35 를 반올림하면 0 이라, 잔풀처럼 비중을 낮춰 둔 종은
+            // 어느 칸에도 심기지 않습니다. 반대로 0.5 를 넘으면 <b>모든 칸에</b> 심겨
+            // 0.5 를 경계로 없거나 가득 차거나 둘 중 하나가 됩니다.
+            //
+            // 그래서 소수점은 자리마다 흩뿌립니다. 0.35 면 칸의 35% 에 한 포기가 들어갑니다.
+            // 좌표로 만든 해시라 다시 구워도 같은 자리에 같은 결과가 나옵니다.
+            int whole = Mathf.FloorToInt(density);
+            float fraction = density - whole;
+
+            if (fraction > 0.001f && Hash01(cellX, cellZ, spec.seed) < fraction) whole++;
+
+            return whole;
+        }
+
+        /// <summary>
+        /// 좌표와 씨앗으로 0~1 사이의 값을 만듭니다. 같은 입력이면 언제나 같은 값입니다.
+        /// </summary>
+        /// <param name="x">격자 가로 색인</param>
+        /// <param name="z">격자 세로 색인</param>
+        /// <param name="seed">종마다 다른 씨앗. 종끼리 같은 자리에 몰리지 않게 합니다.</param>
+        /// <returns>0 이상 1 미만의 값</returns>
+        private static float Hash01(int x, int z, int seed)
+        {
+            unchecked
+            {
+                uint h = (uint)(x * 73856093) ^ (uint)(z * 19349663) ^ (uint)(seed * 83492791);
+
+                h ^= h >> 13;
+                h *= 0x5bd1e995u;
+                h ^= h >> 15;
+
+                return (h & 0xFFFFFF) / (float)0x1000000;
+            }
         }
     }
 }
