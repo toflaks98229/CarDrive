@@ -24,15 +24,23 @@ namespace CarDrive.Systems
 
         // --- 모양 ---
 
-        /// <summary>한 포기에 들어가는 잎의 수입니다. 삼각형 수와 같습니다.</summary>
+        /// <summary>
+        /// 한 포기에 들어가는 잎의 수입니다. 삼각형 수와 같습니다.
+        ///
+        /// <b>이 값은 드로우 콜에 영향을 주지 않습니다.</b> 유니티 터레인 디테일은
+        /// 드로우 콜 하나에 <b>약 500 포기까지만</b> 담으므로, 그리기 횟수는
+        /// 잎 수와 무관하게 <c>포기 수 ÷ 500</c> 으로 정해집니다.
+        /// 그래서 <b>잎이 많은 큰 포기</b>는 같은 밀도를 훨씬 적은 그리기로 냅니다.
+        /// </summary>
         [Header("모양")]
-        [Tooltip("한 포기의 잎 수. 잎 하나가 삼각형 한 장이라 이 값이 곧 비용입니다.")]
-        [Range(2, 32)]
+        [Tooltip("한 포기의 잎 수. 잎 하나가 삼각형 한 장입니다.\n" +
+                 "드로우 콜은 포기 수로만 정해지므로, 잎을 늘려도 그리기 횟수는 그대로입니다.")]
+        [Range(2, 96)]
         public int bladesPerTuft = 18;
 
         /// <summary>포기가 퍼지는 반경(m)입니다.</summary>
-        [Tooltip("한 포기가 퍼지는 반경(m)")]
-        [Range(0.05f, 0.8f)]
+        [Tooltip("한 포기가 퍼지는 반경(m). 큰 포기는 넓게 퍼뜨려야 덩어리로 뭉치지 않습니다.")]
+        [Range(0.05f, 1.6f)]
         public float tuftRadius = 0.32f;
 
         /// <summary>잎 하나의 높이(m)입니다.</summary>
@@ -128,10 +136,14 @@ namespace CarDrive.Systems
     public static class VegetationDefaults
     {
         /// <summary>
-        /// 기본 세 종을 만듭니다. 예전의 단일 풀을 <b>주된 종</b>으로 두고,
-        /// 키 작은 덤불과 마른 억새를 곁들여 같은 포기 수로 변화를 냅니다.
+        /// 기본 네 종을 만듭니다.
+        ///
+        /// <b>덩어리가 바닥을 덮고, 잔풀이 그 사이를 메웁니다.</b>
+        /// 드로우 콜은 포기 수로만 정해지므로(포기 500개당 한 번), 넓은 면적을
+        /// <b>잎이 많은 큰 포기 하나</b>로 덮으면 같은 밀도를 훨씬 적은 그리기로 냅니다.
+        /// 그래서 덩어리를 주력으로 두고 잔풀의 비중을 낮췄습니다.
         /// </summary>
-        /// <param name="legacyBlades">예전 설정의 잎 수. 주된 종이 이어받습니다.</param>
+        /// <param name="legacyBlades">예전 설정의 잎 수. 잔풀이 이어받습니다.</param>
         /// <param name="legacyRadius">예전 설정의 포기 반경</param>
         /// <param name="legacyHeight">예전 설정의 잎 높이</param>
         /// <returns>기본 식생 목록</returns>
@@ -139,7 +151,28 @@ namespace CarDrive.Systems
         {
             return new List<VegetationSpecies>
             {
-                // 들판을 덮는 주된 풀. 예전 값을 그대로 물려받아 지금 모습이 유지됩니다.
+                // 바닥을 덮는 큰 덩어리. 잔풀 넷 몫의 잎을 한 포기에 담습니다.
+                //
+                // 반경을 잔풀의 세 배 가까이 잡아 한 포기가 넓게 퍼지게 합니다.
+                // 좁은 반경에 잎만 많이 넣으면 다발로 뭉쳐 <b>수풀이 아니라 빗자루</b>처럼 보입니다.
+                new VegetationSpecies
+                {
+                    id = "GrassClump",
+                    bladesPerTuft = Mathf.Clamp(legacyBlades * 4, 8, 96),
+                    tuftRadius = Mathf.Min(legacyRadius * 2.8f, 1.6f),
+                    bladeHeight = legacyHeight * 1.05f,
+                    bladeWidth = 0.034f,
+                    lean = 0.25f,
+                    tint = Color.white,
+                    seed = 20260818,
+                    weight = 1f,
+                    maxSlope = 40f,
+                    patchScale = 0.012f,
+                    patchThreshold = 0.15f
+                },
+
+                // 덩어리 사이를 메우는 잔풀. 예전 값을 그대로 물려받습니다.
+                // 덩어리가 덮개를 맡으므로 비중을 낮춰 포기 수를 줄입니다.
                 new VegetationSpecies
                 {
                     id = "GrassTuft",
@@ -149,8 +182,8 @@ namespace CarDrive.Systems
                     bladeWidth = 0.034f,
                     lean = 0.2f,
                     tint = Color.white,
-                    seed = 20260818,
-                    weight = 1f,
+                    seed = 660214,
+                    weight = 0.35f,
                     maxSlope = 40f,
                     patchScale = 0.015f,
                     patchThreshold = 0.2f

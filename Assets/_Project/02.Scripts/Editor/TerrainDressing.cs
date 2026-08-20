@@ -239,6 +239,9 @@ namespace CarDrive.EditorTools
                 ? VegetationBuilder.BuildAll(vegetation, ResolveGrassMaterial(grassPrefab), report)
                 : null;
 
+            // 종별 포기 수를 세어 둡니다. 드로우 콜이 이 값으로 정해지므로 곧 그리기 비용입니다.
+            long[] instances = new long[vegetation.Count];
+
             for (int i = 0; i < terrains.Length; i++)
             {
                 Terrain terrain = terrains[i];
@@ -261,7 +264,7 @@ namespace CarDrive.EditorTools
                 terrain.detailObjectDensity = Settings.detailDensity;
 
                 if (vegetationPrefabs != null) planted += VegetationPainter.Paint(
-                    terrain, vegetation, vegetationPrefabs, DetailResolution, DetailPerPatch);
+                    terrain, vegetation, vegetationPrefabs, DetailResolution, DetailPerPatch, instances);
 
                 EditorUtility.SetDirty(terrain);
             }
@@ -277,7 +280,56 @@ namespace CarDrive.EditorTools
             {
                 report.Add("· 풀 심은 칸 " + planted + "개. 그리는 거리 " + Settings.detailDistance +
                            "m / 밀도 배율 " + Settings.detailDensity);
+
+                ReportVegetationCost(vegetation, instances, report);
             }
+        }
+
+        /// <summary>
+        /// 종별 포기 수와 그로부터 나오는 <b>그리기 비용</b>을 적습니다.
+        ///
+        /// <b>포기 수가 곧 드로우 콜입니다.</b> 유니티 터레인 디테일은 드로우 콜 하나에
+        /// 약 500 포기까지만 담으므로, 잎을 아무리 늘려도 그리기 횟수는 포기 수로만 정해집니다.
+        /// 그래서 <b>잎이 많은 큰 포기</b>가 같은 밀도를 훨씬 적은 그리기로 냅니다.
+        ///
+        /// 심고 나서 바로 확인할 수 있어야 조절이 됩니다. 숫자 없이 눈으로만 보면
+        /// 무엇이 비싼지 알 수 없습니다.
+        /// </summary>
+        /// <param name="species">심은 종 목록</param>
+        /// <param name="instances">종별 포기 수</param>
+        /// <param name="report">결과를 적을 목록</param>
+        private static void ReportVegetationCost(List<VegetationSpecies> species, long[] instances,
+                                                 List<string> report)
+        {
+            if (species == null || instances == null) return;
+
+            // 드로우 콜 하나에 담기는 포기 수입니다. 실측(92,916 포기 / 193 콜)에서 나온 값입니다.
+            const int InstancesPerDrawCall = 500;
+
+            long totalInstances = 0;
+            long totalBlades = 0;
+
+            for (int i = 0; i < species.Count && i < instances.Length; i++)
+            {
+                if (instances[i] <= 0) continue;
+
+                long blades = instances[i] * species[i].bladesPerTuft;
+                totalInstances += instances[i];
+                totalBlades += blades;
+
+                report.Add("  · " + species[i].id + " — 포기 " + instances[i].ToString("N0") +
+                           " / 잎 " + blades.ToString("N0") +
+                           " (포기당 " + species[i].bladesPerTuft + ")");
+            }
+
+            if (totalInstances == 0) return;
+
+            long estimatedCalls = (totalInstances + InstancesPerDrawCall - 1) / InstancesPerDrawCall;
+
+            report.Add("· 식생 합계 — 포기 " + totalInstances.ToString("N0") +
+                       " / 잎(삼각형) " + totalBlades.ToString("N0"));
+            report.Add("· 예상 드로우 콜 " + estimatedCalls +
+                       "  (포기 " + InstancesPerDrawCall + "개당 1회. 잎 수는 영향을 주지 않습니다)");
         }
 
 
