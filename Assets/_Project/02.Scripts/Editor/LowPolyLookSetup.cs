@@ -154,6 +154,7 @@ namespace CarDrive.EditorTools
         /// 디테일 격자와 알파맵은 축 순서가 같다고 보고 썼는데, 만약 뒤집혀 있다면
         /// 풀이 엉뚱한 곳에 심깁니다. 도로 위 밀도를 재면 그것이 바로 드러납니다.
         /// </summary>
+        [MenuItem("CarDrive/World/심긴 풀 검사 (도로에 심기지 않았는지)")]
         public static void VerifyFromCommandLine()
         {
             EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
@@ -334,6 +335,7 @@ namespace CarDrive.EditorTools
         /// (CPU 70% / GPU 30%)라, 드로우 콜이 곧 프레임입니다.
         /// <c>Unity.exe -batchmode -quit -executeMethod LowPolyLookSetup.CountFromCommandLine</c>
         /// </summary>
+        [MenuItem("CarDrive/World/그리기 비용 세기 (드로우 콜 · 삼각형)")]
         public static void CountFromCommandLine()
         {
             EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);

@@ -76,6 +76,7 @@ namespace CarDrive.EditorTools
         /// 배선이 실제로 붙었는지 확인합니다.
         /// <c>Unity.exe -batchmode -quit -executeMethod GrassTrampleSetup.VerifyFromCommandLine</c>
         /// </summary>
+        [MenuItem("CarDrive/World/누르개 검사 (무엇이 자국을 남기는지)")]
         public static void VerifyFromCommandLine()
         {
             EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
