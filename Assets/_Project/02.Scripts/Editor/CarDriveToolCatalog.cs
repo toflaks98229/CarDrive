@@ -211,6 +211,12 @@ namespace CarDrive.EditorTools
                         },
                         new CarDriveTool
                         {
+                            MenuPath = "CarDrive/Vehicle/차체 충돌 프록시 굽기",
+                            Label = "차체 충돌 프록시 굽기",
+                            Description = "볼록 콜라이더로 쓰기엔 너무 촘촘한 메시를 저폴리 프록시로 갈아 끼웁니다."
+                        },
+                        new CarDriveTool
+                        {
                             MenuPath = "CarDrive/World/나무 LOD 그룹 채우기",
                             Label = "나무 LOD 그룹 채우기",
                             Description = "씬을 열 때마다 쏟아지던 나무 경고를 없앱니다. 그리는 방식은 그대로입니다."

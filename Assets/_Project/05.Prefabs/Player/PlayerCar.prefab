@@ -2285,7 +2285,7 @@ MeshCollider:
   serializedVersion: 5
   m_Convex: 1
   m_CookingOptions: 30
-  m_Mesh: {fileID: 4300000, guid: 4e1f755d35195df43b556c0a869c9111, type: 3}
+  m_Mesh: {fileID: 4300000, guid: 76fa761f8f21abd4d90a98699df4f2cd, type: 2}
 --- !u!114 &3307616488038210777
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2324,17 +2324,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3263403e32fd47c46b36656a5445f2fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  carData: {fileID: 11400000, guid: 0d5a898d7c583d04089258dc427d4cee, type: 2}
-  driveType: 1
-  steerType: 0
-  centerOfMass: {x: 0, y: -0.5, z: 0}
-  useWeatherGrip: 1
-  weatherGripInfluence: 1
-  minGripFactor: 0.55
-  frontLeftWheelCollider: {fileID: 8214825195861352607}
-  frontRightWheelCollider: {fileID: 8218988996661789583}
-  rearLeftWheelCollider: {fileID: 7937032650802749596}
-  rearRightWheelCollider: {fileID: 4776636313666402701}
+  _carData: {fileID: 11400000, guid: 0d5a898d7c583d04089258dc427d4cee, type: 2}
+  _driveType: 1
+  _steerType: 0
+  _centerOfMass: {x: 0, y: -0.5, z: 0}
+  _useWeatherGrip: 1
+  _weatherGripInfluence: 1
+  _minGripFactor: 0.55
+  _frontLeftWheel: {fileID: 8214825195861352607}
+  _frontRightWheel: {fileID: 8218988996661789583}
+  _rearLeftWheel: {fileID: 7937032650802749596}
+  _rearRightWheel: {fileID: 4776636313666402701}
 --- !u!114 &9078258160355170907
 MonoBehaviour:
   m_ObjectHideFlags: 0
