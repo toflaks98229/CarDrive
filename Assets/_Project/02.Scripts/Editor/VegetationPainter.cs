@@ -21,6 +21,13 @@ namespace CarDrive.EditorTools
     /// </summary>
     public static class VegetationPainter
     {
+        // --- Constants ---
+
+        /// <summary>
+        /// 그리기 한 번에 담기는 포기 수입니다. 실측(92,916 포기 / 193 콜)에서 나온 값입니다.
+        /// </summary>
+        public const int InstancesPerDrawCall = 500;
+
         // --- Public Methods ---
 
         /// <summary>
@@ -37,7 +44,8 @@ namespace CarDrive.EditorTools
         /// </param>
         /// <returns>심은 칸의 수</returns>
         public static long Paint(Terrain terrain, List<VegetationSpecies> species, GameObject[] prefabs,
-                                 int detailResolution, int detailPerPatch, long[] instancesPerSpecies)
+                                 int detailResolution, int detailPerPatch, long[] instancesPerSpecies,
+                                 long[] drawCallsPerSpecies)
         {
             TerrainData data = terrain != null ? terrain.terrainData : null;
             if (data == null || species == null || prefabs == null) return 0;
@@ -64,7 +72,8 @@ namespace CarDrive.EditorTools
             data.detailPrototypes = protos.ToArray();
             data.RefreshPrototypes();
 
-            return PaintLayers(terrain, data, species, speciesIndex, detailResolution, instancesPerSpecies);
+            return PaintLayers(terrain, data, species, speciesIndex, detailResolution, detailPerPatch,
+                               instancesPerSpecies, drawCallsPerSpecies);
         }
 
         // --- Private Methods ---
@@ -114,7 +123,8 @@ namespace CarDrive.EditorTools
         /// <param name="instancesPerSpecies">종별 포기 수를 더해 넣을 곳. null 이어도 됩니다.</param>
         /// <returns>무언가 심긴 칸의 수</returns>
         private static long PaintLayers(Terrain terrain, TerrainData data, List<VegetationSpecies> species,
-                                        List<int> speciesIndex, int resolution, long[] instancesPerSpecies)
+                                        List<int> speciesIndex, int resolution, int perPatch,
+                                        long[] instancesPerSpecies, long[] drawCallsPerSpecies)
         {
             CarDriveWorldSettings settings = CarDriveWorldSettings.Instance;
 
@@ -191,10 +201,57 @@ namespace CarDrive.EditorTools
             for (int layer = 0; layer < layerCount; layer++)
             {
                 data.SetDetailLayer(0, 0, layer, maps[layer]);
+                CountDrawCalls(maps[layer], resolution, perPatch, speciesIndex[layer], drawCallsPerSpecies);
             }
 
             EditorUtility.SetDirty(data);
             return planted;
+        }
+
+        /// <summary>
+        /// 다 심은 밀도 지도에서 <b>실제 그리기 횟수</b>를 셉니다.
+        ///
+        /// <b>왜 포기 수를 500으로 나누면 안 되는가.</b> 유니티는 디테일을
+        /// <c>(패치 x 종)</c> 단위로 그립니다. 패치 하나에 어떤 종이 한 포기라도 있으면
+        /// 그 종을 위해 그리기가 한 번 나갑니다. 그래서 종을 넷으로 늘리면
+        /// 인스턴스를 아무리 줄여도 <b>패치당 최소 네 번</b>이 바닥값으로 깔립니다.
+        ///
+        /// 이 사실을 모르고 종을 늘렸다가, 총량을 절반으로 줄이고도 그리기 횟수가
+        /// 그대로인 일이 있었습니다. 그래서 추정하지 않고 여기서 직접 셉니다.
+        ///
+        /// 세는 값은 <b>월드 전체</b>입니다. 한 번에 그려지는 양은 화면 안 패치의 몫뿐입니다.
+        /// </summary>
+        /// <param name="map">이 종의 밀도 지도</param>
+        /// <param name="resolution">디테일 격자 해상도</param>
+        /// <param name="perPatch">패치 한 변의 격자 수</param>
+        /// <param name="index">종 색인</param>
+        /// <param name="drawCallsPerSpecies">종별 그리기 횟수를 더해 넣을 곳. null 이어도 됩니다.</param>
+        private static void CountDrawCalls(int[,] map, int resolution, int perPatch,
+                                           int index, long[] drawCallsPerSpecies)
+        {
+            if (drawCallsPerSpecies == null || index >= drawCallsPerSpecies.Length) return;
+            if (perPatch <= 0) return;
+
+            long calls = 0;
+
+            for (int pz = 0; pz < resolution; pz += perPatch)
+            {
+                int zEnd = Mathf.Min(pz + perPatch, resolution);
+
+                for (int px = 0; px < resolution; px += perPatch)
+                {
+                    int xEnd = Mathf.Min(px + perPatch, resolution);
+
+                    long inPatch = 0;
+                    for (int z = pz; z < zEnd; z++)
+                        for (int x = px; x < xEnd; x++) inPatch += map[z, x];
+
+                    // 한 포기라도 있으면 한 번, 500을 넘으면 그만큼 더 나뉩니다.
+                    if (inPatch > 0) calls += (inPatch + InstancesPerDrawCall - 1) / InstancesPerDrawCall;
+                }
+            }
+
+            drawCallsPerSpecies[index] += calls;
         }
 
         /// <summary>

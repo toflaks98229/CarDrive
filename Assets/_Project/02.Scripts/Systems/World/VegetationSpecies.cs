@@ -79,7 +79,9 @@ namespace CarDrive.Systems
         /// 이 종이 차지하는 비중입니다. 여러 종의 비중을 합쳐 <see cref="CarDriveWorldSettings.maxPerCell"/>을 나눕니다.
         /// </summary>
         [Header("어디에 심을지")]
-        [Tooltip("칸당 포기 수를 종끼리 나눌 때의 비중. 0이면 심지 않습니다.")]
+        [Tooltip("칸당 포기 수를 종끼리 나눌 때의 비중. 0이면 심지 않습니다.\n" +
+                 "비중은 종끼리 나누기만 할 뿐 총 포기 수를 바꾸지 못합니다. 총량은 maxPerCell 이 정합니다.\n" +
+                 "모든 종의 비중 합을 1로 맞추면 이 값이 곧 '그 종이 차지할 칸의 비율'이 됩니다.")]
         [Range(0f, 4f)]
         public float weight = 1f;
 
@@ -141,7 +143,15 @@ namespace CarDrive.Systems
         /// <b>덩어리가 바닥을 덮고, 잔풀이 그 사이를 메웁니다.</b>
         /// 드로우 콜은 포기 수로만 정해지므로(포기 500개당 한 번), 넓은 면적을
         /// <b>잎이 많은 큰 포기 하나</b>로 덮으면 같은 밀도를 훨씬 적은 그리기로 냅니다.
-        /// 그래서 덩어리를 주력으로 두고 잔풀의 비중을 낮췄습니다.
+        ///
+        /// <b>비중의 합을 1로 맞춰 둔 이유.</b> 심는 양은
+        /// <c>maxPerCell x 비중/비중합</c> 이라, 비중은 종끼리 나눌 뿐 총량을 바꾸지 못합니다.
+        /// 합이 1이고 <c>maxPerCell</c>이 1이면 <b>비중이 곧 그 종이 차지할 칸의 비율</b>이 되어,
+        /// 아래 숫자만 보고도 칸당 잎 수를 바로 셀 수 있습니다.
+        ///
+        /// 지금 구성은 칸당 포기 1개에 잎 약 34장입니다.
+        /// 한 종만 심던 시절이 포기 2개에 잎 36장이었으므로,
+        /// <b>보이는 밀도는 그대로 두고 그리기 횟수만 절반</b>으로 줄인 배분입니다.
         /// </summary>
         /// <param name="legacyBlades">예전 설정의 잎 수. 잔풀이 이어받습니다.</param>
         /// <param name="legacyRadius">예전 설정의 포기 반경</param>
@@ -165,7 +175,7 @@ namespace CarDrive.Systems
                     lean = 0.25f,
                     tint = Color.white,
                     seed = 20260818,
-                    weight = 1f,
+                    weight = 0.35f,
                     maxSlope = 40f,
                     patchScale = 0.012f,
                     patchThreshold = 0.15f
@@ -189,7 +199,12 @@ namespace CarDrive.Systems
                     patchThreshold = 0.2f
                 },
 
-                // 낮고 촘촘한 덤불. 잎이 적어 싸고, 주된 풀 사이를 메웁니다.
+                // 낮고 촘촘한 덤불. 지역 단위로 뭉쳐 납니다.
+                //
+                // 예전에는 군집 파장이 29m라 패치(25m)보다 작아, 결과적으로 <b>거의 모든 패치에</b>
+                // 한두 포기씩 흩뿌려졌습니다. 종 하나가 패치 하나에서 그리기 한 번을 쓰므로
+                // 식생의 10%로 그리기의 21%를 먹었습니다. 파장을 250m로 키워
+                // <b>있는 지역과 없는 지역</b>이 갈리게 했습니다. 없는 패치는 값이 0입니다.
                 new VegetationSpecies
                 {
                     id = "GrassShrub",
@@ -200,14 +215,17 @@ namespace CarDrive.Systems
                     lean = 0.45f,
                     tint = new Color(0.82f, 0.90f, 0.78f),
                     seed = 771103,
-                    weight = 0.55f,
+                    weight = 0.2f,
                     maxSlope = 55f,
-                    patchScale = 0.035f,
-                    patchThreshold = 0.45f,
+                    patchScale = 0.004f,
+                    patchThreshold = 0.58f,
                     patchOffset = 137f
                 },
 
-                // 키 큰 마른 억새. 드물게 솟아 실루엣에 변화를 줍니다.
+                // 키 큰 마른 억새. 물가와 저지대에 무리지어 솟습니다.
+                //
+                // 덤불과 같은 이유로 파장을 330m로 키웠습니다. 예전에는 포기가 전체의 2%인데
+                // 그리기의 18%를 썼습니다. 드문 종일수록 <b>흩뿌리면 가장 비쌉니다.</b>
                 new VegetationSpecies
                 {
                     id = "GrassReed",
@@ -218,10 +236,10 @@ namespace CarDrive.Systems
                     lean = 0.1f,
                     tint = new Color(0.95f, 0.88f, 0.62f),
                     seed = 480921,
-                    weight = 0.25f,
+                    weight = 0.1f,
                     maxSlope = 25f,
-                    patchScale = 0.05f,
-                    patchThreshold = 0.62f,
+                    patchScale = 0.003f,
+                    patchThreshold = 0.68f,
                     patchOffset = 913f
                 }
             };

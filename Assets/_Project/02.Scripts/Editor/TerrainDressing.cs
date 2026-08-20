@@ -242,6 +242,16 @@ namespace CarDrive.EditorTools
             // 종별 포기 수를 세어 둡니다. 드로우 콜이 이 값으로 정해지므로 곧 그리기 비용입니다.
             long[] instances = new long[vegetation.Count];
 
+            // 종별 <b>실제 그리기 횟수</b>입니다. 패치마다 세므로 추정이 아닙니다.
+            long[] drawCalls = new long[vegetation.Count];
+
+            // 그려지는 몫을 재려면 패치 수와 타일 크기가 필요합니다.
+            long patchCount = 0;
+
+            // 그려지는 양을 추정하려면 월드의 격자 칸 수와 타일 크기가 필요합니다.
+            long cellCount = 0;
+            float tileSize = 0f;
+
             for (int i = 0; i < terrains.Length; i++)
             {
                 Terrain terrain = terrains[i];
@@ -263,8 +273,17 @@ namespace CarDrive.EditorTools
                 terrain.detailObjectDistance = Settings.detailDistance;
                 terrain.detailObjectDensity = Settings.detailDensity;
 
+                // 그려지는 양을 재려면 격자 칸 수와 타일 크기가 필요합니다. (아래 ReportVegetationCost)
+                if (terrain.terrainData != null)
+                {
+                    cellCount += (long)DetailResolution * DetailResolution;
+                    patchCount += (DetailResolution / DetailPerPatch) * (DetailResolution / DetailPerPatch);
+                    tileSize = terrain.terrainData.size.x;
+                }
+
                 if (vegetationPrefabs != null) planted += VegetationPainter.Paint(
-                    terrain, vegetation, vegetationPrefabs, DetailResolution, DetailPerPatch, instances);
+                    terrain, vegetation, vegetationPrefabs, DetailResolution, DetailPerPatch,
+                    instances, drawCalls);
 
                 EditorUtility.SetDirty(terrain);
             }
@@ -281,33 +300,40 @@ namespace CarDrive.EditorTools
                 report.Add("· 풀 심은 칸 " + planted + "개. 그리는 거리 " + Settings.detailDistance +
                            "m / 밀도 배율 " + Settings.detailDensity);
 
-                ReportVegetationCost(vegetation, instances, report);
+                ReportVegetationCost(vegetation, instances, drawCalls, patchCount, tileSize, report);
             }
         }
 
         /// <summary>
-        /// 종별 포기 수와 그로부터 나오는 <b>그리기 비용</b>을 적습니다.
+        /// 종별 포기 수와 <b>실제 그리기 횟수</b>를 적습니다.
         ///
-        /// <b>포기 수가 곧 드로우 콜입니다.</b> 유니티 터레인 디테일은 드로우 콜 하나에
-        /// 약 500 포기까지만 담으므로, 잎을 아무리 늘려도 그리기 횟수는 포기 수로만 정해집니다.
-        /// 그래서 <b>잎이 많은 큰 포기</b>가 같은 밀도를 훨씬 적은 그리기로 냅니다.
+        /// <b>포기 수를 500으로 나누면 안 됩니다.</b> 유니티는 디테일을 <c>(패치 x 종)</c>
+        /// 단위로 그리므로, 패치 하나에 어떤 종이 한 포기라도 있으면 그 종 몫으로 한 번이 나갑니다.
+        /// 종이 넷이면 <b>패치당 최소 네 번</b>이 바닥값입니다. 총 포기 수를 절반으로 줄여도
+        /// 종을 넷으로 늘리면 그리기 횟수가 그대로일 수 있습니다.
+        /// 그래서 <see cref="VegetationPainter"/> 가 패치마다 직접 세어 온 값을 씁니다.
         ///
-        /// 심고 나서 바로 확인할 수 있어야 조절이 됩니다. 숫자 없이 눈으로만 보면
-        /// 무엇이 비싼지 알 수 없습니다.
+        /// 여기서 한 번 더 잘못을 저지를 뻔했습니다. 한때 이 함수가 <b>월드 전체</b> 포기 수를
+        /// 500으로 나눠 "드로우 콜 5,653" 이라고 적었습니다. 프로파일러가 재던 것은
+        /// <b>화면 안</b>의 92,916 포기였으니 30배 부풀린 값이었습니다.
+        /// 한 번에 그려지는 것은 <c>detailDistance</c> 안에 걸친 패치의 몫뿐입니다.
         /// </summary>
         /// <param name="species">심은 종 목록</param>
         /// <param name="instances">종별 포기 수</param>
+        /// <param name="drawCalls">종별 그리기 횟수 (월드 전체)</param>
+        /// <param name="patchCount">월드 전체의 패치 수</param>
+        /// <param name="tileSize">타일 한 변의 길이(m)</param>
         /// <param name="report">결과를 적을 목록</param>
         private static void ReportVegetationCost(List<VegetationSpecies> species, long[] instances,
+                                                 long[] drawCalls, long patchCount, float tileSize,
                                                  List<string> report)
         {
-            if (species == null || instances == null) return;
-
-            // 드로우 콜 하나에 담기는 포기 수입니다. 실측(92,916 포기 / 193 콜)에서 나온 값입니다.
-            const int InstancesPerDrawCall = 500;
+            if (species == null || instances == null || drawCalls == null) return;
+            if (patchCount <= 0 || tileSize <= 0f) return;
 
             long totalInstances = 0;
             long totalBlades = 0;
+            long totalCalls = 0;
 
             for (int i = 0; i < species.Count && i < instances.Length; i++)
             {
@@ -316,20 +342,36 @@ namespace CarDrive.EditorTools
                 long blades = instances[i] * species[i].bladesPerTuft;
                 totalInstances += instances[i];
                 totalBlades += blades;
+                totalCalls += drawCalls[i];
 
-                report.Add("  · " + species[i].id + " — 포기 " + instances[i].ToString("N0") +
+                report.Add("  · " + species[i].id +
+                           " — 포기 " + instances[i].ToString("N0") +
                            " / 잎 " + blades.ToString("N0") +
-                           " (포기당 " + species[i].bladesPerTuft + ")");
+                           " / 그리기 " + drawCalls[i].ToString("N0") +
+                           " (포기당 잎 " + species[i].bladesPerTuft + ")");
             }
 
             if (totalInstances == 0) return;
 
-            long estimatedCalls = (totalInstances + InstancesPerDrawCall - 1) / InstancesPerDrawCall;
+            report.Add("· 월드 전체 — 포기 " + totalInstances.ToString("N0") +
+                       " / 잎 " + totalBlades.ToString("N0") +
+                       " / 그리기 " + totalCalls.ToString("N0"));
 
-            report.Add("· 식생 합계 — 포기 " + totalInstances.ToString("N0") +
-                       " / 잎(삼각형) " + totalBlades.ToString("N0"));
-            report.Add("· 예상 드로우 콜 " + estimatedCalls +
-                       "  (포기 " + InstancesPerDrawCall + "개당 1회. 잎 수는 영향을 주지 않습니다)");
+            // 화면 안에 걸치는 패치가 전체의 몇 분의 일인지로 줄여 봅니다.
+            //
+            // 패치는 통째로 들어가고 빠지므로, 거리 안에 조금이라도 걸치면 다 그려집니다.
+            // 그래서 반경에 패치 반대각선을 더해 잡습니다.
+            float patchSize = tileSize / (DetailResolution / (float)DetailPerPatch);
+            float reach = Settings.detailDistance + patchSize * 0.7071f;
+
+            double patchesInView = (Mathf.PI * reach * reach) / (patchSize * patchSize);
+            double share = System.Math.Min(1.0, patchesInView / patchCount);
+
+            report.Add("· 한 번에 그려지는 몫 — 패치 " + patchesInView.ToString("N0") +
+                       " / " + patchCount.ToString("N0") +
+                       " → 그리기 약 " + System.Math.Ceiling(totalCalls * share).ToString("N0") + "회");
+            report.Add("  (패치 " + patchSize.ToString("F0") + "m, 그리는 거리 " + Settings.detailDistance + "m." +
+                       " 종 하나가 패치 하나에서 최소 한 번이라, 종을 늘리면 바닥값이 함께 올라갑니다)");
         }
 
 
