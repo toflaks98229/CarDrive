@@ -213,7 +213,13 @@ namespace CarDrive.EditorTools
         /// </summary>
         /// <param name="terrains">입힐 터레인들</param>
         /// <param name="material">지면 머티리얼. null 이면 건드리지 않습니다.</param>
-        /// <param name="grassPrefab">풀 프리팹. null 이면 풀을 심지 않습니다.</param>
+        /// <param name="grassPrefab">
+        /// 풀 프리팹. null 이면 식생을 심지 않습니다.
+        ///
+        /// <b>이 프리팹의 머티리얼로 종을 다시 굽습니다.</b> 예전에는 이 프리팹 하나를
+        /// 그대로 심었지만, 지금은 설정에 적힌 종 목록대로 여러 벌을 만들어 심습니다.
+        /// (호출부를 고치지 않아도 되도록 인자는 그대로 두었습니다)
+        /// </param>
         /// <param name="report">진행 내용을 적을 목록</param>
         public static void Apply(Terrain[] terrains, Material material, GameObject grassPrefab,
                                  List<string> report)
@@ -226,6 +232,12 @@ namespace CarDrive.EditorTools
 
             int groundLayer = LayerMask.NameToLayer("Ground");
             long planted = 0;
+
+            // 심을 종을 정하고 메시를 굽습니다. 설정이 비어 있으면 예전 값으로 기본 3종을 만듭니다.
+            List<VegetationSpecies> vegetation = ResolveSpecies();
+            GameObject[] vegetationPrefabs = grassPrefab != null
+                ? VegetationBuilder.BuildAll(vegetation, ResolveGrassMaterial(grassPrefab), report)
+                : null;
 
             for (int i = 0; i < terrains.Length; i++)
             {
@@ -248,7 +260,8 @@ namespace CarDrive.EditorTools
                 terrain.detailObjectDistance = Settings.detailDistance;
                 terrain.detailObjectDensity = Settings.detailDensity;
 
-                if (grassPrefab != null) planted += PlantGrass(terrain, grassPrefab);
+                if (vegetationPrefabs != null) planted += VegetationPainter.Paint(
+                    terrain, vegetation, vegetationPrefabs, DetailResolution, DetailPerPatch);
 
                 EditorUtility.SetDirty(terrain);
             }
@@ -267,92 +280,43 @@ namespace CarDrive.EditorTools
             }
         }
 
-        /// <summary>
-        /// 터레인 한 장에 풀을 심습니다.
-        ///
-        /// 잔디가 칠해진 만큼만 심고 도로와 갓길은 비웁니다.
-        /// 알파맵은 [z, x, 레이어] 순서이고 0번이 잔디, 2번이 도로입니다.
-        /// </summary>
-        /// <param name="terrain">심을 터레인</param>
-        /// <param name="grassPrefab">풀 포기 프리팹</param>
-        /// <returns>한 포기라도 심은 격자 칸 수</returns>
-        public static long PlantGrass(Terrain terrain, GameObject grassPrefab)
-        {
-            TerrainData data = terrain.terrainData;
-            if (data == null) return 0;
-
-            DetailPrototype proto = new DetailPrototype();
-            proto.prototype = grassPrefab;
-            proto.usePrototypeMesh = true;
-            proto.useInstancing = true;
-            proto.renderMode = DetailRenderMode.VertexLit;
-            proto.minWidth = 0.85f;
-            proto.maxWidth = 1.45f;
-            proto.minHeight = 0.75f;
-            proto.maxHeight = 1.5f;
-            proto.noiseSpread = 0.4f;
-            proto.healthyColor = Color.white;
-            proto.dryColor = Color.white;
-
-            // 자리를 흩뜨리지 않으면 격자에 줄 맞춰 심겨 <b>바둑판 무늬</b>가 그대로 보입니다.
-            // 포기끼리 경계가 안 보이게 하는 데 이 값이 결정적입니다.
-            proto.positionJitter = 1f;
-
-            // 비탈에서는 조금 눕혀야 땅에 붙어 보입니다. 다 눕히면 누워 버립니다.
-            proto.alignToGround = 0.35f;
-
-            // SetDetailResolution 은 심어 둔 것을 지우므로 반드시 칠하기 전에 부릅니다.
-            data.SetDetailResolution(DetailResolution, DetailPerPatch);
-
-            // 밀도값의 <b>의미</b>를 정합니다. 이것을 안 맞추면 심어도 안 보입니다.
-            // 덮개 모드에서는 값이 0~255의 덮인 비율이라, 포기 수로 넣은 1~3은 거의 0이 됩니다.
-            // 포기 수 모드에서는 값이 그대로 '이 칸에 심을 포기 수'가 됩니다.
-            data.SetDetailScatterMode(DetailScatterMode.InstanceCountMode);
-            data.detailPrototypes = new DetailPrototype[] { proto };
-            data.RefreshPrototypes();
-
-            int res = data.detailResolution;
-            int ares = data.alphamapResolution;
-
-            float[,,] alpha = data.GetAlphamaps(0, 0, ares, ares);
-            int[,] map = new int[res, res];
-            long planted = 0;
-
-            int maxPerCell = Settings.maxPerCell;
-            float threshold = Settings.grassThreshold;
-
-            for (int z = 0; z < res; z++)
-            {
-                int az = Mathf.Clamp(Mathf.FloorToInt((z + 0.5f) / res * ares), 0, ares - 1);
-
-                for (int x = 0; x < res; x++)
-                {
-                    int ax = Mathf.Clamp(Mathf.FloorToInt((x + 0.5f) / res * ares), 0, ares - 1);
-
-                    float grass = alpha[az, ax, 0];
-                    if (grass < threshold) continue;
-
-                    // 잔디가 옅어지는 가장자리에서는 포기 수도 함께 줄여, 풀밭이 끝나는 자리에
-                    // 선이 생기지 않고 성글게 흩어지며 사라지게 합니다.
-                    //
-                    // 0 에서 시작해 올려야 가장자리가 <b>정말로</b> 성글어집니다.
-                    // 1 부터 시작하면 임계값 바로 안쪽까지 빠짐없이 심겨 그 자리에 선이 남습니다.
-                    float t = Mathf.InverseLerp(threshold, 1f, grass);
-                    int count = Mathf.RoundToInt(Mathf.Lerp(0f, maxPerCell, t * t));
-                    if (count <= 0) continue;
-
-                    map[z, x] = count;
-                    planted++;
-                }
-            }
-
-            data.SetDetailLayer(0, 0, 0, map);
-            EditorUtility.SetDirty(data);
-
-            return planted;
-        }
 
         // --- Private Methods ---
+
+        /// <summary>
+        /// 심을 식생 종을 정합니다.
+        ///
+        /// 설정에 적어 둔 것이 있으면 그것을, 비어 있으면 <b>예전의 단일 풀 값으로</b>
+        /// 기본 세 종을 만듭니다. 그래서 설정을 손대지 않은 프로젝트도 그대로 돌아가고,
+        /// 주된 종이 예전 모습을 그대로 물려받습니다.
+        /// </summary>
+        /// <returns>심을 종 목록</returns>
+        private static List<VegetationSpecies> ResolveSpecies()
+        {
+            CarDriveWorldSettings settings = Settings;
+
+            bool authored = settings.vegetation != null && settings.vegetation.Count > 0;
+            if (authored) return settings.vegetation;
+
+            return VegetationDefaults.Create(
+                settings.bladesPerTuft, settings.tuftRadius, settings.bladeHeight);
+        }
+
+        /// <summary>
+        /// 풀 프리팹에서 잎 머티리얼을 꺼냅니다.
+        ///
+        /// 종을 새로 구울 때 <b>지금 쓰고 있는 잎 머티리얼을 그대로</b> 물려받기 위한 것입니다.
+        /// 룩을 바꿔 두었다면 그 룩의 머티리얼이 그대로 이어집니다.
+        /// </summary>
+        /// <param name="grassPrefab">지금 심겨 있는 풀 프리팹</param>
+        /// <returns>잎 머티리얼. 찾지 못하면 null입니다.</returns>
+        private static Material ResolveGrassMaterial(GameObject grassPrefab)
+        {
+            if (grassPrefab == null) return null;
+
+            MeshRenderer renderer = grassPrefab.GetComponentInChildren<MeshRenderer>(true);
+            return renderer != null ? renderer.sharedMaterial : null;
+        }
 
         /// <summary>
         /// 우리가 만든 에셋인지 봅니다.
