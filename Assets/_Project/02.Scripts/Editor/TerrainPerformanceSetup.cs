@@ -148,6 +148,78 @@ namespace CarDrive.EditorTools
         }
 
         /// <summary>
+        /// 나무 프리팹에 <b>LODGroup 을 채웁니다.</b> 콘솔을 덮던 나무 경고를 없앱니다.
+        ///
+        /// <b>무엇을 고치는가.</b> 유니티는 터레인 나무 프로토타입을 검사할 때,
+        /// <c>LODGroup</c> 도 없고 <c>Nature/Soft Occlusion</c> 셰이더도 아니면
+        /// "must use the Nature/Soft Occlusion shader" 경고를 냅니다.
+        /// 우리 나무 다섯 종이 모두 여기에 걸려, 씬을 열 때마다 타일 103장 x 5종만큼
+        /// 경고가 쏟아졌습니다. 실측 1,545 줄이었습니다.
+        ///
+        /// <b>왜 셰이더를 안 바꾸고 LODGroup 을 다는가.</b> 셰이더를 바꾸면 툰 룩과,
+        /// 나무가 멀어질 때 쓰는 디더 페이드를 통째로 잃습니다. LODGroup 을 다는 쪽은
+        /// 검사만 통과시키고 그리는 방식은 건드리지 않습니다. 배치 모드에서 두 경우를
+        /// 직접 돌려 확인했습니다. LODGroup 이 있으면 경고가 나오지 않습니다.
+        ///
+        /// <b>단계는 하나만 두고 컬링은 끕니다.</b> 대신 쓸 저폴리 나무가 없으므로
+        /// 단계를 나눌 것이 없고, 전환 높이를 0으로 두어 <b>LODGroup 이 나무를 지우지 않게</b> 합니다.
+        /// 여기를 0.05 같은 값으로 두면 100m 근처에서 나무가 사라져,
+        /// 240~330m 에서 서서히 사라지게 맞춰 둔 셰이더 페이드보다 먼저 튀어 버립니다.
+        /// 지우는 것은 <c>treeDistance</c> 와 셰이더에 그대로 맡깁니다.
+        ///
+        /// <b>빌보드가 생기는 것은 아닙니다.</b> 그것은 여전히 Nature/Soft Occlusion 이나
+        /// BillboardRenderer 가 있어야 합니다. 점검 표는 계속 "효과 없음" 으로 찍습니다.
+        /// </summary>
+        [MenuItem("CarDrive/World/나무 LOD 그룹 채우기")]
+        public static void FillTreeLodGroups()
+        {
+            Terrain[] terrains = Object.FindObjectsByType<Terrain>(FindObjectsInactive.Include);
+            if (terrains.Length == 0)
+            {
+                Debug.LogWarning("TerrainPerformanceSetup: 씬에서 터레인을 찾지 못했습니다.");
+                return;
+            }
+
+            List<GameObject> seen = new List<GameObject>();
+            List<string> filled = new List<string>();
+            List<string> skipped = new List<string>();
+
+            for (int i = 0; i < terrains.Length; i++)
+            {
+                if (terrains[i] == null || terrains[i].terrainData == null) continue;
+
+                TreePrototype[] protos = terrains[i].terrainData.treePrototypes;
+                for (int t = 0; t < protos.Length; t++)
+                {
+                    if (protos[t] == null || protos[t].prefab == null) continue;
+                    if (seen.Contains(protos[t].prefab)) continue;
+
+                    seen.Add(protos[t].prefab);
+
+                    if (FillOne(protos[t].prefab)) filled.Add(protos[t].prefab.name);
+                    else skipped.Add(protos[t].prefab.name);
+                }
+            }
+
+            AssetDatabase.SaveAssets();
+
+            // 프로토타입 캐시를 갱신해야 이미 심긴 나무에도 반영됩니다.
+            for (int i = 0; i < terrains.Length; i++)
+            {
+                if (terrains[i].terrainData == null) continue;
+
+                terrains[i].terrainData.RefreshPrototypes();
+                EditorUtility.SetDirty(terrains[i].terrainData);
+            }
+
+            Debug.Log("=== 나무 LOD 그룹 ===\n"
+                      + "채운 나무 : " + (filled.Count > 0 ? string.Join(", ", filled.ToArray()) : "없음")
+                      + "\n건드리지 않음 : " + (skipped.Count > 0 ? string.Join(", ", skipped.ToArray()) : "없음")
+                      + "\n씬을 저장하고 다시 열면 나무 경고가 사라집니다. "
+                      + "빌보드가 생기는 것은 아닙니다 — 그리는 방식은 그대로입니다.");
+        }
+
+        /// <summary>
         /// 지금 설정을 표로 찍어 봅니다. 무엇이 비싼지 눈으로 확인할 때 씁니다.
         /// </summary>
         [MenuItem("CarDrive/World/터레인 렌더링 설정 점검")]
@@ -203,6 +275,44 @@ namespace CarDrive.EditorTools
         }
 
         // --- Private Methods ---
+
+        /// <summary>
+        /// 나무 프리팹 하나에 LODGroup 을 답니다. 이미 있으면 건드리지 않습니다.
+        /// </summary>
+        /// <param name="prefab">나무 프로토타입 프리팹</param>
+        /// <returns>새로 달았으면 true</returns>
+        private static bool FillOne(GameObject prefab)
+        {
+            if (prefab.GetComponentInChildren<LODGroup>(true) != null) return false;
+
+            string path = AssetDatabase.GetAssetPath(prefab);
+            if (string.IsNullOrEmpty(path)) return false;
+
+            GameObject root = PrefabUtility.LoadPrefabContents(path);
+
+            try
+            {
+                Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+                if (renderers.Length == 0) return false;
+
+                LODGroup group = root.GetComponent<LODGroup>();
+                if (group == null) group = root.AddComponent<LODGroup>();
+
+                // 전환 높이 0 — 이 단계가 화면에서 아무리 작아져도 LODGroup 은 지우지 않습니다.
+                group.SetLODs(new LOD[] { new LOD(0f, renderers) });
+                group.fadeMode = LODFadeMode.None;
+                group.animateCrossFading = false;
+                group.RecalculateBounds();
+
+                PrefabUtility.SaveAsPrefabAsset(root, path);
+                return true;
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
 
         /// <summary>
         /// 터레인에 심긴 나무 중 <b>빌보드로 넘어갈 수 있는 것</b>이 몇인지 셉니다.

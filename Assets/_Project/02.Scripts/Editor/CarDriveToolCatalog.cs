@@ -211,6 +211,12 @@ namespace CarDrive.EditorTools
                         },
                         new CarDriveTool
                         {
+                            MenuPath = "CarDrive/World/나무 LOD 그룹 채우기",
+                            Label = "나무 LOD 그룹 채우기",
+                            Description = "씬을 열 때마다 쏟아지던 나무 경고를 없앱니다. 그리는 방식은 그대로입니다."
+                        },
+                        new CarDriveTool
+                        {
                             MenuPath = "CarDrive/World/터레인 그림자 단면으로 (확인 필요)",
                             Label = "터레인 그림자 단면으로",
                             Description = "그림자 지오메트리가 절반이 됩니다. 적용 후 새벽·석양을 확인하세요.",
