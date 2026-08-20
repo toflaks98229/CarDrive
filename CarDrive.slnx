@@ -1,7 +1,17 @@
 ﻿<Solution>
+  <Project Path="MoreMountains.Tools.csproj" />
+  <Project Path="MoreMountains.Tools.Editor.csproj" />
+  <Project Path="Lofelt.NiceVibrations.csproj" />
   <Project Path="LogiUnityBridge.Editor.csproj" />
-  <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="CarDrive.Runtime.csproj" />
   <Project Path="CFXREditor.csproj" />
+  <Project Path="CarDrive.Editor.csproj" />
+  <Project Path="CarDrive.Tests.EditMode.csproj" />
+  <Project Path="DOTween.Modules.csproj" />
+  <Project Path="CarDrive.Tests.PlayMode.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
+  <Project Path="Lofelt.NiceVibrations.Demo.csproj" />
+  <Project Path="Lofelt.NiceVibrations.Editor.csproj" />
   <Project Path="CFXRRuntime.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
 </Solution>

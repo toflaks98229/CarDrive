@@ -180,6 +180,55 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &443319725920664245
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4014385363738421865}
+  - component: {fileID: 3195123928853570149}
+  m_Layer: 0
+  m_Name: GrassPusher_Body
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4014385363738421865
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 443319725920664245}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.35615206, z: 0.015602589}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2186234320128786907}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3195123928853570149
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 443319725920664245}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 03a5f88679a49fa4599f22327fdd66f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GrassPusher
+  radius: 2
+  leavesMark: 0
+  mass: 0
+  secondsPerKilogram: 0.05
+  markSecondsRange: {x: 3, y: 60}
 --- !u!1 &527305488745285729
 GameObject:
   m_ObjectHideFlags: 0
@@ -843,8 +892,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9cc0c8fe115fb04bad47b5b1a53350f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SteeringWheelInteractable
-  carController: {fileID: 7177942464343344012}
-  modeController: {fileID: 0}
+  vehicle: {fileID: 0}
   startLabel: "\uC2DC\uB3D9 \uAC78\uAE30"
   stopLabel: "\uC2DC\uB3D9 \uB044\uAE30"
 --- !u!1 &1894192895466831880
@@ -944,9 +992,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee92e022a825b4f45821005ec5195cf8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VehicleDoorInteractable
+  vehicle: {fileID: 0}
   modeController: {fileID: 0}
   enterLabel: "\uD0D1\uC2B9"
   exitLabel: "\uD558\uCC28"
+  tooFastLabel: "\uC18D\uB3C4\uB97C \uC904\uC774\uC138\uC694"
 --- !u!1 &2011177248563109334
 GameObject:
   m_ObjectHideFlags: 0
@@ -1835,6 +1885,7 @@ GameObject:
   - component: {fileID: 2158267250894165464}
   - component: {fileID: 4074754547914428092}
   - component: {fileID: 2273798063112480886}
+  - component: {fileID: 2336767630366352514}
   m_Layer: 8
   m_Name: Wheel_FL
   m_TagString: Untagged
@@ -1914,6 +1965,23 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &2336767630366352514
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4073080166876312916}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 03a5f88679a49fa4599f22327fdd66f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GrassPusher
+  radius: 1.2
+  leavesMark: 1
+  mass: 0
+  secondsPerKilogram: 0.05
+  markSecondsRange: {x: 3, y: 60}
 --- !u!1 &4510397763531697067
 GameObject:
   m_ObjectHideFlags: 0
@@ -2066,25 +2134,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &5061220052198303277
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5061220052198303276}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cc36532ef33744b5b95eda7b6b8d7aab, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  displayName: "\uCC28\uB7C9"
-  controller: {fileID: 7177942464343344012}
-  input: {fileID: 0}
-  seat: {fileID: 0}
-  health: {fileID: 1893768775226989467}
-  impactShake: {fileID: 91015286710968049}
-  dashboardShakers: []
 --- !u!4 &2186234320128786907
 Transform:
   m_ObjectHideFlags: 0
@@ -2121,6 +2170,7 @@ Transform:
   - {fileID: 1493851122810299847}
   - {fileID: 7547679533821263174}
   - {fileID: 95453761916149826}
+  - {fileID: 4014385363738421865}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &4728330356325242161
@@ -2260,6 +2310,8 @@ MonoBehaviour:
   sideGhostTargetOffset2: {x: 0, y: 0, z: 6.5}
   minSpawnInterval: 3
   maxSpawnInterval: 3
+  useWeatherActivity: 1
+  maxActivityMultiplier: 3
 --- !u!114 &7177942464343344012
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2276,7 +2328,9 @@ MonoBehaviour:
   driveType: 1
   steerType: 0
   centerOfMass: {x: 0, y: -0.5, z: 0}
-  engineStartKey: 101
+  useWeatherGrip: 1
+  weatherGripInfluence: 1
+  minGripFactor: 0.55
   frontLeftWheelCollider: {fileID: 8214825195861352607}
   frontRightWheelCollider: {fileID: 8218988996661789583}
   rearLeftWheelCollider: {fileID: 7937032650802749596}
@@ -2343,6 +2397,27 @@ MonoBehaviour:
   damageOnEnemyCollision: 10
   stressOnEnemyCollision: 0.06
   shakeScaleOnEnemyCollision: 1
+  soundController: {fileID: 0}
+  soundFullVolumeSpeed: 15
+--- !u!114 &5061220052198303277
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5061220052198303276}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cc36532ef33744b5b95eda7b6b8d7aab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  displayName: "\uCC28\uB7C9"
+  controller: {fileID: 7177942464343344012}
+  input: {fileID: 0}
+  seat: {fileID: 0}
+  health: {fileID: 1893768775226989467}
+  impactShake: {fileID: 91015286710968049}
+  dashboardShakers: []
 --- !u!114 &91015286710968049
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2535,6 +2610,7 @@ GameObject:
   - component: {fileID: 5355230627763579295}
   - component: {fileID: 1366982811668918414}
   - component: {fileID: 2436204461170186683}
+  - component: {fileID: 4930422601467069046}
   m_Layer: 8
   m_Name: Wheel_FR
   m_TagString: Untagged
@@ -2614,6 +2690,23 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &4930422601467069046
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5360491914571685785}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 03a5f88679a49fa4599f22327fdd66f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GrassPusher
+  radius: 1.2
+  leavesMark: 1
+  mass: 0
+  secondsPerKilogram: 0.05
+  markSecondsRange: {x: 3, y: 60}
 --- !u!1 &5360496116421150515
 GameObject:
   m_ObjectHideFlags: 0
@@ -2625,6 +2718,7 @@ GameObject:
   - component: {fileID: 5284353843603013860}
   - component: {fileID: 6563788232217795472}
   - component: {fileID: 997360807742447008}
+  - component: {fileID: 562384203232338747}
   m_Layer: 8
   m_Name: Wheel_RL
   m_TagString: Untagged
@@ -2704,6 +2798,23 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &562384203232338747
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5360496116421150515}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 03a5f88679a49fa4599f22327fdd66f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GrassPusher
+  radius: 1.2
+  leavesMark: 1
+  mass: 0
+  secondsPerKilogram: 0.05
+  markSecondsRange: {x: 3, y: 60}
 --- !u!1 &5367783564775460432
 GameObject:
   m_ObjectHideFlags: 0
@@ -2899,9 +3010,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee92e022a825b4f45821005ec5195cf8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VehicleDoorInteractable
+  vehicle: {fileID: 0}
   modeController: {fileID: 0}
   enterLabel: "\uD0D1\uC2B9"
   exitLabel: "\uD558\uCC28"
+  tooFastLabel: "\uC18D\uB3C4\uB97C \uC904\uC774\uC138\uC694"
 --- !u!1 &5536651308155481339
 GameObject:
   m_ObjectHideFlags: 0
@@ -3944,6 +4057,7 @@ GameObject:
   - component: {fileID: 8449326923682666598}
   - component: {fileID: 5350067515138905776}
   - component: {fileID: 4738238424523642376}
+  - component: {fileID: 2537425616155216389}
   m_Layer: 8
   m_Name: Wheel_RR
   m_TagString: Untagged
@@ -4023,6 +4137,23 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &2537425616155216389
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7144836606542817986}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 03a5f88679a49fa4599f22327fdd66f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GrassPusher
+  radius: 1.2
+  leavesMark: 1
+  mass: 0
+  secondsPerKilogram: 0.05
+  markSecondsRange: {x: 3, y: 60}
 --- !u!1 &7408300741577949792
 GameObject:
   m_ObjectHideFlags: 0

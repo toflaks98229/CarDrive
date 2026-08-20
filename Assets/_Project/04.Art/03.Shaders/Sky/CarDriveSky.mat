@@ -25,7 +25,7 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
-    - _Bands: 18
+    - _Bands: 256
     - _DayFactor: 1
     - _DuskWidth: 8
     - _StarAmount: 0.018
@@ -34,9 +34,9 @@ Material:
     - _StarFade: 0
     - _SunSize: 0.035
     m_Colors:
-    - _DayHorizon: {r: 0.65999997, g: 0.74, b: 0.82, a: 1}
-    - _DayTop: {r: 0.34999996, g: 0.52, b: 0.78, a: 1}
-    - _DuskColor: {r: 0.85, g: 0.45, b: 0.21999997, a: 1}
+    - _DayHorizon: {r: 0.878, g: 0.812, b: 0.765, a: 1}
+    - _DayTop: {r: 0.722, g: 0.667, b: 0.663, a: 1}
+    - _DuskColor: {r: 0.851, g: 0.502, b: 0.29, a: 1}
     - _NightHorizon: {r: 0.06999998, g: 0.089999996, b: 0.12999997, a: 1}
     - _NightTop: {r: 0.03, g: 0.04, b: 0.06999998, a: 1}
     - _SunColor: {r: 1, g: 0.93, b: 0.78, a: 1}

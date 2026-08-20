@@ -1,422 +1,517 @@
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.Serialization;
+using CarDrive.Common;
+using CarDrive.Systems;
 
-/// <summary>
-/// 배뇨 해소를 담당합니다.
-///
-/// P를 <b>누르고 있는 동안</b> 물줄기가 이어집니다.
-/// 프레임마다 조금씩 방출하므로 한 지점에서 부채꼴로 퍼지지 않고 한 줄기로 뻗습니다.
-///
-/// 출력은 두 가지가 합쳐져 결정됩니다.
-///  - 잔뇨: 남은 양이 적을수록 약해집니다. 끝에 가면 힘없이 흘러내립니다.
-///  - 압력: P를 연타할 때마다 붙습니다. 잔뇨가 적어도 연타하면 다시 세게 나갑니다.
-///
-/// 조준은 시선의 <b>상하 각도</b>를 따릅니다. 하늘을 향해 쏘면 포물선을 그리며
-/// 자기 위로 되떨어지고(역류), 그만큼 갈증이 줄되 청결이 급격히 나빠집니다.
-/// </summary>
-public class UrineRelief : MonoBehaviour
+namespace CarDrive.Gameplay
 {
-    // --- Public Member Variables ---
-
-    [Header("입력")]
-    [Tooltip("배뇨 키. 누르고 있는 동안 계속 나오고, 연타하면 압력이 붙습니다.")]
-    public KeyCode relieveKey = KeyCode.P;
-
-    [Header("연동")]
-    [Tooltip("노란 물줄기 파티클. 방출은 코드가 직접 하므로 Emission 모듈은 꺼 둡니다.")]
-    public ParticleSystem stream;
-
-    [Tooltip("니즈 시스템. 비워두면 씬에서 자동으로 찾습니다.")]
-    public NeedsSystem needsSystem;
-
-    [Header("조준 - 시선의 상하 각도를 따릅니다")]
-    [Tooltip("상하 각도를 읽어 올 대상(보통 메인 카메라). 비워두면 Camera.main을 씁니다.")]
-    public Transform aimSource;
-
-    [Tooltip("시선 각도가 노즐에 반영되는 비율. 1이면 보는 각도 그대로 쏩니다.")]
-    [Range(0f, 1f)]
-    public float pitchInfluence = 1f;
-
-    [Tooltip("노즐이 향할 수 있는 최대 각도(도). 위아래 공통입니다.")]
-    [Range(10f, 89f)]
-    public float maxAimAngle = 85f;
-
-    [Header("배출 속도")]
-    [Tooltip("출력이 최대일 때 초당 줄어드는 배뇨량. 낮출수록 비우는 데 오래 걸립니다.")]
-    public float reliefPerSecond = 0.13f;
-
-    [Tooltip("이 값 아래로는 더 나오지 않습니다.")]
-    public float emptyThreshold = 0.015f;
-
-    [Header("잔뇨 - 남은 양이 적을수록 약해집니다")]
-    [Tooltip("거의 다 비웠을 때 남는 기본 출력 비율. 0에 가까울수록 끝이 확 죽습니다.")]
-    [Range(0f, 1f)]
-    public float minFlowFromVolume = 0.16f;
-
-    [Tooltip("남은 양(가로 0~1)에 따른 출력(세로 0~1) 곡선")]
-    public AnimationCurve volumeCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
-
-    [Header("연타 압력 - 누를 때마다 힘이 붙습니다")]
-    [Tooltip("한 번 누를 때 오르는 압력")]
-    [Range(0f, 1f)]
-    public float pressurePerPress = 0.5f;
-
-    [Tooltip("압력이 초당 빠지는 속도")]
-    public float pressureDecayPerSecond = 1.6f;
-
-    [Tooltip("압력이 출력에 더해지는 양")]
-    [Range(0f, 1f)]
-    public float pressureFlowBonus = 0.9f;
-
-    [Tooltip("연타로 끌어올릴 수 있는 출력 상한. 기본 최대 출력(1.0)에 대한 비율입니다. " +
-             "잔뇨가 넉넉해서 이미 이 값보다 세게 나오고 있다면 깎지 않습니다.")]
-    [Range(0f, 1f)]
-    public float pressureFlowCeiling = 0.8f;
-
-    [Tooltip("압력이 최대일 때 배출 속도에 붙는 추가 배율")]
-    public float pressureDrainBonus = 0.8f;
-
-    [Header("놓았을 때")]
-    [Tooltip("키를 놓은 뒤 줄기가 잦아드는 속도. 연타할 때 뚝뚝 끊기지 않게 해 줍니다.")]
-    public float releaseFadeSpeed = 6f;
-
-    [Header("파티클 출력")]
-    [Tooltip("출력이 최대일 때 초당 방출 입자 수")]
-    public float maxEmissionRate = 110f;
-
-    [Tooltip("출력이 최소일 때 초당 방출 입자 수")]
-    public float minEmissionRate = 16f;
-
-    public float maxSpeed = 6.2f;
-    public float minSpeed = 1.4f;
-    public float maxLifetime = 1.2f;
-    public float minLifetime = 0.45f;
-
-    [Tooltip("물줄기가 퍼지는 원뿔 각도(도). 작을수록 일직선에 가깝습니다.")]
-    public float coneAngle = 1.2f;
-
-    [Header("부수 효과 (초당)")]
-    public float hygieneCostPerSecond = 0.006f;
-    public float stressReliefPerSecond = 0.02f;
-
-    [Header("역류 - 위로 쏘면 자기가 뒤집어씁니다")]
-    [Tooltip("이 각도(도) 위로 쏘기 시작하면 조금씩 되떨어집니다.")]
-    [Range(0f, 89f)]
-    public float backsplashStartAngle = 25f;
-
-    [Tooltip("이 각도(도)부터는 전부 자기 위로 떨어집니다.")]
-    [Range(0f, 89f)]
-    public float backsplashFullAngle = 70f;
-
-    [Tooltip("역류가 최대일 때 초당 줄어드는 갈증. 마시는 게 아니라 얼굴로 받는 것이라 " +
-             "물을 마시는 것보다 훨씬 적게 잡습니다.")]
-    public float backsplashThirstReliefPerSecond = 0.012f;
-
-    [Tooltip("역류가 최대일 때 청결 악화에 곱해지는 배율. 8이면 평소의 9배로 더러워집니다.")]
-    public float backsplashHygieneMultiplier = 8f;
-
-    [Tooltip("역류가 최대일 때 초당 오르는 스트레스. 역류 중에는 시원함(스트레스 해소)이 사라집니다.")]
-    public float backsplashStressPerSecond = 0.05f;
-
-    [Header("이벤트")]
-    [Tooltip("줄기가 시작될 때")]
-    public UnityEvent onStreamStart;
-
-    [Tooltip("줄기가 멈출 때")]
-    public UnityEvent onStreamStop;
-
-    [Tooltip("다 비워서 더 나오지 않을 때")]
-    public UnityEvent onEmpty;
-
-    // --- Public Properties ---
-
-    /// <summary>현재 출력 비율(0~1)입니다. 사운드 볼륨 등에 쓸 수 있습니다.</summary>
-    public float CurrentOutput { get; private set; }
-
-    /// <summary>연타로 쌓인 압력(0~1)입니다.</summary>
-    public float Pressure { get { return pressure; } }
-
-    /// <summary>지금 나오고 있는지 여부입니다.</summary>
-    public bool IsStreaming { get; private set; }
-
-    /// <summary>물줄기가 수평에서 위로 향한 각도(도)입니다. 아래를 향하면 음수입니다.</summary>
-    public float StreamElevation { get; private set; }
-
     /// <summary>
-    /// 역류 정도(0~1)입니다. 1이면 쏜 것이 전부 자기 위로 되떨어집니다.
+    /// 배뇨 해소의 <b>계산</b>을 맡습니다. 그리는 일은 <see cref="UrineStreamView"/>가 합니다.
+    ///
+    /// 배뇨 키(<c>GameAction.Relieve</c>, 기본 P)를 누르고 있는 동안 물줄기가 이어집니다.
+    /// 출력은 두 가지가 합쳐져 결정됩니다.
+    ///  - 잔뇨: 남은 양이 적을수록 약해집니다. 끝에 가면 힘없이 흘러내립니다.
+    ///  - 압력: 배뇨 키를 연타할 때마다 붙습니다. 잔뇨가 적어도 연타하면 다시 세게 나갑니다.
+    ///
+    /// 조준은 시선의 <b>상하 각도</b>를 따릅니다. 하늘을 향해 쏘면 포물선을 그리며
+    /// 자기 위로 되떨어지고(역류), 그만큼 갈증이 줄되 청결이 급격히 나빠집니다.
+    ///
+    /// <b>이 클래스에는 ParticleSystem 코드가 한 줄도 없습니다.</b>
+    /// 뷰에 넘기는 것은 숫자 둘뿐입니다 — 출력(0~1)과 노즐 각도(도).
+    /// 그래서 물의 양을 조율하는 사람이 파티클 API를 읽을 필요가 없고,
+    /// 반대로 연출을 바꾸는 사람이 니즈 계산을 건드릴 위험도 없습니다.
+    ///
+    /// 인스펙터 값은 예전 이름 그대로 읽어 옵니다. Unity는 필드 <b>이름</b>으로 직렬화하므로,
+    /// <see cref="FormerlySerializedAsAttribute"/>가 없으면 씬에 맞춰 둔 수치가 전부 초기화됩니다.
     /// </summary>
-    public float Backsplash
+    public class UrineRelief : MonoBehaviour
     {
-        get
+        // --- Constants ---
+
+        /// <summary>이 아래로 내려가면 손을 뗀 것으로 봅니다.</summary>
+        private const float HoldEpsilon = 0.001f;
+
+        /// <summary>배뇨 수치는 한계 1.5까지 오르므로, 출력 계산에서는 1을 최대로 봅니다.</summary>
+        private const float FullVolume = 1f;
+
+        // --- Serialized Fields : 연동 ---
+
+        /// <summary>물줄기를 그릴 파티클입니다. 비워두면 자식에서 찾습니다.</summary>
+        [Header("연동")]
+        [Tooltip("노란 물줄기 파티클. 방출은 코드가 직접 하므로 Emission 모듈은 꺼 둡니다.")]
+        [SerializeField, FormerlySerializedAs("stream")]
+        private ParticleSystem _stream;
+
+        /// <summary>니즈를 반영할 시스템입니다. 비워두면 실행 중에 찾습니다.</summary>
+        [Tooltip("니즈 시스템. 비워두면 씬에서 자동으로 찾습니다.")]
+        [SerializeField, FormerlySerializedAs("needsSystem")]
+        private NeedsSystem _needsSystem;
+
+        // --- Serialized Fields : 조준 ---
+
+        /// <summary>상하 각도를 읽어 올 대상입니다. 보통 메인 카메라입니다.</summary>
+        [Header("조준 - 시선의 상하 각도를 따릅니다")]
+        [Tooltip("상하 각도를 읽어 올 대상(보통 메인 카메라). 비워두면 Camera.main을 씁니다.")]
+        [SerializeField, FormerlySerializedAs("aimSource")]
+        private Transform _aimSource;
+
+        /// <summary>시선 각도가 노즐에 반영되는 비율입니다.</summary>
+        [Tooltip("시선 각도가 노즐에 반영되는 비율. 1이면 보는 각도 그대로 쏩니다.")]
+        [Range(0f, 1f)]
+        [SerializeField, FormerlySerializedAs("pitchInfluence")]
+        private float _pitchInfluence = 1f;
+
+        /// <summary>노즐이 향할 수 있는 최대 각도(도)입니다.</summary>
+        [Tooltip("노즐이 향할 수 있는 최대 각도(도). 위아래 공통입니다.")]
+        [Range(10f, 89f)]
+        [SerializeField, FormerlySerializedAs("maxAimAngle")]
+        private float _maxAimAngle = 85f;
+
+        // --- Serialized Fields : 배출 ---
+
+        /// <summary>출력이 최대일 때 초당 줄어드는 배뇨량입니다.</summary>
+        [Header("배출 속도")]
+        [Tooltip("출력이 최대일 때 초당 줄어드는 배뇨량. 낮출수록 비우는 데 오래 걸립니다.")]
+        [SerializeField, FormerlySerializedAs("reliefPerSecond")]
+        private float _reliefPerSecond = 0.13f;
+
+        /// <summary>이 값 아래로는 더 나오지 않습니다.</summary>
+        [Tooltip("이 값 아래로는 더 나오지 않습니다.")]
+        [SerializeField, FormerlySerializedAs("emptyThreshold")]
+        private float _emptyThreshold = 0.015f;
+
+        /// <summary>거의 다 비웠을 때 남는 기본 출력 비율입니다.</summary>
+        [Header("잔뇨 - 남은 양이 적을수록 약해집니다")]
+        [Tooltip("거의 다 비웠을 때 남는 기본 출력 비율. 0에 가까울수록 끝이 확 죽습니다.")]
+        [Range(0f, 1f)]
+        [SerializeField, FormerlySerializedAs("minFlowFromVolume")]
+        private float _minFlowFromVolume = 0.16f;
+
+        /// <summary>남은 양에 따른 출력 곡선입니다.</summary>
+        [Tooltip("남은 양(가로 0~1)에 따른 출력(세로 0~1) 곡선")]
+        [SerializeField, FormerlySerializedAs("volumeCurve")]
+        private AnimationCurve _volumeCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
+
+        // --- Serialized Fields : 압력 ---
+
+        /// <summary>한 번 누를 때 오르는 압력입니다.</summary>
+        [Header("연타 압력 - 누를 때마다 힘이 붙습니다")]
+        [Tooltip("한 번 누를 때 오르는 압력")]
+        [Range(0f, 1f)]
+        [SerializeField, FormerlySerializedAs("pressurePerPress")]
+        private float _pressurePerPress = 0.5f;
+
+        /// <summary>압력이 초당 빠지는 속도입니다.</summary>
+        [Tooltip("압력이 초당 빠지는 속도")]
+        [SerializeField, FormerlySerializedAs("pressureDecayPerSecond")]
+        private float _pressureDecayPerSecond = 1.6f;
+
+        /// <summary>압력이 출력에 더해지는 양입니다.</summary>
+        [Tooltip("압력이 출력에 더해지는 양")]
+        [Range(0f, 1f)]
+        [SerializeField, FormerlySerializedAs("pressureFlowBonus")]
+        private float _pressureFlowBonus = 0.9f;
+
+        /// <summary>연타로 끌어올릴 수 있는 출력 상한입니다.</summary>
+        [Tooltip("연타로 끌어올릴 수 있는 출력 상한. 기본 최대 출력(1.0)에 대한 비율입니다. " +
+                 "잔뇨가 넉넉해서 이미 이 값보다 세게 나오고 있다면 깎지 않습니다.")]
+        [Range(0f, 1f)]
+        [SerializeField, FormerlySerializedAs("pressureFlowCeiling")]
+        private float _pressureFlowCeiling = 0.8f;
+
+        /// <summary>압력이 최대일 때 배출 속도에 붙는 추가 배율입니다.</summary>
+        [Tooltip("압력이 최대일 때 배출 속도에 붙는 추가 배율")]
+        [SerializeField, FormerlySerializedAs("pressureDrainBonus")]
+        private float _pressureDrainBonus = 0.8f;
+
+        /// <summary>키를 놓은 뒤 줄기가 잦아드는 속도입니다.</summary>
+        [Header("놓았을 때")]
+        [Tooltip("키를 놓은 뒤 줄기가 잦아드는 속도. 연타할 때 뚝뚝 끊기지 않게 해 줍니다.")]
+        [SerializeField, FormerlySerializedAs("releaseFadeSpeed")]
+        private float _releaseFadeSpeed = 6f;
+
+        // --- Serialized Fields : 연출 수치 ---
+        //
+        // 값은 여기 남습니다. UrineStreamView 로 옮기면 직렬화 경로가 바뀌어
+        // 씬에 맞춰 둔 수치(속도 15, 수명 3 등)가 전부 초기화됩니다.
+        // 뷰는 Start 에서 이 값들을 넘겨받습니다.
+
+        /// <summary>출력이 최대일 때 초당 방출 입자 수입니다.</summary>
+        [Header("파티클 출력")]
+        [Tooltip("출력이 최대일 때 초당 방출 입자 수")]
+        [SerializeField, FormerlySerializedAs("maxEmissionRate")]
+        private float _maxEmissionRate = 110f;
+
+        /// <summary>출력이 최소일 때 초당 방출 입자 수입니다.</summary>
+        [Tooltip("출력이 최소일 때 초당 방출 입자 수")]
+        [SerializeField, FormerlySerializedAs("minEmissionRate")]
+        private float _minEmissionRate = 16f;
+
+        /// <summary>출력이 최대일 때의 입자 속도입니다.</summary>
+        [SerializeField, FormerlySerializedAs("maxSpeed")]
+        private float _maxSpeed = 6.2f;
+
+        /// <summary>출력이 최소일 때의 입자 속도입니다.</summary>
+        [SerializeField, FormerlySerializedAs("minSpeed")]
+        private float _minSpeed = 1.4f;
+
+        /// <summary>출력이 최대일 때의 입자 수명입니다.</summary>
+        [SerializeField, FormerlySerializedAs("maxLifetime")]
+        private float _maxLifetime = 1.2f;
+
+        /// <summary>출력이 최소일 때의 입자 수명입니다.</summary>
+        [SerializeField, FormerlySerializedAs("minLifetime")]
+        private float _minLifetime = 0.45f;
+
+        /// <summary>물줄기가 퍼지는 원뿔 각도(도)입니다.</summary>
+        [Tooltip("물줄기가 퍼지는 원뿔 각도(도). 작을수록 일직선에 가깝습니다.")]
+        [SerializeField, FormerlySerializedAs("coneAngle")]
+        private float _coneAngle = 1.2f;
+
+        // --- Serialized Fields : 부수 효과 ---
+
+        /// <summary>초당 오르는 더러움입니다.</summary>
+        [Header("부수 효과 (초당)")]
+        [SerializeField, FormerlySerializedAs("hygieneCostPerSecond")]
+        private float _hygieneCostPerSecond = 0.006f;
+
+        /// <summary>초당 줄어드는 스트레스입니다.</summary>
+        [SerializeField, FormerlySerializedAs("stressReliefPerSecond")]
+        private float _stressReliefPerSecond = 0.02f;
+
+        /// <summary>이 각도 위로 쏘기 시작하면 조금씩 되떨어집니다.</summary>
+        [Header("역류 - 위로 쏘면 자기가 뒤집어씁니다")]
+        [Tooltip("이 각도(도) 위로 쏘기 시작하면 조금씩 되떨어집니다.")]
+        [Range(0f, 89f)]
+        [SerializeField, FormerlySerializedAs("backsplashStartAngle")]
+        private float _backsplashStartAngle = 25f;
+
+        /// <summary>이 각도부터는 전부 자기 위로 떨어집니다.</summary>
+        [Tooltip("이 각도(도)부터는 전부 자기 위로 떨어집니다.")]
+        [Range(0f, 89f)]
+        [SerializeField, FormerlySerializedAs("backsplashFullAngle")]
+        private float _backsplashFullAngle = 70f;
+
+        /// <summary>역류가 최대일 때 초당 줄어드는 갈증입니다.</summary>
+        [Tooltip("역류가 최대일 때 초당 줄어드는 갈증. 마시는 게 아니라 얼굴로 받는 것이라 " +
+                 "물을 마시는 것보다 훨씬 적게 잡습니다.")]
+        [SerializeField, FormerlySerializedAs("backsplashThirstReliefPerSecond")]
+        private float _backsplashThirstReliefPerSecond = 0.012f;
+
+        /// <summary>역류가 최대일 때 청결 악화에 곱해지는 배율입니다.</summary>
+        [Tooltip("역류가 최대일 때 청결 악화에 곱해지는 배율. 8이면 평소의 9배로 더러워집니다.")]
+        [SerializeField, FormerlySerializedAs("backsplashHygieneMultiplier")]
+        private float _backsplashHygieneMultiplier = 8f;
+
+        /// <summary>역류가 최대일 때 초당 오르는 스트레스입니다.</summary>
+        [Tooltip("역류가 최대일 때 초당 오르는 스트레스. 역류 중에는 시원함(스트레스 해소)이 사라집니다.")]
+        [SerializeField, FormerlySerializedAs("backsplashStressPerSecond")]
+        private float _backsplashStressPerSecond = 0.05f;
+
+        // --- Serialized Fields : 이벤트 ---
+
+        /// <summary>줄기가 시작될 때 호출됩니다.</summary>
+        [Header("이벤트")]
+        [Tooltip("줄기가 시작될 때")]
+        [SerializeField, FormerlySerializedAs("onStreamStart")]
+        private UnityEvent _onStreamStart;
+
+        /// <summary>줄기가 멈출 때 호출됩니다.</summary>
+        [Tooltip("줄기가 멈출 때")]
+        [SerializeField, FormerlySerializedAs("onStreamStop")]
+        private UnityEvent _onStreamStop;
+
+        /// <summary>다 비워서 더 나오지 않을 때 호출됩니다.</summary>
+        [Tooltip("다 비워서 더 나오지 않을 때")]
+        [SerializeField, FormerlySerializedAs("onEmpty")]
+        private UnityEvent _onEmpty;
+
+        // --- Public Properties ---
+
+        /// <summary>현재 출력 비율(0~1)입니다. 사운드 볼륨 등에 쓸 수 있습니다.</summary>
+        public float CurrentOutput { get; private set; }
+
+        /// <summary>연타로 쌓인 압력(0~1)입니다.</summary>
+        public float Pressure { get { return _pressure; } }
+
+        /// <summary>지금 나오고 있는지 여부입니다.</summary>
+        public bool IsStreaming { get; private set; }
+
+        /// <summary>물줄기가 수평에서 위로 향한 각도(도)입니다. 아래를 향하면 음수입니다.</summary>
+        public float StreamElevation { get; private set; }
+
+        /// <summary>
+        /// 역류 정도(0~1)입니다. 1이면 쏜 것이 전부 자기 위로 되떨어집니다.
+        /// </summary>
+        public float Backsplash
         {
-            if (backsplashFullAngle <= backsplashStartAngle)
+            get
             {
-                return StreamElevation >= backsplashStartAngle ? 1f : 0f;
+                if (_backsplashFullAngle <= _backsplashStartAngle)
+                {
+                    return StreamElevation >= _backsplashStartAngle ? 1f : 0f;
+                }
+                return Mathf.Clamp01(
+                    Mathf.InverseLerp(_backsplashStartAngle, _backsplashFullAngle, StreamElevation));
             }
-            return Mathf.Clamp01(Mathf.InverseLerp(backsplashStartAngle, backsplashFullAngle, StreamElevation));
-        }
-    }
-
-    // --- Private Member Variables ---
-
-    /// <summary>지금 물줄기의 압력(0~1)입니다. 남은 배뇨량과 누르는 정도에 따라 오르내립니다.</summary>
-    private float pressure;
-    private float holdAmount;       // 1이면 누르는 중, 놓으면 서서히 0으로
-    private float emitAccumulator;  // 한 입자 미만의 방출량을 다음 프레임으로 넘깁니다
-
-    /// <summary>직전 프레임에 배뇨가 비어 있었는지 여부입니다. 비는 순간에만 이벤트를 던지는 데 씁니다.</summary>
-    private bool wasEmptyLastFrame;
-    private float baseStreamPitch;  // 정면을 볼 때 노즐이 숙이는 각도 (씬 배치에서 읽습니다)
-
-    // --- Unity Event Functions ---
-
-    /// <summary>
-    /// 니즈 시스템과 파티클을 찾아 물줄기의 모양·방출 방식을 확정합니다.
-    /// 방출은 코드가 직접 하므로 Emission 모듈을 끄고, 시뮬레이션은 월드 공간으로 둡니다.
-    /// </summary>
-    void Start()
-    {
-        if (needsSystem == null) needsSystem = FindAnyObjectByType<NeedsSystem>();
-        if (needsSystem == null) Debug.LogWarning("UrineRelief: NeedsSystem을 찾지 못했습니다.", this);
-
-        if (stream == null) stream = GetComponentInChildren<ParticleSystem>(true);
-        if (stream == null)
-        {
-            Debug.LogWarning("UrineRelief: 파티클이 없어 물줄기가 보이지 않습니다.", this);
-            return;
         }
 
-        // 줄기 모양은 여기서 확정합니다.
-        // 방출은 코드가 프레임마다 조금씩 하므로 Emission 모듈은 꺼야 합니다.
-        ParticleSystem.EmissionModule emission = stream.emission;
-        emission.enabled = false;
+        // --- Private Member Variables ---
 
-        ParticleSystem.ShapeModule shape = stream.shape;
-        shape.angle = coneAngle;
+        /// <summary>물줄기를 그리는 쪽입니다. 이 클래스는 숫자만 넘깁니다.</summary>
+        private readonly UrineStreamView _view = new UrineStreamView();
 
-        // 시뮬레이션은 반드시 월드 공간이어야 합니다.
-        // 로컬 공간이면 (1) 조준하려고 노즐을 돌리는 순간 이미 날아간 입자까지 함께 끌려가고,
-        // (2) 중력 방향도 노즐을 따라 회전해서 위로 쏴도 땅으로 떨어지지 않습니다.
-        ParticleSystem.MainModule main = stream.main;
-        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        /// <summary>지금 물줄기의 압력(0~1)입니다.</summary>
+        private float _pressure;
 
-        // 씬에 배치된 각도를 "정면을 볼 때의 기본 숙임"으로 삼습니다.
-        baseStreamPitch = NormalizeAngle(stream.transform.localEulerAngles.x);
-        StreamElevation = -baseStreamPitch;
-    }
+        /// <summary>1이면 누르는 중, 놓으면 서서히 0으로 내려갑니다.</summary>
+        private float _holdAmount;
 
-    /// <summary>
-    /// 입력에 따라 물줄기를 켜고 끄며, 압력·조준 각도·방출량을 갱신합니다.
-    /// 입력이 막혀 있으면(오버레이 등) 물줄기를 멈춥니다.
-    /// </summary>
-    void Update()
-    {
-        if (GameInputGate.Suspended)
+        /// <summary>직전 프레임에 배뇨가 비어 있었는지 여부입니다. 비는 순간에만 이벤트를 던지는 데 씁니다.</summary>
+        private bool _wasEmptyLastFrame;
+
+        // --- Unity Event Functions ---
+
+        /// <summary>
+        /// 니즈 시스템과 파티클을 찾아 뷰를 준비합니다.
+        /// </summary>
+        private void Start()
         {
-            StopStream();
-            return;
+            if (_needsSystem == null) _needsSystem = GameContext.Resolve<NeedsSystem>(this);
+            if (_needsSystem == null) Debug.LogWarning("UrineRelief: NeedsSystem을 찾지 못했습니다.", this);
+
+            if (_stream == null) _stream = GetComponentInChildren<ParticleSystem>(true);
+            if (!_view.Configure(_stream, _coneAngle, BuildEmissionRange()))
+            {
+                Debug.LogWarning("UrineRelief: 파티클이 없어 물줄기가 보이지 않습니다.", this);
+                return;
+            }
+
+            // 정면을 볼 때의 기본 숙임을 기준으로 삼습니다.
+            StreamElevation = -_view.BasePitch;
         }
 
-        float dt = Time.deltaTime;
-
-        UpdateAim();
-        UpdatePressure(dt);
-        UpdateHold(dt);
-
-        if (holdAmount <= 0.001f)
+        /// <summary>
+        /// 입력에 따라 압력·조준·출력을 갱신하고 니즈에 반영합니다.
+        /// </summary>
+        private void Update()
         {
-            StopStream();
-            return;
+            // <b>여기는 Suspended를 직접 봅니다.</b> 키가 false가 되는 것만으로는 물줄기가
+            // 여운(_releaseFadeSpeed)을 남기며 서서히 잦아듭니다. 오버레이가 열린 동안
+            // 파티클이 계속 뿜어지지 않도록 즉시 끊습니다.
+            if (GameInput.Suspended)
+            {
+                StopStream();
+                return;
+            }
+
+            float deltaTime = Time.deltaTime;
+
+            UpdateAim();
+            UpdatePressure(deltaTime);
+            UpdateHold(deltaTime);
+
+            if (!TryGetRemaining(out float remaining))
+            {
+                StopStream();
+                return;
+            }
+
+            float flow = CalculateFlow(remaining);
+            CurrentOutput = flow;
+
+            BeginStreamIfNeeded();
+
+            _view.Emit(flow, deltaTime);
+            ApplyDrain(flow, deltaTime);
         }
 
-        if (needsSystem == null) { StopStream(); return; }
+        // --- Public Methods ---
 
-        float remaining = needsSystem.GetValue(NeedType.Urine);
-        if (remaining <= emptyThreshold)
+        /// <summary>
+        /// 물줄기를 멈춥니다. 이미 멈춰 있으면 아무 일도 하지 않습니다.
+        /// </summary>
+        public void StopStream()
         {
-            if (!wasEmptyLastFrame && onEmpty != null) onEmpty.Invoke();
-            wasEmptyLastFrame = true;
-            StopStream();
-            return;
-        }
-        wasEmptyLastFrame = false;
+            CurrentOutput = 0f;
+            _view.ResetEmission();
 
-        float flow = CalculateFlow(remaining);
-        CurrentOutput = flow;
+            if (!IsStreaming) return;
 
-        if (!IsStreaming)
-        {
-            IsStreaming = true;
-            if (onStreamStart != null) onStreamStart.Invoke();
-        }
-
-        EmitStream(flow, dt);
-        ApplyDrain(flow, dt);
-    }
-
-    // --- Public Methods ---
-
-    /// <summary>줄기를 즉시 멈춥니다.</summary>
-    public void StopStream()
-    {
-        CurrentOutput = 0f;
-        emitAccumulator = 0f;
-
-        if (IsStreaming)
-        {
             IsStreaming = false;
-            if (onStreamStop != null) onStreamStop.Invoke();
-        }
-    }
-
-    // --- Private Methods ---
-
-    /// <summary>
-    /// 노즐을 시선의 상하 각도에 맞춥니다.
-    ///
-    /// 파티클은 플레이어 몸통의 자식이라 좌우 회전은 저절로 따라오지만,
-    /// 상하는 카메라만 도는 구조라 여기서 직접 옮겨 줘야 합니다.
-    /// 몸통은 Y축으로만 도므로 노즐의 로컬 X 회전이 곧 월드 기준 각도가 됩니다.
-    /// </summary>
-    private void UpdateAim()
-    {
-        if (stream == null) return;
-
-        if (aimSource == null)
-        {
-            if (Camera.main == null) return;
-            aimSource = Camera.main.transform;
+            if (_onStreamStop != null) _onStreamStop.Invoke();
         }
 
-        // 시선이 수평에서 위로 향한 각도. 위를 보면 양수입니다.
-        float lookElevation = Mathf.Asin(Mathf.Clamp(aimSource.forward.y, -1f, 1f)) * Mathf.Rad2Deg;
+        // --- Private Methods : 한 프레임의 단계들 ---
 
-        // Unity의 X 회전은 아래를 볼 때 양수라 부호를 뒤집어 더합니다.
-        float pitch = baseStreamPitch - lookElevation * pitchInfluence;
-        pitch = Mathf.Clamp(pitch, -maxAimAngle, maxAimAngle);
-
-        stream.transform.localRotation = Quaternion.Euler(pitch, 0f, 0f);
-        StreamElevation = -pitch;
-    }
-
-    /// <summary>0~360으로 나오는 각도를 -180~180으로 바꿉니다.</summary>
-    private static float NormalizeAngle(float degrees)
-    {
-        degrees %= 360f;
-        if (degrees > 180f) degrees -= 360f;
-        if (degrees < -180f) degrees += 360f;
-        return degrees;
-    }
-
-    /// <summary>
-    /// 연타로 압력을 쌓고, 시간이 지나면 빠지게 합니다.
-    /// </summary>
-    private void UpdatePressure(float dt)
-    {
-        if (Input.GetKeyDown(relieveKey))
+        /// <summary>
+        /// 시선의 상하 각도를 노즐 각도로 바꿔 뷰에 넘깁니다.
+        /// </summary>
+        private void UpdateAim()
         {
-            pressure = Mathf.Clamp01(pressure + pressurePerPress);
+            if (!_view.IsReady) return;
+
+            if (_aimSource == null)
+            {
+                _aimSource = GameContext.MainCameraTransform;
+                if (_aimSource == null) return;
+            }
+
+            // 시선이 수평에서 위로 향한 각도. 위를 보면 양수입니다.
+            float lookElevation = Mathf.Asin(Mathf.Clamp(_aimSource.forward.y, -1f, 1f)) * Mathf.Rad2Deg;
+
+            // Unity의 X 회전은 아래를 볼 때 양수라 부호를 뒤집어 더합니다.
+            float pitch = _view.BasePitch - lookElevation * _pitchInfluence;
+            pitch = Mathf.Clamp(pitch, -_maxAimAngle, _maxAimAngle);
+
+            _view.SetPitch(pitch);
+            StreamElevation = -pitch;
         }
 
-        pressure = Mathf.MoveTowards(pressure, 0f, pressureDecayPerSecond * dt);
-    }
-
-    /// <summary>
-    /// 누르고 있으면 1, 놓으면 서서히 0으로 내려갑니다.
-    /// 연타할 때 줄기가 뚝뚝 끊기지 않도록 여운을 남깁니다.
-    /// </summary>
-    private void UpdateHold(float dt)
-    {
-        if (Input.GetKey(relieveKey))
+        /// <summary>
+        /// 연타로 압력을 쌓고, 시간이 지나면 빠지게 합니다.
+        /// </summary>
+        /// <param name="deltaTime">이번 프레임의 시간</param>
+        private void UpdatePressure(float deltaTime)
         {
-            holdAmount = 1f;
-        }
-        else
-        {
-            holdAmount = Mathf.MoveTowards(holdAmount, 0f, releaseFadeSpeed * dt);
-        }
-    }
+            if (GameInput.RelievePressed)
+            {
+                _pressure = Mathf.Clamp01(_pressure + _pressurePerPress);
+            }
 
-    /// <summary>
-    /// 잔뇨에서 나오는 기본 출력에 연타 압력을 더해 최종 출력을 구합니다.
-    /// </summary>
-    private float CalculateFlow(float remaining)
-    {
-        // 배뇨는 한계 1.5까지 차오르므로 1을 넘는 부분은 최대로 봅니다.
-        float volume = Mathf.Clamp01(remaining);
-        float fromVolume = Mathf.Lerp(minFlowFromVolume, 1f, Mathf.Clamp01(volumeCurve.Evaluate(volume)));
-
-        // 연타로 올린 출력은 pressureFlowCeiling(기본 최대의 80%)을 넘지 못합니다.
-        // 단, 잔뇨만으로 이미 그보다 세게 나오는 중이라면 압력 때문에 오히려 약해지면 안 되므로
-        // 잔뇨 출력을 하한으로 잡습니다.
-        float boosted = Mathf.Min(fromVolume + pressure * pressureFlowBonus, pressureFlowCeiling);
-        float flow = Mathf.Clamp01(Mathf.Max(fromVolume, boosted));
-
-        return flow * holdAmount;
-    }
-
-    /// <summary>
-    /// 프레임마다 조금씩 방출합니다.
-    /// 한 번에 몰아서 뿜으면 같은 지점에서 원뿔로 퍼져 부채꼴이 되므로,
-    /// 방출량을 시간에 나눠 이어지는 한 줄기로 만듭니다.
-    /// </summary>
-    private void EmitStream(float flow, float dt)
-    {
-        if (stream == null) return;
-
-        ParticleSystem.MainModule main = stream.main;
-        main.startSpeed = Mathf.Lerp(minSpeed, maxSpeed, flow);
-        main.startLifetime = Mathf.Lerp(minLifetime, maxLifetime, flow);
-
-        float rate = Mathf.Lerp(minEmissionRate, maxEmissionRate, flow);
-
-        // 소수점 이하 방출량은 누적해 두었다가 1이 넘을 때 내보냅니다.
-        emitAccumulator += rate * dt;
-        int count = Mathf.FloorToInt(emitAccumulator);
-        if (count > 0)
-        {
-            emitAccumulator -= count;
-            stream.Emit(count);
-        }
-    }
-
-    /// <summary>
-    /// 출력에 비례해 배뇨를 줄이고 부수 효과를 적용합니다.
-    /// 압력이 높으면 더 빨리 빠집니다.
-    ///
-    /// 위를 보고 쏘면 되떨어진 만큼을 자기가 받습니다.
-    ///  - 청결: 역류에 비례해 급격히 나빠집니다.
-    ///  - 갈증: 조금 줄어듭니다. (마시는 게 아니라 얼굴로 받는 것이라 효율이 나쁩니다)
-    ///  - 스트레스: 시원함이 사라지고 오히려 오릅니다.
-    /// 배뇨가 줄어드는 양 자체는 어디로 쏘든 같습니다. 나간 건 나간 것이니까요.
-    /// </summary>
-    private void ApplyDrain(float flow, float dt)
-    {
-        float drain = reliefPerSecond * flow * (1f + pressure * pressureDrainBonus);
-
-        needsSystem.Satisfy(NeedType.Urine, drain * dt);
-
-        float splash = Backsplash;
-
-        if (hygieneCostPerSecond > 0f)
-        {
-            float dirtiness = hygieneCostPerSecond * (1f + splash * backsplashHygieneMultiplier);
-            needsSystem.Add(NeedType.Hygiene, dirtiness * flow * dt);
+            _pressure = Mathf.MoveTowards(_pressure, 0f, _pressureDecayPerSecond * deltaTime);
         }
 
-        if (splash > 0f && backsplashThirstReliefPerSecond > 0f)
+        /// <summary>
+        /// 누르고 있으면 1, 놓으면 서서히 0으로 내려갑니다.
+        /// 연타할 때 줄기가 뚝뚝 끊기지 않도록 여운을 남깁니다.
+        /// </summary>
+        /// <param name="deltaTime">이번 프레임의 시간</param>
+        private void UpdateHold(float deltaTime)
         {
-            needsSystem.Satisfy(NeedType.Thirst, backsplashThirstReliefPerSecond * splash * flow * dt);
+            if (GameInput.Relieve)
+            {
+                _holdAmount = 1f;
+                return;
+            }
+
+            _holdAmount = Mathf.MoveTowards(_holdAmount, 0f, _releaseFadeSpeed * deltaTime);
         }
 
-        if (stressReliefPerSecond > 0f)
+        /// <summary>
+        /// 지금 나올 수 있는지 확인하고, 나올 수 있으면 남은 양을 돌려줍니다.
+        ///
+        /// 손을 뗐는지·니즈 시스템이 있는지·다 비웠는지 세 가지를 한자리에서 봅니다.
+        /// 예전에는 Update 안에 세 개의 조기 반환으로 흩어져 있었습니다.
+        /// </summary>
+        /// <param name="remaining">남은 배뇨량. 나올 수 없으면 0입니다.</param>
+        /// <returns>물줄기를 이어도 되면 true</returns>
+        private bool TryGetRemaining(out float remaining)
         {
-            needsSystem.Satisfy(NeedType.Stress, stressReliefPerSecond * (1f - splash) * flow * dt);
+            remaining = 0f;
+
+            if (_holdAmount <= HoldEpsilon) return false;
+            if (_needsSystem == null) return false;
+
+            remaining = _needsSystem.GetValue(NeedType.Urine);
+            if (remaining > _emptyThreshold)
+            {
+                _wasEmptyLastFrame = false;
+                return true;
+            }
+
+            // 비는 <b>순간</b>에만 알립니다. 계속 누르고 있다고 매 프레임 던지지 않습니다.
+            if (!_wasEmptyLastFrame && _onEmpty != null) _onEmpty.Invoke();
+            _wasEmptyLastFrame = true;
+            return false;
         }
 
-        if (splash > 0f && backsplashStressPerSecond > 0f)
+        /// <summary>
+        /// 줄기가 막 시작되었다면 알립니다.
+        /// </summary>
+        private void BeginStreamIfNeeded()
         {
-            needsSystem.Add(NeedType.Stress, backsplashStressPerSecond * splash * flow * dt);
+            if (IsStreaming) return;
+
+            IsStreaming = true;
+            if (_onStreamStart != null) _onStreamStart.Invoke();
+        }
+
+        // --- Private Methods : 계산 ---
+
+        /// <summary>
+        /// 잔뇨와 연타 압력을 합쳐 이번 프레임의 출력을 구합니다.
+        /// </summary>
+        /// <param name="remaining">남은 배뇨량</param>
+        /// <returns>0에서 1 사이의 출력</returns>
+        private float CalculateFlow(float remaining)
+        {
+            // 배뇨는 한계 1.5까지 차오르므로 1을 넘는 부분은 최대로 봅니다.
+            float volume = Mathf.Clamp01(remaining / FullVolume);
+            float fromVolume = Mathf.Lerp(
+                _minFlowFromVolume, 1f, Mathf.Clamp01(_volumeCurve.Evaluate(volume)));
+
+            // 연타로 올린 출력은 상한을 넘지 못합니다. 단, 잔뇨만으로 이미 그보다 세게 나오는 중이라면
+            // 압력 때문에 오히려 약해지면 안 되므로 잔뇨 출력을 하한으로 잡습니다.
+            float boosted = Mathf.Min(fromVolume + _pressure * _pressureFlowBonus, _pressureFlowCeiling);
+            float flow = Mathf.Clamp01(Mathf.Max(fromVolume, boosted));
+
+            return flow * _holdAmount;
+        }
+
+        /// <summary>
+        /// 출력만큼 배뇨를 덜고, 그에 딸린 청결·갈증·스트레스 변화를 반영합니다.
+        /// </summary>
+        /// <param name="flow">이번 프레임의 출력</param>
+        /// <param name="deltaTime">이번 프레임의 시간</param>
+        private void ApplyDrain(float flow, float deltaTime)
+        {
+            float drain = _reliefPerSecond * flow * (1f + _pressure * _pressureDrainBonus);
+            _needsSystem.Satisfy(NeedType.Urine, drain * deltaTime);
+
+            float splash = Backsplash;
+
+            if (_hygieneCostPerSecond > 0f)
+            {
+                float dirtiness = _hygieneCostPerSecond * (1f + splash * _backsplashHygieneMultiplier);
+                _needsSystem.Add(NeedType.Hygiene, dirtiness * flow * deltaTime);
+            }
+
+            if (splash > 0f && _backsplashThirstReliefPerSecond > 0f)
+            {
+                _needsSystem.Satisfy(
+                    NeedType.Thirst, _backsplashThirstReliefPerSecond * splash * flow * deltaTime);
+            }
+
+            if (_stressReliefPerSecond > 0f)
+            {
+                _needsSystem.Satisfy(
+                    NeedType.Stress, _stressReliefPerSecond * (1f - splash) * flow * deltaTime);
+            }
+
+            if (splash > 0f && _backsplashStressPerSecond > 0f)
+            {
+                _needsSystem.Add(
+                    NeedType.Stress, _backsplashStressPerSecond * splash * flow * deltaTime);
+            }
+        }
+
+        /// <summary>
+        /// 인스펙터에 적어 둔 연출 수치를 뷰가 쓸 형태로 묶습니다.
+        /// </summary>
+        /// <returns>출력에 따라 보간할 방출 범위</returns>
+        private StreamEmissionRange BuildEmissionRange()
+        {
+            return new StreamEmissionRange
+            {
+                MinRate = _minEmissionRate,
+                MaxRate = _maxEmissionRate,
+                MinSpeed = _minSpeed,
+                MaxSpeed = _maxSpeed,
+                MinLifetime = _minLifetime,
+                MaxLifetime = _maxLifetime
+            };
         }
     }
 }

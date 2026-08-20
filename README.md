@@ -13,17 +13,18 @@ CarDrive는 플레이어가 1인칭 시점으로 차를 몰고 밤길을 달리�
 ## 기술 스택
 
 - **엔진**: Unity 6000.5.3f1 (Unity 6)
-- **언어**: C# (Assembly-CSharp, 단일 어셈블리 · asmdef 미사용)
+- **언어**: C# (asmdef 3분할 · `CarDrive.Runtime` / `CarDrive.Editor` / `CarDrive.Tests.*`, 네임스페이스 `CarDrive.*`)
 - **렌더 파이프라인**: Universal RP 17.5.0, Shader Graph 기반 스프라이트 셰이더
 - **주요 패키지**: uGUI 2.5.0 (TextMeshPro 포함), Splines 2.9.0, Timeline 1.8.12, Visual Scripting 1.9.11, Test Framework 1.7.0
 - **물리**: Unity 내장 Rigidbody + WheelCollider
 - **오브젝트 풀**: `UnityEngine.Pool.ObjectPool<T>` (내장)
+- **연출**: DOTween (트윈) + Feel / MMFeedbacks (피드백 오케스트레이션)
 - **외부 에셋**: LowPolyRetroCars, Cartoon FX Remaster (JMO Assets), tree_pack, Crate/Barrels, Bottles
 - **빌드 타깃**: Windows 스탠드얼론 (`BUILD/CarDrive.exe` 빌드 산출물 포함)
 
 ## 주요 기능 / 시스템
 
-스크립트는 `Assets/_Project/02.Scripts/` 아래에 77개, 약 13,100줄입니다.
+스크립트는 `Assets/_Project/02.Scripts/` 아래에 88개, 약 14,800줄입니다. (에디터 전용 툴 11개 5,200줄은 `CarDrive.Editor` 어셈블리로 분리되어 빌드에 포함되지 않습니다)
 
 ### 세계의 시계 — 시간 · 날씨 (`Systems/Time/`, `Systems/Weather/`)
 - **TimeSystem**: 게임 시계·시간대(새벽/아침/낮/저녁/밤)·햇빛의 **단일 소스**. 니즈와 날씨가 각자 시간을 세지 않고 여기서 배율을 읽어 가므로, 수면으로 시간을 건너뛰면 모든 시스템이 함께 움직입니다.
@@ -60,9 +61,12 @@ CarDrive는 플레이어가 1인칭 시점으로 차를 몰고 밤길을 달리�
 
 ### 전투 규약 (`Gameplay/Combat/`)
 - **IDamageable / IHostile / IInteractable**: 태그 문자열 분기를 인터페이스로 대체했습니다. 새 적은 인터페이스 두 개만 구현하면 앙크 공격·차량 충돌·도보 피격에 **자동으로 통합니다.**
-- **Health → PlayerHealth / VehicleHealth**: 타입을 갈라 인스펙터에서 플레이어 체력 자리에 차량 내구도를 끼우는 일이 **컴파일 단계에서 불가능**합니다.
+- **TweenSetup**: DOTween 트윈에 이 프로젝트의 규칙 두 가지를 겁니다 — UI는 `Time.timeScale`을 무시하고(Feel 프리즈 프레임에도 계속 움직이도록), 모든 트윈은 대상에 묶습니다.
+- **GameContext**: 씬에 하나씩만 있는 것들의 레지스트리입니다. 등록은 `Awake`, 조회는 `Start`에서 합니다. 런타임 코드에 `FindAnyObjectByType`이 하나도 남아 있지 않습니다.
+- **Health → PlayerHealth / VehicleHealth / EnemyHealth**: 타입을 갈라 인스펙터에서 플레이어 체력 자리에 차량 내구도를 끼우는 일이 **컴파일 단계에서 불가능**합니다. 체력을 다루는 경로가 게임 전체에서 이 하나로 모입니다.
 
 ### 적 / 귀신 (`Gameplay/Enemy/`)
+- **EnemyBase**: 적이 공통으로 갖는 체력·피격 연출·사망 처리를 소유하는 추상 기반 클래스입니다. 새 적은 이것을 상속하고 피격음·사망음·물러나기 셋만 구현하면 됩니다.
 - **AttachedGhostController**: 차량의 자식으로 스폰되어 로컬 좌표로 접근한 뒤 주기적으로 내구도·스트레스·더러움을 가합니다.
 - **GhostSpawner**: 시동이 켜져 있을 때만 스폰하며, 날씨와 시간대에 따라 간격이 좁아집니다. (폭우 ×1.9 × 밤 ×1.5)
 - **EnemyController**: Rigidbody로 차량을 추적하는 일반 적.
@@ -73,7 +77,9 @@ CarDrive는 플레이어가 1인칭 시점으로 차를 몰고 밤길을 달리�
 - **지형은 저장하지 않습니다.** `WorldStreamer`가 시드로 배치를 고정하므로 같은 세계가 다시 깔립니다.
 
 ### 성능 (`Common/PrefabPool.cs`, `Systems/Sound/OneShotAudioPool.cs`)
-- 귀신과 위치 기반 일회성 사운드를 오브젝트 풀로 재사용합니다. 전투 중 가장 잦은 할당(앙크 피격음 0.25초, 귀신 공격음 1초 간격)을 없앴습니다.
+- 귀신·적·사망 파티클과 위치 기반 일회성 사운드를 오브젝트 풀로 재사용합니다. 전투 중 가장 잦은 할당(앙크 피격음 0.25초, 귀신 공격음 1초 간격)을 없앴습니다.
+- **PooledParticleEffect**: 일회성 파티클이 재생을 마치면 스스로 풀로 돌아갑니다. 프리팹의 Stop Action이 Destroy여도 꺼낼 때 Callback으로 덮어쓰므로 풀에 파괴된 자리가 남지 않습니다.
+- 적 코드에는 `Instantiate`/`Destroy`가 하나도 남아 있지 않습니다.
 
 ### UI / 연출 (`UI/`)
 - **CarUIController**(아날로그 계기판), **NeedsUI**(니즈 게이지), **InteractionPromptUI**(조준 대상 안내), **TextHealthBar** / **HealthBarImage**(체력 표시), **AnkhAnimation**, **DrinkAnimation**, **UIElementShaker**.
@@ -90,9 +96,9 @@ CarDrive/
 ├─ Assets/
 │  ├─ _Project/                        # 자체 제작물 (외부 에셋과 분리)
 │  │  ├─ 01.Scenes/                    # SampleScene.unity (메인 플레이 씬)
-│  │  ├─ 02.Scripts/                   # 게임 로직 (C#, 77개)
+│  │  ├─ 02.Scripts/                   # 게임 로직 (C#, 88개)
 │  │  │  ├─ Common/                    # GameInputGate, SkyCover, PlayerAim,
-│  │  │  │                             # PrefabPool, PooledObject, AudioUtility,
+│  │  │  │                             # GameContext, PrefabPool, PooledObject, AudioUtility,
 │  │  │  │                             # Billboard, SpriteFlipper
 │  │  │  ├─ Gameplay/
 │  │  │  │  ├─ Combat/                 # IDamageable, IHostile, Health,
@@ -105,7 +111,7 @@ CarDrive/
 │  │  │  │  │  └─ States/              # IPlayerState, DrivingState, OnFootState
 │  │  │  │  ├─ Interaction/            # IInteractable, Carryable,
 │  │  │  │  │                          # VehicleDoorInteractable, SteeringWheelInteractable
-│  │  │  │  ├─ Enemy/                  # EnemyController, AttachedGhostController, GhostSpawner
+│  │  │  │  ├─ Enemy/                  # EnemyBase, EnemyController, AttachedGhostController, GhostSpawner
 │  │  │  │  ├─ World/                  # WorldStreamer, WorldLocation
 │  │  │  │  ├─ Road/                   # ObstacleController
 │  │  │  │  └─ Item/                   # BeverageBox, Beverage
@@ -195,6 +201,6 @@ CarDrive/
 - **허기와 피로는 해소할 방법이 전혀 없습니다.** `NeedSatisfier`가 식사·수면 프리셋까지 갖추고 있지만 이를 사용하는 오브젝트가 씬에 배치되어 있지 않습니다. (갈증은 음료·빗물, 배뇨는 `P`, 청결·스트레스는 날씨로 일부 해소됩니다)
 - **연료를 보충할 수단이 없습니다.** 연료는 유일한 하드 실패 조건인데 주유소가 없습니다.
 - 게임 오버/승리 조건, 메뉴, 다중 세이브 슬롯이 없습니다.
-- 어셈블리 정의(asmdef)와 네임스페이스를 쓰지 않아 전체가 `Assembly-CSharp` 하나입니다.
-- `10.Tests` 폴더는 비어 있습니다. `Powertrain`·`NeedsSystem`·`WeatherSystem`의 계산은 이미 프레임과 무관한 순수 로직으로 분리되어 있어 테스트 작성 비용이 낮은 상태입니다.
+- ~~어셈블리 정의와 네임스페이스 부재~~ → 해결. 런타임·에디터·테스트 세 어셈블리로 나뉘고 모든 타입이 `CarDrive.*` 네임스페이스 아래에 있습니다.
+- 테스트가 EditMode 18건뿐입니다. (`NeedDefaults`·`GameContext`·`NeedsSystem`) `Powertrain`·`WeatherSystem`의 계산도 프레임과 무관한 순수 로직이라 확대 비용이 낮습니다. PlayMode 테스트는 아직 없습니다.
 - 귀신의 시인성이 낮아 개선이 필요합니다. (`Assets/_Project/09.Docs/TODO.md`)
