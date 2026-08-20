@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace CarDrive.Systems
@@ -62,6 +63,23 @@ namespace CarDrive.Systems
         [Tooltip("잎의 키(m).")]
         [Range(0.1f, 2f)]
         public float bladeHeight = 0.55f;
+
+        // --- 식생 종 ---
+
+        /// <summary>
+        /// 지면에 심을 식생 종들입니다. <b>비워 두면 위의 값으로 기본 세 종을 만듭니다.</b>
+        ///
+        /// 예전에는 월드 전체가 풀 한 종류였습니다. 지형은 넓은데 눈에 들어오는 것이
+        /// 한 가지뿐이라 어디를 가도 같은 곳처럼 보였습니다.
+        ///
+        /// <b>포기 수는 늘지 않습니다.</b> <see cref="maxPerCell"/>을 종의 비중대로 나눠 심으므로,
+        /// 종을 늘려도 총량은 그대로입니다. 대신 잎 수가 적은 종은 오히려 싸집니다.
+        /// 각 종은 경사·고도·군집 규칙을 따로 가집니다.
+        /// </summary>
+        [Header("식생 종 (비워 두면 기본 3종)")]
+        [Tooltip("지면에 심을 식생 종들. 비워 두면 위의 잎 수·반경·키로 기본 3종을 만듭니다. " +
+                 "칸당 포기 수는 종의 비중대로 나뉘므로 총량은 늘지 않습니다.")]
+        public List<VegetationSpecies> vegetation = new List<VegetationSpecies>();
 
         // --- 풀 그리기 ---
 
