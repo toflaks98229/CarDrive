@@ -33,42 +33,8 @@ namespace CarDrive.Systems
     {
         // --- Constants ---
 
-        /// <summary>
-        /// 지수 제곱 안개가 <b>거의 다 덮는</b> 지점을 정하는 계수입니다.
-        ///
-        /// 지수 제곱 안개의 가려짐은 1 - exp(-(거리 × 짙기)²) 입니다.
-        /// (거리 × 짙기)가 1.73 이면 약 95% 가 가려집니다. 그 지점을 "다 덮었다"로 봅니다.
-        /// 100% 를 기다리면 짙기가 지나치게 올라가 가까운 곳까지 뿌예집니다.
-        /// </summary>
-        private const float FogReachFactor = 1.73f;
-
-        /// <summary>
-        /// 파클립에 더할 여유(m)입니다. 타일 대각선만큼입니다.
-        ///
-        /// 스트리머는 <b>가장 가까운 모서리</b>로 켤지 정합니다. 그래서 켜진 타일의
-        /// 반대쪽 모서리는 타일 대각선만큼 더 멉니다. 파클립이 그보다 가까우면
-        /// 켜져 있는 타일의 뒤쪽이 잘려 <b>하늘이 뚫려 보입니다.</b>
-        /// 100m 타일의 대각선이 141m 라 그보다 조금 넉넉하게 잡았습니다.
-        /// </summary>
-        private const float FarClipMargin = 150f;
-
         /// <summary>확인 주기(초)입니다. 나무 거리처럼 비싼 대입은 이 주기로만 합니다.</summary>
         private const float RetargetSeconds = 0.5f;
-
-        /// <summary>
-        /// 디더 페이드가 <b>시작</b>되는 지점입니다. 시야 거리에 대한 비율입니다.
-        /// ViewDistanceSetup 이 재질을 구울 때 쓴 값과 같게 두어 배율 1 에서 그림이 같습니다.
-        /// </summary>
-        private const float FadeStartRatio = 0.70f;
-
-        /// <summary>
-        /// 디더 페이드가 <b>끝나는</b> 지점입니다. 시야 거리에 대한 비율입니다.
-        ///
-        /// 1 보다 작아야 합니다. 나무를 지우는 일이 <c>treeDistance</c> 로 잘라내는 것보다
-        /// <b>먼저</b> 끝나야 하기 때문입니다. 뒤집히면 페이드가 다 되기도 전에
-        /// 나무가 타일 단위로 사라집니다.
-        /// </summary>
-        private const float FadeEndRatio = 0.97f;
 
         /// <summary>디더 페이드 시작 거리를 넘길 전역 이름입니다.</summary>
         private static readonly int FadeStartId = Shader.PropertyToID("_CarDriveFadeStart");
@@ -78,25 +44,11 @@ namespace CarDrive.Systems
 
         // --- Private Member Variables ---
 
-        /// <summary>기준 시야 거리입니다. 처음 본 파클립을 기억합니다.</summary>
-        private static float baseViewDistance = -1f;
-
         /// <summary>마지막으로 비싼 대입을 한 배율입니다.</summary>
         private static float retargeted = -1f;
 
         /// <summary>다음 비싼 대입 시각입니다.</summary>
         private static float nextRetarget;
-
-        /// <summary>
-        /// 터레인을 켜고 끄는 주인입니다. 파클립을 그 거리에 맞추려고 찾아 둡니다.
-        ///
-        /// <b>이 값을 짐작하지 않습니다.</b> 예전에는 타일이 100m 라는 가정으로 여유를
-        /// 상수로 박아 두었는데, 배치를 바꾸면 조용히 어긋납니다. 주인에게 직접 묻습니다.
-        /// </summary>
-        private static Gameplay.WorldStreamer streamer;
-
-        /// <summary>스트리머를 이미 찾아봤는지입니다. 없을 때 매 프레임 씬을 뒤지지 않기 위한 것입니다.</summary>
-        private static bool streamerSearched;
 
         // --- Unity Event Functions ---
 
@@ -109,63 +61,34 @@ namespace CarDrive.Systems
             Camera camera = GameContext.MainCamera;
             if (camera == null) return;
 
-            if (baseViewDistance < 0f) baseViewDistance = camera.farClipPlane;
+            // 기준 시야 거리는 씬의 파클립입니다. 한 번만 알려 줍니다.
+            ViewDistances.SetViewBase(camera.farClipPlane);
 
-            float scale = Mathf.Clamp(settings.rangeScale, 0.05f, 1f);
-            float view = Mathf.Max(20f, baseViewDistance * scale);
+            // <b>여기서 곱하지 않습니다.</b> 계산은 전부 ViewDistances 안에 있습니다.
+            ViewDistances.Ladder ladder = ViewDistances.Current;
 
             // 1. 안개가 시야 거리를 덮게 합니다. (모자랄 때만 올립니다)
-            if (settings.hideDrawDistanceWithFog) EnsureFogCovers(view);
+            if (settings.hideDrawDistanceWithFog) EnsureFogCovers(ladder.FogDensity);
 
-            // 2. 파클립은 켜져 있는 타일을 자르지 않을 만큼 멀어야 합니다.
-            //
-            // <b>시야 거리로 당기지 않습니다.</b> 그것이 이 문제의 원인이었습니다.
-            // 안개가 이미 시야 거리에서 다 덮으므로, 파클립을 멀리 두어도
-            // 그 사이에 보이는 것은 없습니다. 그릴 것도 없습니다 —
-            // WorldStreamer 가 그보다 멀리 있는 타일을 아예 켜지 않기 때문입니다.
-            camera.farClipPlane = Mathf.Max(baseViewDistance * scale, TerrainExtent(scale, view) + FarClipMargin);
+            // 2. 파클립. 켜져 있는 타일을 자르지 않을 만큼 멉니다.
+            camera.farClipPlane = ladder.FarClip;
 
-            // 3. 나무·바위·건물의 디더 페이드를 시야 거리에 맞춥니다.
-            //
-            // 전역이라 매 프레임 넘겨도 쌉니다. 재질을 건드리지 않으므로
-            // 에셋이 오염되지도, 재질을 복제할 필요도 없습니다.
-            Shader.SetGlobalFloat(FadeStartId, view * FadeStartRatio);
-            Shader.SetGlobalFloat(FadeEndId, view * FadeEndRatio);
+            // 3. 나무·바위·건물의 디더 페이드 구간을 셰이더 전역으로 넘깁니다.
+            //    전역이라 매 프레임 넘겨도 싸고, 재질을 건드리지 않아 에셋이 오염되지 않습니다.
+            Shader.SetGlobalFloat(FadeStartId, ladder.FadeStart);
+            Shader.SetGlobalFloat(FadeEndId, ladder.FadeEnd);
 
-            // 4. 나무 거리는 비싸므로 주기로만 맞춥니다.
-            if (Time.unscaledTime >= nextRetarget && !Mathf.Approximately(retargeted, scale))
+            // 4. 나무 잘라내는 거리는 비싸므로 주기로만 맞춥니다.
+            if (Time.unscaledTime >= nextRetarget && !Mathf.Approximately(retargeted, ladder.Scale))
             {
                 nextRetarget = Time.unscaledTime + RetargetSeconds;
-                retargeted = scale;
+                retargeted = ladder.Scale;
 
-                ApplyTreeDistance(view);
+                ApplyTreeCut(ladder.TreeCut);
             }
         }
 
         // --- Private Methods ---
-
-        /// <summary>
-        /// 터레인이 실제로 <b>있는</b> 가장 먼 거리입니다.
-        ///
-        /// 스트리머가 켜는 거리를 그대로 씁니다. 그것보다 파클립이 가까우면
-        /// 켜져 있는 타일이 잘려 하늘이 뚫려 보입니다.
-        /// 스트리머를 찾지 못하면 시야 거리로 물러섭니다.
-        /// </summary>
-        /// <param name="scale">지금 거리 배율</param>
-        /// <param name="view">시야 거리. 스트리머가 없을 때의 대체값입니다.</param>
-        /// <returns>터레인이 있는 가장 먼 거리(m)</returns>
-        private static float TerrainExtent(float scale, float view)
-        {
-            if (!streamerSearched)
-            {
-                streamerSearched = true;
-                streamer = Object.FindAnyObjectByType<Gameplay.WorldStreamer>(FindObjectsInactive.Include);
-            }
-
-            if (streamer == null) return view;
-
-            return Mathf.Max(view, streamer.activeDistance * scale);
-        }
 
         /// <summary>
         /// 안개가 시야 거리에서 거의 다 덮도록 <b>바닥값을 보장</b>합니다.
@@ -174,11 +97,9 @@ namespace CarDrive.Systems
         /// <see cref="WeatherRig"/> 가 맑은 날씨에 안개를 아예 꺼 버리는데,
         /// 그러면 시야 거리에서 지형이 끝나는 자리가 그대로 보입니다.
         /// </summary>
-        /// <param name="view">안개가 다 덮어야 하는 거리(m)</param>
-        private static void EnsureFogCovers(float view)
+        /// <param name="needed">시야 거리를 덮는 데 필요한 짙기</param>
+        private static void EnsureFogCovers(float needed)
         {
-            float needed = FogReachFactor / Mathf.Max(view, 1f);
-
             // 날씨가 쓰는 것과 같은 방식이어야 합니다. 여기서 모드를 바꾸면
             // 다음 프레임에 날씨가 되돌려 놓아 두 값이 매 프레임 번갈아 적용됩니다.
             RenderSettings.fogMode = FogMode.ExponentialSquared;
@@ -195,21 +116,20 @@ namespace CarDrive.Systems
         }
 
         /// <summary>
-        /// 나무 그리는 거리를 시야 거리에 맞춥니다.
+        /// 나무를 잘라내는 거리를 지형에 대입합니다.
         ///
-        /// 안개가 다 덮는 지점과 같게 둡니다. 이보다 짧으면 <b>안개에 묻히기 전에</b>
-        /// 나무가 타일 단위로 사라져, 이 프로젝트가 한 번 겪은 "눈앞에서 튀어나옴"이
-        /// 그대로 재현됩니다. (TerrainPerformanceSetup 의 주석에 그 기록이 있습니다)
+        /// 값은 사다리가 정합니다. 디더 페이드가 그보다 먼저 끝나도록
+        /// 이미 맞춰져 있으므로, 잘리는 순간은 보이지 않습니다.
         /// </summary>
-        /// <param name="view">맞출 거리(m)</param>
-        private static void ApplyTreeDistance(float view)
+        /// <param name="treeCut">대입할 거리(m)</param>
+        private static void ApplyTreeCut(float treeCut)
         {
             Terrain[] terrains = Object.FindObjectsByType<Terrain>(FindObjectsInactive.Include);
 
             for (int i = 0; i < terrains.Length; i++)
             {
                 if (terrains[i] == null) continue;
-                terrains[i].treeDistance = view;
+                terrains[i].treeDistance = treeCut;
             }
 
             // 컬러가 접는 거리를 이 값으로 정해 두므로, 바꿨으면 알려 줘야 합니다.
@@ -235,11 +155,8 @@ namespace CarDrive.Systems
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
-            baseViewDistance = -1f;
             retargeted = -1f;
             nextRetarget = 0f;
-            streamer = null;
-            streamerSearched = false;
         }
     }
 }

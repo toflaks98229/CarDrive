@@ -220,6 +220,9 @@ namespace CarDrive.Gameplay
                 Debug.LogWarning("WorldStreamer: 길이 하나도 없습니다. 마을만 만들어집니다.", this);
             }
 
+            // 이 두 수치가 시야 사다리의 기준입니다. 계산은 ViewDistances 가 합니다.
+            Systems.ViewDistances.SetTileBases(activeDistance, instantDistance);
+
             BuildWorld();
             UpdateStreaming(true);
         }
@@ -496,12 +499,11 @@ namespace CarDrive.Gameplay
                 return;
             }
 
-            // 전체 거리 배율을 여기서 곱합니다. 인스펙터의 기준 수치는 그대로 두므로
-            // 배율을 1 로 되돌리면 원래 거리로 돌아옵니다.
-            float rangeScale = Mathf.Clamp(Systems.CarDriveWorldSettings.Instance.rangeScale, 0.05f, 1f);
+            // 거리는 ViewDistances 가 한곳에서 계산합니다. 여기서 배율을 곱하지 않습니다.
+            // 인스펙터의 기준 수치(activeDistance · instantDistance)는 Start 에서 등록해 두었습니다.
+            Systems.ViewDistances.Ladder ladder = Systems.ViewDistances.Current;
 
-            float scaledActive = activeDistance * rangeScale;
-            float sqrRange = scaledActive * scaledActive;
+            float sqrRange = ladder.TerrainActive * ladder.TerrainActive;
             int active = 0;
 
             // <b>한 번에 켜는 타일 수를 제한합니다.</b>
@@ -545,8 +547,7 @@ namespace CarDrive.Gameplay
             // 순서가 고정이라 늘 같은 타일이 뒤로 밀려, 결국 눈앞에 와서야 켜졌습니다.
             pending.Sort(ByDistance);
 
-            float scaledInstant = instantDistance * rangeScale;
-            float instantSqr = scaledInstant * scaledInstant;
+            float instantSqr = ladder.TerrainInstant * ladder.TerrainInstant;
 
             // <b>한 번의 검사에서 켜는 총량에 천장을 둡니다.</b>
             //

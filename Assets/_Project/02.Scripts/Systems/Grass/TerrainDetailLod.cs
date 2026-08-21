@@ -133,12 +133,11 @@ namespace CarDrive.Systems
             if (level == 1) scale = settings.speedLodMidScale;
             else if (level >= 2) scale = settings.speedLodHighScale;
 
-            // 속도 단계와 전체 거리 배율은 곱해집니다.
-            // 0.5 로 두고 고속이면 원래의 0.25 가 됩니다.
-            scale *= Mathf.Clamp(settings.rangeScale, 0.05f, 1f);
+            // 거리 배율은 ViewDistances 가 이미 적용해 둡니다. 여기서는 <b>속도 단계만</b> 곱합니다.
+            // 두 곳에서 곱하면 배율의 제곱이 됩니다. 컬러가 한 번 그랬습니다.
             appliedRangeScale = settings.rangeScale;
 
-            pendingDistance = settings.detailDistance * Mathf.Clamp(scale, 0.02f, 1f);
+            pendingDistance = ViewDistances.Current.Grass * Mathf.Clamp(scale, 0.05f, 1f);
 
             // <b>꺼져 있는 것까지 담습니다.</b> WorldStreamer 가 멀어진 타일을 꺼 두는데,
             // 그것만 옛 거리를 안고 있으면 다가갔을 때 혼자 다르게 보입니다.

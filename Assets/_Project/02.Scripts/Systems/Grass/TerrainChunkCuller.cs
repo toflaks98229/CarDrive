@@ -420,6 +420,8 @@ namespace CarDrive.Systems
             bool due = entries == null || Time.realtimeSinceStartup >= nextRefresh;
             if (!due && !settingsChanged) return;
 
+            ViewDistances.Ladder ladder = ViewDistances.Current;
+
             nextRefresh = Time.realtimeSinceStartup + RefreshSeconds;
             cachedShadowMargin = settings.shadowMargin;
             cachedFoliageDistance = settings.foliageDistance;
@@ -465,27 +467,14 @@ namespace CarDrive.Systems
 
                 // 전체 거리 배율을 여기서 곱합니다. 캐시를 짤 때 한 번만 곱하면 되므로
                 // 매 프레임 판정에는 아무 비용도 붙지 않습니다.
-                float scale = Mathf.Clamp(settings.rangeScale, 0.05f, 1f);
+                // 거리는 ViewDistances 가 한곳에서 계산합니다.
+                // 여기서 배율을 곱하지 않습니다 — 그 곱셈이 흩어져 있던 것이
+                // 나무가 페이드 전에 접히던 버그의 원인이었습니다.
+                float fold = ladder.FoliageFold;
+                float release = ladder.FoliageRelease;
 
-                // <b>배율을 두 번 곱하지 않습니다.</b>
-                //
-                // foliageDistance 는 인스펙터에 적어 둔 <b>기준값</b>이라 배율을 곱해야 합니다.
-                // 하지만 terrain.treeDistance 는 ViewRangeScaler 가 <b>이미 배율을 적용해</b>
-                // 넣어 둔 값입니다. 여기서 또 곱하면 접는 거리가 배율의 제곱만큼 당겨집니다.
-                //
-                // 실제로 그랬습니다. 배율 0.5 에서 나무 페이드가 119~165m 인데 접기가 85m 라,
-                // <b>페이드가 시작되기도 전에</b> 타일 단위로 접혔습니다. 0.25 에서는 24m 였습니다.
-                // 디더로 사라지는 연출이 한 번도 보이지 않았던 이유입니다.
-                //
-                // 접는 거리는 나무를 잘라내는 거리보다 <b>멀거나 같아야</b> 합니다.
-                // 그래야 디더가 다 끝난 뒤에 접히고, 접히는 순간이 보이지 않습니다.
-                float fold = Mathf.Max(settings.foliageDistance * scale, terrain.treeDistance);
-                float release = fold + settings.cullingHysteresis;
-
-                // 지면을 늘 켜 둘 거리입니다. 들어오는 기준과 풀려나는 기준을 달리 두어
-                // 경계에 걸친 타일이 껐다 켜기를 반복하지 않게 합니다.
-                float near = settings.terrainNearDistance * scale;
-                float nearRelease = near + settings.cullingHysteresis;
+                float near = ladder.TerrainNear;
+                float nearRelease = ladder.TerrainNearRelease;
 
                 entries[i] = new TerrainEntry
                 {
