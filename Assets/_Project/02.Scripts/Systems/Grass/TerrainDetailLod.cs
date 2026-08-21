@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
-using CarDrive.Gameplay;
+using CarDrive.Common;
 
 namespace CarDrive.Systems
 {
@@ -22,7 +22,9 @@ namespace CarDrive.Systems
     /// <b>밀도는 건드리지 않습니다.</b> 밀도를 줄이면 풀밭이 눈에 띄게 성겨지지만
     /// 거리는 줄여도 끝이 안개에 묻혀 알아채기 어렵습니다. 같은 이득에 값이 싼 쪽만 씁니다.
     ///
-    /// 씬에 없으면 게임이 시작될 때 스스로 하나 생겨납니다.
+    /// <b>스스로 생겨나지 않습니다.</b> 예전에는 <c>[RuntimeInitializeOnLoadMethod]</c>로
+    /// 자기를 만들었는데, 그러면 씬에 하나 얹어 둔 경우 <b>둘이 되어</b> 예산이 두 배가 됩니다.
+    /// 이제 <c>WorldRuntimeInstaller</c>가 하나만 만들어 붙입니다.
     /// (<see cref="TerrainChunkCuller"/> 와 같은 방식입니다)
     /// </summary>
     [DefaultExecutionOrder(-99)]
@@ -32,6 +34,16 @@ namespace CarDrive.Systems
 
         /// <summary>단계를 다시 판정하는 주기(초)입니다. 속도는 프레임 단위로 뒤집히지 않습니다.</summary>
         private const float CheckSeconds = 0.5f;
+
+        // --- Public Properties ---
+
+        /// <summary>
+        /// 속도를 물어볼 곳입니다. <b>Composition이 기동할 때 한 번 꽂아 줍니다.</b>
+        ///
+        /// 비어 있으면 속도를 0으로 봅니다. 즉 이 최적화만 쉬고 게임은 그대로 돕니다 —
+        /// 배선이 빠졌다고 화면이 멈추면 안 되기 때문입니다.
+        /// </summary>
+        public static ISpeedSource SpeedSource { get; set; }
 
         // --- Private Member Variables ---
 
@@ -108,16 +120,15 @@ namespace CarDrive.Systems
         /// <summary>
         /// 지금 이동 속도(km/h)입니다.
         ///
-        /// 차를 타고 있을 때만 봅니다. 걸어 다닐 때는 임계에 닿을 일이 없고,
-        /// 도보 속도를 재려고 컴포넌트를 하나 더 뒤질 이유가 없습니다.
+        /// <b>차량을 직접 보지 않습니다.</b> 예전에는 <c>Vehicle.Current.controller.CurrentSpeed</c>를
+        /// 읽었는데, 그 한 줄 때문에 Systems 계층이 Gameplay 계층을 거꾸로 참조했습니다.
+        /// 어셈블리를 나누면 그 참조가 순환이 되어 컴파일이 막힙니다.
+        /// 이제 <see cref="SpeedSource"/>가 답하고, 누가 답할지는 Composition이 정합니다.
         /// </summary>
-        /// <returns>주행 중이면 차량 속도, 아니면 0</returns>
+        /// <returns>연결된 속도원이 있으면 그 속도, 없으면 0</returns>
         private static float CurrentSpeed()
         {
-            Vehicle vehicle = Vehicle.Current;
-            if (vehicle == null || vehicle.controller == null) return 0f;
-
-            return vehicle.controller.CurrentSpeed;
+            return SpeedSource != null ? SpeedSource.CurrentSpeedKmh : 0f;
         }
 
         /// <summary>
@@ -179,19 +190,6 @@ namespace CarDrive.Systems
             }
 
             pending.RemoveRange(0, count);
-        }
-
-        /// <summary>
-        /// 씬에 없으면 게임이 시작될 때 스스로 하나 생겨납니다.
-        /// </summary>
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void Spawn()
-        {
-            GameObject go = new GameObject("TerrainDetailLod");
-            go.hideFlags = HideFlags.HideAndDontSave;
-
-            go.AddComponent<TerrainDetailLod>();
-            DontDestroyOnLoad(go);
         }
 
         /// <summary>

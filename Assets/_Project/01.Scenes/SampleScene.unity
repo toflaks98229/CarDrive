@@ -24012,7 +24012,6 @@ MonoBehaviour:
   profile: {fileID: 0}
   gameMinutesPerRealSecond: 1
   needsEnabled: 1
-  healthBar: {fileID: 1978431803}
   blackoutFatigueReset: 0.35
   blackoutGameMinutes: 240
   onNeedWarning:
@@ -24171,8 +24170,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SaveSystem
   fileName: cardrive_save.json
   prettyPrint: 1
-  modeController: {fileID: 443595864}
-  playerHealth: {fileID: 1978431803}
   saveKey: 286
   loadKey: 290
   onSaved:
@@ -62359,6 +62356,106 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 1198430488}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1204306848
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1204306853}
+  - component: {fileID: 1204306852}
+  - component: {fileID: 1204306851}
+  - component: {fileID: 1204306850}
+  - component: {fileID: 1204306849}
+  m_Layer: 0
+  m_Name: '[Composition Root]'
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1204306849
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1204306848}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: daba78a4430fced488dac287b84a260f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Composition::CarDrive.Composition.PlayerScope
+  modeController: {fileID: 443595864}
+  playerHealth: {fileID: 1978431803}
+--- !u!114 &1204306850
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1204306848}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ccdd01878a1aea046996c72ed88d5950, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Composition::CarDrive.Composition.SimulationScope
+  timeSystem: {fileID: 443595869}
+  weatherSystem: {fileID: 443595868}
+  weatherRig: {fileID: 1401148557}
+  needsSystem: {fileID: 443595865}
+  wallet: {fileID: 443595873}
+  saveSystem: {fileID: 443595871}
+--- !u!114 &1204306851
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1204306848}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 52ae0056d89c6854396e7b3edc5fadeb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Composition::CarDrive.Composition.WorldRuntimeInstaller
+  driverObjectName: '[World Runtime]'
+  createGpuGrassRenderer: 0
+--- !u!114 &1204306852
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1204306848}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f5d62bb50c451e4fbea61c3b3d78b60, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Composition::CarDrive.Composition.CarDriveLifetimeScope
+  parentReference:
+    TypeName: 
+  autoRun: 1
+  autoInjectGameObjects: []
+  worldRuntime: {fileID: 1204306851}
+  simulation: {fileID: 1204306850}
+  player: {fileID: 1204306849}
+--- !u!4 &1204306853
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1204306848}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1206425033
 GameObject:
   m_ObjectHideFlags: 0
@@ -110804,3 +110901,4 @@ SceneRoots:
   - {fileID: 2027057111}
   - {fileID: 1929679789}
   - {fileID: 2050247365}
+  - {fileID: 1204306853}

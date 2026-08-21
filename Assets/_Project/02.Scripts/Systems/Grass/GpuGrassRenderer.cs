@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -404,19 +404,6 @@ namespace CarDrive.Systems
             h ^= h >> 16;
 
             return (h & 0xFFFFFF) / (float)0x1000000;
-        }
-
-        /// <summary>
-        /// 씬에 없으면 게임이 시작될 때 스스로 하나 생겨납니다.
-        /// </summary>
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void Spawn()
-        {
-            GameObject go = new GameObject("GpuGrassRenderer");
-            go.hideFlags = HideFlags.DontSave;
-
-            go.AddComponent<GpuGrassRenderer>();
-            DontDestroyOnLoad(go);
         }
     }
 }

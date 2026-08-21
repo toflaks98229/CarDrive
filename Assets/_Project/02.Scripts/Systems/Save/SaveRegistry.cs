@@ -56,6 +56,17 @@ namespace CarDrive.Systems
 
         /// <summary>지갑입니다. 다른 것에 기대지 않아 마지막이어도 됩니다.</summary>
         public const int Wallet = 40;
+
+        /// <summary>
+        /// 씬에 놓인 차량들입니다. <b>플레이어보다 먼저</b>여야 합니다.
+        /// 차를 제자리에 놓아야 플레이어가 그 차에 올라탈 수 있기 때문입니다.
+        /// </summary>
+        public const int Vehicles = 50;
+
+        /// <summary>
+        /// 플레이어의 위치·체력·탑승 상태입니다. 차량이 제자리에 놓인 뒤에 옵니다.
+        /// </summary>
+        public const int Player = 60;
     }
 
     /// <summary>

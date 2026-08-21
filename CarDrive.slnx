@@ -3,10 +3,14 @@
   <Project Path="MoreMountains.Tools.Editor.csproj" />
   <Project Path="Lofelt.NiceVibrations.csproj" />
   <Project Path="LogiUnityBridge.Editor.csproj" />
-  <Project Path="CarDrive.Runtime.csproj" />
+  <Project Path="CarDrive.Rendering.csproj" />
   <Project Path="CFXREditor.csproj" />
+  <Project Path="CarDrive.Systems.csproj" />
+  <Project Path="CarDrive.Composition.csproj" />
   <Project Path="CarDrive.Editor.csproj" />
   <Project Path="CarDrive.Tests.EditMode.csproj" />
+  <Project Path="CarDrive.Common.csproj" />
+  <Project Path="CarDrive.Gameplay.csproj" />
   <Project Path="DOTween.Modules.csproj" />
   <Project Path="CarDrive.Tests.PlayMode.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />

@@ -1,7 +1,8 @@
 {
-    "name": "CarDrive.Runtime",
-    "rootNamespace": "CarDrive",
+    "name": "CarDrive.Common",
+    "rootNamespace": "CarDrive.Common",
     "references": [
+        "VContainer",
         "UnityEngine.UI",
         "Unity.TextMeshPro",
         "Unity.RenderPipelines.Universal.Runtime",

@@ -2,7 +2,10 @@
     "name": "CarDrive.Tests.EditMode",
     "rootNamespace": "CarDrive.Tests",
     "references": [
-        "CarDrive.Runtime",
+        "CarDrive.Common",
+        "CarDrive.Systems",
+        "CarDrive.Gameplay",
+        "CarDrive.Composition",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

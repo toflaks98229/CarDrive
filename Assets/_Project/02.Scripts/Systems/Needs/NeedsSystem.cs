@@ -1,7 +1,6 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
-using CarDrive.Gameplay;
 using UnityEngine.Serialization;
 using CarDrive.Common;
 
@@ -43,18 +42,20 @@ namespace CarDrive.Systems
         public bool needsEnabled = true;
 
         /// <summary>
-        /// 한계 초과 시 체력을 깎을 대상입니다.
+        /// 한계 초과 시 체력을 깎을 대상입니다. <b>Composition이 기동할 때 꽂아 줍니다.</b>
         ///
-        /// <b>타입이 <see cref="PlayerHealth"/>인 것이 요점입니다.</b> 예전에는 추상 <c>Health</c>였고,
-        /// 그러면 인스펙터에서 이 자리에 <see cref="VehicleHealth"/>를 끌어다 놓을 수 있었습니다.
-        /// 그 상태로 갈증이 한계를 넘으면 플레이어 대신 <b>차가 부서집니다.</b>
-        /// Health를 셋으로 쪼갠 이유가 그런 오배선을 컴파일 단계에서 막는 것이었는데,
-        /// 정작 피해를 주는 이 자리가 열려 있었습니다.
+        /// <b>왜 인스펙터 필드가 아닌가.</b> 예전에는 <c>public PlayerHealth healthBar</c>였고,
+        /// 타입을 <c>PlayerHealth</c>로 좁혀 둔 것이 이 프로젝트에서 가장 좋은 설계였습니다.
+        /// 인스펙터에서 이 자리에 차량 내구도를 끌어다 놓는 실수가 <b>컴파일 단계에서</b> 막혔기 때문입니다.
+        ///
+        /// 그런데 그 한 줄 때문에 Systems 계층이 Gameplay 계층을 거꾸로 참조했고,
+        /// 어셈블리를 나누는 순간 순환이 되었습니다.
+        ///
+        /// <b>안전성은 사라지지 않고 자리를 옮겼습니다.</b> 이제 <c>SimulationScope</c>가
+        /// <c>PlayerHealth</c> 타입으로 받아 <see cref="SetDamageTarget"/>에 넘깁니다.
+        /// 오배선은 여전히 컴파일 에러이고, 확인 시점만 인스펙터에서 설치자로 바뀌었습니다.
         /// </summary>
-        [Header("연동 컴포넌트")]
-        [Tooltip("한계 초과 시 체력을 깎을 대상. 플레이어의 PlayerHealth입니다. " +
-                 "비워두면 체력은 줄지 않고 이벤트만 발생합니다.")]
-        public PlayerHealth healthBar;
+        private IDamageable damageTarget;
 
         [Header("기절 설정")]
         [Tooltip("피로가 한계를 넘어 기절했을 때 회복되는 피로 수치")]
@@ -231,6 +232,18 @@ namespace CarDrive.Systems
             couplings = hasProfileCouplings
                 ? new List<NeedCoupling>(profile.couplings)
                 : NeedDefaults.CreateCouplings();
+        }
+
+        /// <summary>
+        /// 한계 초과 피해를 입힐 대상을 연결합니다. <c>SimulationScope</c>가 기동할 때 한 번 부릅니다.
+        ///
+        /// 비워 두면(또는 연결하지 않으면) 체력은 줄지 않고 <b>이벤트만</b> 발생합니다.
+        /// 게이지는 빨개지되 죽지 않는 상태라, 배선이 빠져도 게임은 계속 돕니다.
+        /// </summary>
+        /// <param name="target">피해를 받을 대상. 플레이어 체력을 넘기세요.</param>
+        public void SetDamageTarget(IDamageable target)
+        {
+            damageTarget = target;
         }
 
         /// <summary>
@@ -543,9 +556,9 @@ namespace CarDrive.Systems
                 // Nuisance는 직접 처벌이 없습니다. (연쇄 규칙으로만 영향을 줍니다)
             }
 
-            if (totalDrain > 0f && healthBar != null)
+            if (totalDrain > 0f && damageTarget != null)
             {
-                healthBar.TakeDamage(totalDrain * deltaTime);
+                damageTarget.TakeDamage(totalDrain * deltaTime);
             }
         }
 

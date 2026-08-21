@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using CarDrive.Common;
 
@@ -161,20 +161,6 @@ namespace CarDrive.Systems
         private static int CompareByDistance(Entry a, Entry b)
         {
             return a.distanceSqr.CompareTo(b.distanceSqr);
-        }
-
-        /// <summary>
-        /// 게임이 시작될 때 스스로 하나 생겨납니다. 씬에 둘 필요가 없습니다.
-        /// </summary>
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void Spawn()
-        {
-            // 씬을 옮겨도 살아남아야 합니다. 매번 다시 만들면 첫 프레임에 풀이 튑니다.
-            GameObject go = new GameObject("GrassPushField");
-            go.hideFlags = HideFlags.HideAndDontSave;
-
-            go.AddComponent<GrassPushField>();
-            DontDestroyOnLoad(go);
         }
     }
 }
