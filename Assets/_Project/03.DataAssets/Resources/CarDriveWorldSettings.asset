@@ -30,7 +30,8 @@ MonoBehaviour:
   playerRadius: 0.5
   ghostRadius: 0.6
   playerMass: 70
-  rangeScale: 1
+  rangeScale: 0.5
+  hideDrawDistanceWithFog: 1
   foliageDistance: 95
   shadowMargin: 55
   terrainNearDistance: 160
@@ -40,3 +41,11 @@ MonoBehaviour:
   maxFoliageActivationsPerFrame: 2
   cullingHysteresis: 20
   chunkCulling: 1
+  speedLodEnabled: 1
+  speedLodMidKmh: 45
+  speedLodHighKmh: 90
+  speedLodMidScale: 0.75
+  speedLodHighScale: 0.5
+  speedLodHysteresisKmh: 10
+  maxDetailLodApplicationsPerFrame: 3
+  gpuGrass: 1
