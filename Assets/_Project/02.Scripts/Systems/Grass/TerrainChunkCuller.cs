@@ -467,7 +467,19 @@ namespace CarDrive.Systems
                 // 매 프레임 판정에는 아무 비용도 붙지 않습니다.
                 float scale = Mathf.Clamp(settings.rangeScale, 0.05f, 1f);
 
-                float fold = Mathf.Max(settings.foliageDistance, terrain.treeDistance) * scale;
+                // <b>배율을 두 번 곱하지 않습니다.</b>
+                //
+                // foliageDistance 는 인스펙터에 적어 둔 <b>기준값</b>이라 배율을 곱해야 합니다.
+                // 하지만 terrain.treeDistance 는 ViewRangeScaler 가 <b>이미 배율을 적용해</b>
+                // 넣어 둔 값입니다. 여기서 또 곱하면 접는 거리가 배율의 제곱만큼 당겨집니다.
+                //
+                // 실제로 그랬습니다. 배율 0.5 에서 나무 페이드가 119~165m 인데 접기가 85m 라,
+                // <b>페이드가 시작되기도 전에</b> 타일 단위로 접혔습니다. 0.25 에서는 24m 였습니다.
+                // 디더로 사라지는 연출이 한 번도 보이지 않았던 이유입니다.
+                //
+                // 접는 거리는 나무를 잘라내는 거리보다 <b>멀거나 같아야</b> 합니다.
+                // 그래야 디더가 다 끝난 뒤에 접히고, 접히는 순간이 보이지 않습니다.
+                float fold = Mathf.Max(settings.foliageDistance * scale, terrain.treeDistance);
                 float release = fold + settings.cullingHysteresis;
 
                 // 지면을 늘 켜 둘 거리입니다. 들어오는 기준과 풀려나는 기준을 달리 두어
@@ -492,6 +504,22 @@ namespace CarDrive.Systems
                     LastDrawFoliage = terrain.drawTreesAndFoliage
                 };
             }
+        }
+
+        /// <summary>
+        /// 미리 구해 둔 경계와 거리를 <b>다음 프레임에 다시 짜게</b> 합니다.
+        ///
+        /// 접는 거리는 <c>terrain.treeDistance</c> 를 보고 정해 두는데, 그 값은
+        /// <see cref="ViewRangeScaler"/> 가 시야 배율에 따라 바꿉니다.
+        /// 캐시는 2초 주기로만 다시 짜므로, 바뀐 직후 잠깐 <b>낡은 접는 거리</b>가 남습니다.
+        /// 그 사이에 접는 거리가 나무 페이드보다 앞이면 페이드가 보이지 않습니다.
+        ///
+        /// 그래서 바꾼 쪽이 여기로 알려 줍니다. 되돌리기(RestoreAll)와 달리
+        /// <b>지금 켜고 끈 상태는 건드리지 않습니다.</b> 값만 다시 구합니다.
+        /// </summary>
+        public static void InvalidateCache()
+        {
+            nextRefresh = 0f;
         }
 
         /// <summary>

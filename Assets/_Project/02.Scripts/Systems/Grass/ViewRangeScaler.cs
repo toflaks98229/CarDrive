@@ -211,6 +211,10 @@ namespace CarDrive.Systems
                 if (terrains[i] == null) continue;
                 terrains[i].treeDistance = view;
             }
+
+            // 컬러가 접는 거리를 이 값으로 정해 두므로, 바꿨으면 알려 줘야 합니다.
+            // 그러지 않으면 2초 동안 낡은 접는 거리가 남아 그 사이 페이드가 보이지 않습니다.
+            TerrainChunkCuller.InvalidateCache();
         }
 
         /// <summary>씬에 없으면 게임이 시작될 때 스스로 하나 생겨납니다.</summary>
