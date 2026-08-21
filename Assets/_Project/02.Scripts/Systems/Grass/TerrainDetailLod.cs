@@ -150,12 +150,11 @@ namespace CarDrive.Systems
 
             pendingDistance = ViewDistances.Current.Grass * Mathf.Clamp(scale, 0.05f, 1f);
 
-            // <b>꺼져 있는 것까지 담습니다.</b> WorldStreamer 가 멀어진 타일을 꺼 두는데,
-            // 그것만 옛 거리를 안고 있으면 다가갔을 때 혼자 다르게 보입니다.
+            // 목록은 TerrainRegistry 가 한 번만 찾아 나눠 씁니다.
             //
-            // 단계가 바뀌는 일은 드물어서(주기 0.5초 + 히스테리시스) 여기서 씬을 훑어도 됩니다.
-            // 목록을 계속 들고 있으면 지형이 늘고 줄 때 어긋납니다.
-            Terrain[] all = Object.FindObjectsByType<Terrain>(FindObjectsInactive.Include);
+            // <b>꺼져 있는 것까지 담겨 옵니다.</b> WorldStreamer 가 멀어진 타일을 꺼 두는데,
+            // 그것만 옛 거리를 안고 있으면 다가갔을 때 혼자 다르게 보입니다.
+            Terrain[] all = TerrainRegistry.All;
 
             pending.Clear();
             for (int i = 0; i < all.Length; i++)

@@ -167,7 +167,7 @@ namespace CarDrive.Systems
 
             kernel = cullShader.FindKernel("CSMain");
 
-            Terrain[] terrains = Object.FindObjectsByType<Terrain>(FindObjectsInactive.Include);
+            Terrain[] terrains = TerrainRegistry.All;
             if (terrains.Length == 0) return;
 
             BuildBatches(terrains);

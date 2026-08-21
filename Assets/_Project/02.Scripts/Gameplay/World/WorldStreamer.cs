@@ -279,6 +279,11 @@ namespace CarDrive.Gameplay
         {
             ClearWorld();
             BuildWorld();
+
+            // 지형이 통째로 바뀌었습니다. 주기를 기다리면 그 사이 <b>사라진 지형</b>을
+            // 가리키거나 <b>새 지형을 빠뜨립니다.</b> 목록을 쓰는 쪽 모두에게 영향을 줍니다.
+            Systems.TerrainRegistry.Invalidate();
+
             UpdateStreaming(true);
         }
 

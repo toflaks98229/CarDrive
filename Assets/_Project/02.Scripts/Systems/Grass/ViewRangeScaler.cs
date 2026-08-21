@@ -152,7 +152,8 @@ namespace CarDrive.Systems
         /// <param name="basemapDistance">대입할 베이스맵 거리(m). 0 미만이면 건드리지 않습니다.</param>
         private static void ApplyTerrainSettings(float treeCut, float lodError, float basemapDistance)
         {
-            Terrain[] terrains = Object.FindObjectsByType<Terrain>(FindObjectsInactive.Include);
+            // 목록은 TerrainRegistry 가 한 번만 찾아 나눠 씁니다. 여기서 씬을 다시 훑지 않습니다.
+            Terrain[] terrains = TerrainRegistry.All;
 
             for (int i = 0; i < terrains.Length; i++)
             {

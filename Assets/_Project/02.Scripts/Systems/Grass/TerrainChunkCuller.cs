@@ -43,9 +43,6 @@ namespace CarDrive.Systems
     {
         // --- Constants ---
 
-        /// <summary>타일 목록을 다시 찾는 주기(초)입니다.</summary>
-        private const float RefreshSeconds = 2f;
-
         // --- Private Types ---
 
         /// <summary>
@@ -127,7 +124,15 @@ namespace CarDrive.Systems
         /// <summary>타일별로 미리 구해 둔 값들입니다.</summary>
         private static TerrainEntry[] entries;
 
-        private static float nextRefresh;
+        /// <summary>
+        /// 경계 캐시를 만들 때 본 지형 목록의 번호입니다.
+        ///
+        /// <b>자체 주기를 두지 않습니다.</b> 예전에는 이 컬러가 2초 주기로 목록을 다시 찾고
+        /// 경계도 함께 다시 구했습니다. 이제 목록은 <see cref="TerrainRegistry"/> 가 갖고 있는데,
+        /// 여기서 주기를 또 두면 <b>두 갱신 시점이 어긋납니다.</b> 그 틈에 캐시가 이미 사라진
+        /// 지형을 가리키게 됩니다. 목록이 바뀐 그 순간에 캐시도 다시 짜는 것이 맞습니다.
+        /// </summary>
+        private static int cachedRegistryVersion = -1;
 
         /// <summary>
         /// 캐시를 만들 때 쓴 설정값입니다. 이 값이 달라지면 경계를 다시 구해야 합니다.
@@ -468,7 +473,9 @@ namespace CarDrive.Systems
                                    || !Mathf.Approximately(cachedNearDistance, settings.terrainNearDistance)
                                    || !Mathf.Approximately(cachedRangeScale, settings.rangeScale);
 
-            bool due = entries == null || Time.realtimeSinceStartup >= nextRefresh;
+            // 목록이 바뀌었으면(또는 아직 캐시가 없으면) 다시 짭니다.
+            int registryVersion = TerrainRegistry.Version;
+            bool due = entries == null || registryVersion != cachedRegistryVersion;
             if (!due && !settingsChanged) return;
 
             // <b>대기 중인 신청을 반드시 함께 비웁니다.</b>
@@ -486,7 +493,7 @@ namespace CarDrive.Systems
 
             ViewDistances.Ladder ladder = ViewDistances.Current;
 
-            nextRefresh = Time.realtimeSinceStartup + RefreshSeconds;
+            cachedRegistryVersion = registryVersion;
             cachedShadowMargin = settings.shadowMargin;
             cachedHysteresis = settings.cullingHysteresis;
             cachedNearDistance = settings.terrainNearDistance;
@@ -496,7 +503,7 @@ namespace CarDrive.Systems
             // WorldStreamer 가 멀어진 타일을 통째로 껐다가 다시 켜는데,
             // 켜진 것만 담아 두면 다시 켜진 타일이 다음 목록 갱신(2초)까지 목록에 없어
             // 그 사이 화면에 구멍이 남습니다.
-            Terrain[] found = Object.FindObjectsByType<Terrain>(FindObjectsInactive.Include);
+            Terrain[] found = TerrainRegistry.All;
 
             // 타일 수는 좀처럼 바뀌지 않습니다. 길이가 같으면 배열을 다시 만들지 않습니다.
             // (2초마다 103칸짜리 배열을 새로 잡을 이유가 없습니다)
@@ -566,7 +573,7 @@ namespace CarDrive.Systems
         /// </summary>
         public static void InvalidateCache()
         {
-            nextRefresh = 0f;
+            cachedRegistryVersion = -1;
         }
 
         /// <summary>
@@ -574,7 +581,7 @@ namespace CarDrive.Systems
         /// </summary>
         public static void RestoreAll()
         {
-            Terrain[] all = Object.FindObjectsByType<Terrain>(FindObjectsInactive.Include);
+            Terrain[] all = TerrainRegistry.All;
 
             for (int i = 0; i < all.Length; i++)
             {
@@ -604,7 +611,7 @@ namespace CarDrive.Systems
         private static void ResetStatics()
         {
             entries = null;
-            nextRefresh = 0f;
+            cachedRegistryVersion = -1;
             cachedShadowMargin = float.NaN;
             cachedHysteresis = float.NaN;
             cachedNearDistance = float.NaN;
