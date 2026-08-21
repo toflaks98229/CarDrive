@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using CarDrive.Systems;
@@ -39,8 +39,26 @@ namespace CarDrive.EditorTools
         /// <summary>지도 프리팹입니다. 지면 머티리얼을 찾는 마지막 수단입니다.</summary>
         private const string MapPrefabFolder = "Assets/_Project/05.Prefabs/Map";
 
-        /// <summary>타일 한 장의 디테일 격자 해상도입니다. 타일이 100m이므로 한 칸이 약 0.39m입니다.</summary>
-        private const int DetailResolution = 256;
+        /// <summary>
+        /// 디테일 격자 한 칸이 덮을 <b>목표 거리(m)</b>입니다.
+        ///
+        /// <b>왜 해상도가 아니라 칸 크기인가.</b> 예전에는 <c>DetailResolution = 256</c> 이라는
+        /// 고정 해상도였습니다. 타일이 100m 일 때는 0.39m/칸으로 맞았지만,
+        /// <b>타일을 키우면 풀이 조용히 성겨집니다.</b> 600m 타일에 256을 그대로 쓰면
+        /// 한 칸이 2.34m 가 되어 풀밭이 텅 빕니다. 굽고 나서야 눈으로 알아채는 종류의 실수입니다.
+        ///
+        /// 칸 크기를 고정하면 타일 크기가 바뀌어도 <b>단위 면적당 풀의 양이 같습니다.</b>
+        /// 100m 타일에서는 256 이 그대로 나와 지금 동작이 바뀌지 않습니다.
+        /// </summary>
+        private const float TargetDetailCellSize = 0.39f;
+
+        /// <summary>
+        /// 유니티가 허용하는 디테일 격자 해상도의 상한입니다.
+        ///
+        /// 이 값이 곧 <b>월드 크기의 상한</b>이기도 합니다. 목표 칸 크기 0.39m 를 유지하면
+        /// 타일 한 변은 최대 약 1,578m 까지입니다.
+        /// </summary>
+        private const int MaxDetailResolution = 4048;
 
         /// <summary>
         /// 한 조각(patch)이 담을 격자 수입니다. 이 단위로 잘라 컬링하고, <b>조각 하나가 그리기 한 번</b>입니다.
@@ -48,17 +66,13 @@ namespace CarDrive.EditorTools
         /// </summary>
         private const int DetailPerPatch = 64;
 
-        /// <summary>
-        /// LOD가 바뀔 때 지형이 최대 몇 픽셀까지 튈 수 있는지입니다.
-        /// 기본값 5에서도 능선이 계단처럼 각져 보입니다. 2로 낮춰 실루엣을 매끄럽게 합니다.
-        /// </summary>
-        private const float HeightmapPixelError = 2f;
-
-        /// <summary>
-        /// 이 거리 너머의 지면을 통짜 텍스처로 대체하는 거리입니다.
-        /// 크게 잡아 사실상 끕니다. 대체되면 우리 셰이더가 아니라 흐릿한 이미지가 보입니다.
-        /// </summary>
-        private const float BasemapDistance = 20000f;
+        // 지형 LOD 수치(화면 오차·베이스맵 거리)는 <b>여기서 정하지 않습니다.</b>
+        //
+        // 예전에는 이 파일이 HeightmapPixelError = 2 를, TerrainPerformanceSetup 이 10 을
+        // 각각 <c>private const</c> 로 들고 같은 속성에 썼습니다. <b>나중에 실행한 도구가
+        // 이기는 구조</b>라, 도구를 어떤 순서로 눌렀는지가 지형 밀도를 정하고 있었습니다.
+        //
+        // 지금은 CarDriveWorldSettings 가 주인입니다. 두 도구가 같은 값을 읽습니다.
 
         /// <summary>
         /// 알려진 지면 머티리얼들입니다. 깔려 있던 것을 알아내지 못했을 때 앞에서부터 씁니다.
@@ -262,8 +276,11 @@ namespace CarDrive.EditorTools
 
                 if (material != null) terrain.materialTemplate = material;
 
-                terrain.basemapDistance = BasemapDistance;
-                terrain.heightmapPixelError = HeightmapPixelError;
+                // LOD 는 설정이 주인입니다. 예전에는 이 도구가 화면 오차 2 · 베이스맵 20000 을 쓰고
+                // TerrainPerformanceSetup 이 10 · 120 을 써서, 어느 도구를 나중에 눌렀는지가
+                // 지형 밀도를 정하고 있었습니다.
+                terrain.basemapDistance = Settings.basemapDistance;
+                terrain.heightmapPixelError = Settings.heightmapPixelError;
 
                 // 병 같은 Prop 이 지면을 뚫고 떨어지지 않게 Ground 레이어에 올립니다.
                 // 충돌 행렬에서 Prop 은 Default 와 부딪히지 않도록 꺼져 있고,
@@ -273,23 +290,28 @@ namespace CarDrive.EditorTools
                 terrain.detailObjectDistance = Settings.detailDistance;
                 terrain.detailObjectDensity = Settings.detailDensity;
 
+                // <b>디테일 해상도는 타일마다 그 크기에서 구합니다.</b>
+                // 고정값을 쓰면 타일을 키웠을 때 풀이 조용히 성겨집니다.
+                int detailResolution = ResolveDetailResolution(terrain);
+
                 // 그려지는 양을 재려면 격자 칸 수와 타일 크기가 필요합니다. (아래 ReportVegetationCost)
                 if (terrain.terrainData != null)
                 {
-                    cellCount += (long)DetailResolution * DetailResolution;
-                    patchCount += (DetailResolution / DetailPerPatch) * (DetailResolution / DetailPerPatch);
+                    cellCount += (long)detailResolution * detailResolution;
+                    patchCount += (detailResolution / DetailPerPatch) * (detailResolution / DetailPerPatch);
                     tileSize = terrain.terrainData.size.x;
                 }
 
                 if (vegetationPrefabs != null) planted += VegetationPainter.Paint(
-                    terrain, vegetation, vegetationPrefabs, DetailResolution, DetailPerPatch,
+                    terrain, vegetation, vegetationPrefabs, detailResolution, DetailPerPatch,
                     instances, drawCalls);
 
                 EditorUtility.SetDirty(terrain);
             }
 
             report.Add("· 터레인 " + terrains.Length + "장에 옷을 입혔습니다. " +
-                       "(화면 오차 " + HeightmapPixelError + ", 베이스맵 " + BasemapDistance + "m)");
+                       "(화면 오차 " + Settings.heightmapPixelError +
+                       ", 베이스맵 " + Settings.basemapDistance + "m)");
 
             report.Add(groundLayer >= 0
                 ? "· 지면 레이어: Ground(" + groundLayer + ") — 소품이 지면을 뚫지 않습니다."
@@ -322,6 +344,46 @@ namespace CarDrive.EditorTools
         /// <param name="instances">종별 포기 수</param>
         /// <param name="drawCalls">종별 그리기 횟수 (월드 전체)</param>
         /// <param name="patchCount">월드 전체의 패치 수</param>
+        /// <summary>
+        /// 이 타일에 쓸 디테일 격자 해상도를 구합니다.
+        ///
+        /// <b>칸 크기를 고정하고 해상도를 따라오게 합니다.</b> 그래야 타일을 키워도
+        /// 단위 면적당 풀의 양이 같습니다. 반대로 하면(해상도 고정) 타일을 키운 만큼
+        /// 풀밭이 성겨지는데, 그 사실이 굽기 전에는 드러나지 않습니다.
+        ///
+        /// 결과는 <see cref="DetailPerPatch"/> 의 배수로 맞춥니다. 조각이 딱 떨어져야
+        /// 컬링 단위가 어긋나지 않고, 조각 하나의 크기도 타일 크기와 무관하게 일정해집니다.
+        /// (0.39m × 64 = 약 25m)
+        /// </summary>
+        /// <param name="terrain">해상도를 구할 지형</param>
+        /// <returns>이 타일에 쓸 디테일 격자 해상도</returns>
+        private static int ResolveDetailResolution(Terrain terrain)
+        {
+            float size = terrain != null && terrain.terrainData != null ? terrain.terrainData.size.x : 100f;
+            if (size <= 0f) size = 100f;
+
+            int wanted = Mathf.RoundToInt(size / TargetDetailCellSize);
+
+            // 조각 크기가 일정하도록 조각 수 단위로 반올림합니다.
+            int patches = Mathf.Max(1, Mathf.RoundToInt(wanted / (float)DetailPerPatch));
+            int resolution = patches * DetailPerPatch;
+
+            if (resolution <= MaxDetailResolution) return resolution;
+
+            // 상한에 걸리면 <b>조용히 넘어가지 않습니다.</b> 풀 밀도가 의도보다 낮아지는데,
+            // 그 사실을 모르면 "왜 풀이 성긴지"를 엉뚱한 곳에서 찾게 됩니다.
+            int capped = (MaxDetailResolution / DetailPerPatch) * DetailPerPatch;
+            Debug.LogWarning("TerrainDressing: 타일 한 변이 " + size.ToString("0") + "m 라 " +
+                             "목표 칸 크기(" + TargetDetailCellSize + "m)를 지키려면 해상도 " + resolution +
+                             " 이 필요하지만 상한은 " + MaxDetailResolution + " 입니다. " +
+                             capped + " 로 낮춥니다 — 한 칸이 " +
+                             (size / capped).ToString("0.00") + "m 가 되어 풀이 성겨집니다. " +
+                             "타일을 " + (MaxDetailResolution * TargetDetailCellSize).ToString("0") +
+                             "m 이하로 줄이세요.");
+
+            return capped;
+        }
+
         /// <param name="tileSize">타일 한 변의 길이(m)</param>
         /// <param name="report">결과를 적을 목록</param>
         private static void ReportVegetationCost(List<VegetationSpecies> species, long[] instances,
@@ -361,7 +423,7 @@ namespace CarDrive.EditorTools
             //
             // 패치는 통째로 들어가고 빠지므로, 거리 안에 조금이라도 걸치면 다 그려집니다.
             // 그래서 반경에 패치 반대각선을 더해 잡습니다.
-            float patchSize = tileSize / (DetailResolution / (float)DetailPerPatch);
+            float patchSize = TargetDetailCellSize * DetailPerPatch;
             float reach = Settings.detailDistance + patchSize * 0.7071f;
 
             double patchesInView = (Mathf.PI * reach * reach) / (patchSize * patchSize);

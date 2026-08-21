@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using CarDrive.Systems;
@@ -18,20 +18,14 @@ namespace CarDrive.EditorTools
     {
         // --- Constants ---
 
-        /// <summary>
-        /// 지형 메시의 단순화 정도입니다. 낮을수록 촘촘하고 비쌉니다.
-        ///
-        /// 기본 씬은 <b>2</b>로 되어 있는데, 이 프로젝트의 <c>PsxLookSetup</c>은 이미
-        /// <b>12</b>를 의도하고 있습니다. 픽셀 룩에서는 지면 실루엣이 뭉개져도 거의 보이지 않으므로
-        /// 삼각형을 크게 줄일 수 있습니다.
-        /// </summary>
-        private const float HeightmapPixelError = 10f;
-
-        /// <summary>
-        /// 지면 텍스처를 합성 텍스처로 바꾸는 거리(m)입니다.
-        /// 이 거리를 넘으면 스플랫 여러 장을 섞지 않고 한 장으로 그립니다.
-        /// </summary>
-        private const float BasemapDistance = 120f;
+        // 지형 LOD 수치는 <b>여기 상수로 두지 않습니다.</b>
+        //
+        // 예전에는 HeightmapPixelError·BasemapDistance 가 이 파일의 private const 였습니다.
+        // 그래서 값을 만지려면 코드를 열고, 도구를 다시 실행하고, 씬을 저장해야 했고,
+        // <b>실행 중에 비교해 볼 수가 없었습니다.</b>
+        //
+        // 지금은 CarDriveWorldSettings 가 주인이고 ViewRangeScaler 가 실행 중에 반영합니다.
+        // 이 도구는 그 값을 씬에도 구워 넣어, 플레이하지 않고 씬 뷰에서 볼 때도 같게 보이도록 합니다.
 
         // <b>나무 그리기 거리(treeDistance)는 건드리지 않습니다.</b>
         //
@@ -71,6 +65,8 @@ namespace CarDrive.EditorTools
                 return;
             }
 
+            CarDrive.Systems.CarDriveWorldSettings worldSettings = CarDrive.Systems.CarDriveWorldSettings.Instance;
+
             Undo.RecordObjects(terrains, "터레인 렌더링 최적화");
 
             for (int i = 0; i < terrains.Length; i++)
@@ -96,10 +92,11 @@ namespace CarDrive.EditorTools
                 // (URP 의 TerrainLit 셰이더가 그 구현의 참고가 됩니다)
 
                 // 지형 메시를 성기게 만듭니다. 삼각형 수에 직접 듭니다.
-                terrain.heightmapPixelError = HeightmapPixelError;
+                // 값의 주인은 설정 에셋입니다. (실행 중에는 ViewRangeScaler 가 같은 값을 씁니다)
+                terrain.heightmapPixelError = worldSettings.heightmapPixelError;
 
                 // 먼 지면은 스플랫을 섞지 않고 합성 텍스처 한 장으로 그립니다.
-                terrain.basemapDistance = BasemapDistance;
+                terrain.basemapDistance = worldSettings.basemapDistance;
 
                 // 나무 그리기 거리(treeDistance)는 건드리지 않습니다.
                 // (줄이면 셰이더의 디더 페이드보다 먼저 잘려 눈앞에서 튀어나옵니다)
@@ -115,7 +112,9 @@ namespace CarDrive.EditorTools
 
             Debug.Log("TerrainPerformanceSetup: 터레인 " + terrains.Length + "장에 적용했습니다. " +
                       "(인스턴싱은 셰이더 미지원으로 건드리지 않습니다. " +
-                      "지형 단순화 " + HeightmapPixelError + ", 빌보드 전환 " + BillboardStart + "m)");
+                      "지형 단순화 " + worldSettings.heightmapPixelError +
+                      ", 베이스맵 " + worldSettings.basemapDistance + "m" +
+                      ", 빌보드 전환 " + BillboardStart + "m)");
 
             LogFoliageDistanceHint();
         }

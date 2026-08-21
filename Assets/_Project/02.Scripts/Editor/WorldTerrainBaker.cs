@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -370,9 +370,28 @@ namespace CarDrive.EditorTools
 
             EditorGUILayout.Space(6f);
             EditorGUILayout.LabelField("타일", EditorStyles.boldLabel);
-            tileSize = EditorGUILayout.IntField("타일 한 변(m)", tileSize);
+            tileSize = Mathf.Max(25, EditorGUILayout.IntField("타일 한 변(m)", tileSize));
             heightmapResolution = ResolutionField("높이맵 해상도", heightmapResolution);
             alphamapResolution = EditorGUILayout.IntField("텍스처 해상도", alphamapResolution);
+
+            // <b>타일을 키우면 해상도도 함께 올려야 합니다.</b> 그러지 않으면 지형이
+            // 조용히 거칠어집니다 — 굽고 나서야 눈으로 알아채는 종류의 실수입니다.
+            // 그래서 지금 설정이 실제로 몇 m/텍셀인지 그 자리에서 보여 줍니다.
+            float metersPerTexel = MetersPerTexel(tileSize, heightmapResolution);
+            float metersPerSplat = tileSize / Mathf.Max(1f, alphamapResolution);
+
+            EditorGUILayout.LabelField(" ",
+                "높이 " + metersPerTexel.ToString("0.00") + "m/텍셀   " +
+                "텍스처 " + metersPerSplat.ToString("0.00") + "m/텍셀",
+                EditorStyles.miniLabel);
+
+            // 100m·129 기준(0.78m/텍셀)보다 거칠어지면 알려 줍니다.
+            if (metersPerTexel > 0.80f)
+            {
+                EditorGUILayout.HelpBox(
+                    "높이맵이 " + metersPerTexel.ToString("0.00") + "m/텍셀로 지금 월드(0.78)보다 거칩니다. " +
+                    "해상도를 한 단계 올리거나 타일을 줄이세요.", MessageType.Warning);
+            }
             heightScale = EditorGUILayout.FloatField("최대 높이(m)", heightScale);
             baseHeight = EditorGUILayout.Slider("기준 높이", baseHeight, 0.05f, 0.9f);
 
@@ -949,8 +968,13 @@ namespace CarDrive.EditorTools
         /// <returns>보정된 값</returns>
         private static int ResolutionField(string label, int value)
         {
-            int[] options = { 65, 129, 257, 513 };
-            string[] names = { "65", "129", "257", "513" };
+            // 유니티의 높이맵 해상도는 2^n+1 이어야 하고 상한은 4097 입니다.
+            //
+            // 예전에는 513 에서 끊겨 있었습니다. 100m 타일에는 충분했지만
+            // <b>타일을 키우면 그 상한이 곧 지형 해상도의 상한이 됩니다.</b>
+            // 600m 타일을 513 으로 구우면 1.17m/텍셀이 되어 지금(0.78m)보다 거칠어집니다.
+            int[] options = { 65, 129, 257, 513, 1025, 2049, 4097 };
+            string[] names = { "65", "129", "257", "513", "1025", "2049", "4097" };
 
             int index = 1;
             for (int i = 0; i < options.Length; i++)
@@ -960,6 +984,18 @@ namespace CarDrive.EditorTools
 
             index = EditorGUILayout.Popup(label, index, names);
             return options[index];
+        }
+
+        /// <summary>
+        /// 지금 타일 크기와 해상도로 텍셀 하나가 몇 미터인지 돌려줍니다.
+        /// </summary>
+        /// <param name="size">타일 한 변(m)</param>
+        /// <param name="resolution">해상도(2^n+1)</param>
+        /// <returns>텍셀 하나가 덮는 거리(m)</returns>
+        private static float MetersPerTexel(int size, int resolution)
+        {
+            int segments = Mathf.Max(1, resolution - 1);
+            return size / (float)segments;
         }
 
         // --- Types ---
