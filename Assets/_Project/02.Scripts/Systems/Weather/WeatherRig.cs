@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using CarDrive.Common;
 
@@ -83,7 +83,9 @@ namespace CarDrive.Systems
         public float maxParticleScale = 5f;
 
         [Header("안개")]
-        [Tooltip("체크하면 렌더 설정의 안개를 날씨에 맞춰 조절합니다.")]
+        [Tooltip("체크하면 날씨의 안개 짙기를 시야 사다리(ViewDistances)에 요청합니다. " +
+                 "RenderSettings 에 실제로 쓰는 것은 ViewRangeScaler 한 곳입니다. " +
+                 "끄면 안개는 시야 거리를 덮는 최소 짙기만 유지되어 날씨와 무관해집니다.")]
         public bool controlRenderFog = false;
 
         [Tooltip("FogDensity가 1일 때의 안개 밀도")]
@@ -100,12 +102,10 @@ namespace CarDrive.Systems
         public float minAmbientFactor = 0.35f;
 
         [Header("시야")]
-        [Tooltip("체크하면 날씨의 시야 배율에 맞춰 카메라 시야 거리와 헤드라이트 범위를 줄입니다. " +
-                 "안개(0.35)나 폭우(0.45)에서 멀리 못 보게 됩니다.")]
+        [Tooltip("체크하면 날씨의 시야 배율을 시야 사다리(ViewDistances)에 요청합니다. " +
+                 "안개(0.35)나 폭우(0.45)에서 멀리 못 보게 됩니다. " +
+                 "카메라 파클립은 ViewRangeScaler 가 사다리를 보고 씁니다 — 여기서 직접 쓰지 않습니다.")]
         public bool controlVisibility = false;
-
-        [Tooltip("시야 거리를 조절할 카메라. 비워두면 메인 카메라를 씁니다.")]
-        public Camera visibilityCamera;
 
         [Tooltip("시야가 최악일 때 남는 비율의 하한. 너무 낮추면 지형이 눈앞에서 잘려 보입니다.")]
         [Range(0.1f, 1f)]
@@ -139,9 +139,6 @@ namespace CarDrive.Systems
         /// <summary>환경광 원본값을 이미 기억해 두었는지 여부입니다. 한 번만 캐시합니다.</summary>
         private bool ambientCached;
 
-        /// <summary>시야를 줄이기 전의 원래 카메라 far clip 거리입니다.</summary>
-        private float baseFarClip;
-
         /// <summary>전조등별 원래 조사 거리입니다. 시야 배율을 곱해 적용합니다.</summary>
         private readonly List<float> baseLightRanges = new List<float>();
 
@@ -150,6 +147,20 @@ namespace CarDrive.Systems
 
         /// <summary>마지막으로 적용한 시야 배율입니다. 값이 그대로면 다시 적용하지 않습니다.</summary>
         private float appliedVisibility = -1f;
+
+        /// <summary>
+        /// 이번 프레임에 날씨가 <b>요청한</b> 안개 짙기입니다. 0이면 요청 없음입니다.
+        ///
+        /// <c>controlRenderFog</c> 가 꺼져 있으면 계속 0이라 날씨가 안개에 관여하지 않습니다.
+        /// 켜면 <see cref="ViewDistances"/> 가 시야 거리를 덮는 데 필요한 짙기와 비교해
+        /// <b>더 짙은 쪽</b>을 씁니다.
+        /// </summary>
+        private float requestedFogDensity;
+
+        /// <summary>
+        /// 이번 프레임에 날씨가 <b>요청한</b> 시야 배율입니다. 1이면 요청 없음입니다.
+        /// </summary>
+        private float requestedVisibility = 1f;
 
         // --- Unity Event Functions ---
 
@@ -234,6 +245,14 @@ namespace CarDrive.Systems
             if (controlRenderFog) UpdateFog(weatherSystem.FogDensity);
             if (controlAmbient) UpdateAmbient(weatherSystem.Darkness);
             if (controlVisibility) UpdateVisibility(weatherSystem.VisibilityMultiplier);
+
+            // <b>전역 렌더 상태는 여기서 쓰지 않습니다.</b> 위의 두 메서드가 담아 둔 요청을
+            // 사다리에 넘기기만 하고, 실제로 RenderSettings 와 카메라에 쓰는 것은
+            // ViewRangeScaler 한 곳입니다. 둘이 같은 값을 쓰며 실행 순서로 다투던 것을
+            // 계산 한 줄로 바꾼 자리입니다.
+            //
+            // 꺼져 있는 축은 중립값(0 · 1)이 그대로 넘어가 아무 영향도 주지 않습니다.
+            ViewDistances.ReportWeather(requestedFogDensity, requestedVisibility);
         }
 
         // --- Private Methods ---
@@ -433,14 +452,22 @@ namespace CarDrive.Systems
         }
 
         /// <summary>
-        /// 안개 짙기를 렌더 설정에 반영합니다. 거의 0이면 안개를 아예 끕니다.
+        /// 원하는 안개 짙기를 <b>요청합니다.</b> 직접 쓰지 않습니다.
+        ///
+        /// <b>왜 바뀌었는가.</b> 예전에는 여기서 <c>RenderSettings.fog*</c>를 직접 썼습니다.
+        /// 그런데 같은 값을 <see cref="ViewRangeScaler"/>도 매 프레임 쓰고 있었고,
+        /// 실행 순서가 각각 0과 200이라 <b>이쪽이 언제나 졌습니다.</b>
+        /// 게다가 이 메서드는 <c>controlRenderFog</c>가 꺼져 있으면 아예 돌지 않아,
+        /// 날씨가 계산한 안개 수치가 <b>계산만 되고 버려지고</b> 있었습니다.
+        ///
+        /// 이제 값을 <see cref="ViewDistances"/>에 맡기고, 쓰는 일은 한 곳이 합니다.
+        /// 시야 거리를 덮는 데 필요한 짙기보다 옅게 요청하면 그쪽이 이깁니다 —
+        /// 안개가 시야보다 옅으면 지형이 끝나는 자리가 그대로 보이기 때문입니다.
         /// </summary>
         /// <param name="density">날씨가 정한 안개 짙기(0~1). maxFogDensity에 곱해집니다.</param>
         private void UpdateFog(float density)
         {
-            RenderSettings.fog = density > 0.01f;
-            RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogDensity = maxFogDensity * density;
+            requestedFogDensity = maxFogDensity * density;
 
             // 안개 '색'은 SkyController가 정합니다.
             //
@@ -463,9 +490,8 @@ namespace CarDrive.Systems
         {
             if (!visibilityCached)
             {
-                if (visibilityCamera == null) visibilityCamera = GameContext.MainCamera;
-                if (visibilityCamera != null) baseFarClip = visibilityCamera.farClipPlane;
-
+                // 카메라 파클립은 더 이상 이 리그가 만지지 않습니다. (ViewDistances 가 소유)
+                // 헤드라이트만 여기 남습니다 — 이 리그가 들고 있는 라이트라 다투는 상대가 없습니다.
                 baseLightRanges.Clear();
                 for (int i = 0; i < headlights.Count; i++)
                 {
@@ -477,11 +503,16 @@ namespace CarDrive.Systems
 
             float factor = Mathf.Clamp(visibility, minVisibilityFactor, 1f);
 
-            // 시야 거리는 매 프레임 바꿀 필요가 없습니다. (카메라 행렬이 다시 계산됩니다)
+            // 시야 거리는 <b>요청만</b> 합니다. 카메라 파클립을 직접 쓰면
+            // ViewRangeScaler(order 200)가 같은 프레임 뒤에 덮어써서 아무 효과가 없습니다.
+            // 게다가 그 값을 ViewDistances.SetViewBase 가 기준으로 삼아 버리면
+            // 사다리 전체가 흐린 날의 값으로 영구히 굳습니다.
+            requestedVisibility = factor;
+
+            // 헤드라이트는 이 리그가 계속 소유합니다. 전역 상태가 아니라
+            // 이 리그가 들고 있는 라이트라 다투는 상대가 없습니다.
             if (Mathf.Abs(factor - appliedVisibility) < 0.005f) return;
             appliedVisibility = factor;
-
-            if (visibilityCamera != null) visibilityCamera.farClipPlane = baseFarClip * factor;
 
             for (int i = 0; i < headlights.Count; i++)
             {

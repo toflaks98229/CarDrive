@@ -30,16 +30,22 @@ MonoBehaviour:
   playerRadius: 0.5
   ghostRadius: 0.6
   playerMass: 70
-  rangeScale: 0.5
+  rangeScale: 0.7
   hideDrawDistanceWithFog: 1
   foliageDistance: 95
   shadowMargin: 55
   terrainNearDistance: 160
-  cullTerrainSurface: 1
+  cullTerrainSurface: 0
   maxSurfaceActivationsPerFrame: 2
   surfaceCheckInterval: 0.25
   maxFoliageActivationsPerFrame: 2
   cullingHysteresis: 20
+  tileStreamingHysteresis: 80
+  foldOffscreenFoliage: 1
+  foliageCheckInterval: 0.1
+  heightmapPixelError: 20
+  basemapDistance: 100
+  applyTerrainLodAtRuntime: 1
   chunkCulling: 1
   speedLodEnabled: 1
   speedLodMidKmh: 45

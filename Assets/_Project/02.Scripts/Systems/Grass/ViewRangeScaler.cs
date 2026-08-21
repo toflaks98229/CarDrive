@@ -23,10 +23,15 @@ namespace CarDrive.Systems
     /// 지형은 그 뒤에서 끝나고, 파클립은 그보다 멀어 아무것도 자르지 않습니다.
     /// 하나라도 뒤집히면 그 자리가 눈에 보이는 선이 됩니다.
     ///
-    /// <b>날씨와 싸우지 않습니다.</b> 안개의 주인은 <see cref="WeatherRig"/> 입니다.
-    /// 여기서는 <b>바닥값만</b> 보장합니다 — 날씨가 정한 짙기가 시야 거리를 덮기에
-    /// 모자라면 그만큼만 올립니다. 날씨가 더 짙게 하면 그대로 둡니다.
-    /// 그래서 실행 순서를 날씨·하늘보다 <b>뒤로</b> 두었습니다.
+    /// <b>전역 렌더 상태를 쓰는 유일한 곳입니다.</b> 예전에는 <see cref="WeatherRig"/> 도
+    /// <c>RenderSettings.fog*</c> 와 카메라 파클립을 직접 썼고, 실행 순서가 각각 0과 200이라
+    /// <b>늦게 도는 이쪽이 언제나 이겼습니다.</b> 날씨의 시야 축소는 한 프레임도 화면에
+    /// 남지 못했는데 그 사실이 어디에도 드러나지 않았습니다.
+    ///
+    /// 지금은 날씨가 <see cref="ViewDistances.ReportWeather"/> 로 <b>요청만</b> 하고,
+    /// 두 요구의 조정은 <see cref="ViewDistances.Ladder"/> 안의 읽을 수 있는 두 줄이 합니다.
+    /// 순서를 다투던 것이 계산으로 바뀌었습니다. 실행 순서를 날씨·하늘보다 뒤에 두는 것은
+    /// 그래도 유지합니다 — 그쪽이 사다리에 값을 넣은 뒤에 읽어야 하기 때문입니다.
     /// </summary>
     [DefaultExecutionOrder(200)]
     public class ViewRangeScaler : MonoBehaviour
@@ -50,6 +55,12 @@ namespace CarDrive.Systems
         /// <summary>다음 비싼 대입 시각입니다.</summary>
         private static float nextRetarget;
 
+        /// <summary>마지막으로 대입한 LOD 오차입니다. -1 이면 런타임 반영이 꺼진 상태입니다.</summary>
+        private static float appliedLodError = float.NaN;
+
+        /// <summary>마지막으로 대입한 베이스맵 거리입니다. -1 이면 런타임 반영이 꺼진 상태입니다.</summary>
+        private static float appliedBasemap = float.NaN;
+
         // --- Unity Event Functions ---
 
         /// <summary>
@@ -67,8 +78,8 @@ namespace CarDrive.Systems
             // <b>여기서 곱하지 않습니다.</b> 계산은 전부 ViewDistances 안에 있습니다.
             ViewDistances.Ladder ladder = ViewDistances.Current;
 
-            // 1. 안개가 시야 거리를 덮게 합니다. (모자랄 때만 올립니다)
-            if (settings.hideDrawDistanceWithFog) EnsureFogCovers(ladder.FogDensity);
+            // 1. 안개를 씁니다. 사다리가 날씨 요청과 시야 요구를 이미 합쳐 두었습니다.
+            if (settings.hideDrawDistanceWithFog) ApplyFog(ladder.FogDensity);
 
             // 2. 파클립. 켜져 있는 타일을 자르지 않을 만큼 멉니다.
             camera.farClipPlane = ladder.FarClip;
@@ -78,74 +89,86 @@ namespace CarDrive.Systems
             Shader.SetGlobalFloat(FadeStartId, ladder.FadeStart);
             Shader.SetGlobalFloat(FadeEndId, ladder.FadeEnd);
 
-            // 4. 나무 잘라내는 거리는 비싸므로 주기로만 맞춥니다.
-            if (Time.unscaledTime >= nextRetarget && !Mathf.Approximately(retargeted, ladder.Scale))
+            // 4. 지형에 직접 쓰는 값들은 비싸므로 <b>바뀌었을 때만, 주기로만</b> 맞춥니다.
+            //
+            // 나무 거리·LOD 오차·베이스맵 거리를 한 번의 순회로 함께 씁니다.
+            // 예전에는 나무 거리만 여기서 쓰고 LOD 둘은 에디터 도구가 씬에 구워 넣었는데,
+            // 그러면 실행 중에 비교해 볼 수가 없었습니다.
+            float lodError = settings.applyTerrainLodAtRuntime ? settings.heightmapPixelError : -1f;
+            float basemap = settings.applyTerrainLodAtRuntime ? settings.basemapDistance : -1f;
+
+            bool changed = !Mathf.Approximately(retargeted, ladder.Scale)
+                           || !Mathf.Approximately(appliedLodError, lodError)
+                           || !Mathf.Approximately(appliedBasemap, basemap);
+
+            if (changed && Time.unscaledTime >= nextRetarget)
             {
                 nextRetarget = Time.unscaledTime + RetargetSeconds;
                 retargeted = ladder.Scale;
+                appliedLodError = lodError;
+                appliedBasemap = basemap;
 
-                ApplyTreeCut(ladder.TreeCut);
+                ApplyTerrainSettings(ladder.TreeCut, lodError, basemap);
             }
         }
 
         // --- Private Methods ---
 
         /// <summary>
-        /// 안개가 시야 거리에서 거의 다 덮도록 <b>바닥값을 보장</b>합니다.
+        /// 안개를 <b>씁니다.</b> 이 프로젝트에서 <c>RenderSettings.fog*</c> 를 쓰는 유일한 곳입니다.
         ///
-        /// 날씨가 이미 그만큼 짙게 해 두었으면 건드리지 않습니다.
-        /// <see cref="WeatherRig"/> 가 맑은 날씨에 안개를 아예 꺼 버리는데,
-        /// 그러면 시야 거리에서 지형이 끝나는 자리가 그대로 보입니다.
+        /// <b>무엇이 바뀌었는가.</b> 예전에는 여기서 <c>Mathf.Max(RenderSettings.fogDensity, needed)</c> 로
+        /// <b>남이 써 둔 값을 읽어</b> 바닥만 올렸습니다. <see cref="WeatherRig"/> 도 같은 값을
+        /// 쓰고 있었기 때문에, 서로 덮어쓰지 않으려고 그렇게 한 것입니다.
+        ///
+        /// 그 방식에는 문제가 둘 있었습니다. 하나는 <b>누가 주인인지 코드에 드러나지 않는다</b>는 것이고,
+        /// 다른 하나는 <see cref="WeatherRig"/> 의 <c>controlRenderFog</c> 가 꺼져 있으면
+        /// <b>날씨가 계산한 안개가 통째로 버려진다</b>는 것이었습니다. 실제로 씬에서 그 체크가
+        /// 꺼져 있어서, 안개 날씨와 맑음이 화면에서 구분되지 않았습니다.
+        ///
+        /// 이제 두 요구를 <see cref="ViewDistances"/> 가 합쳐 하나의 값으로 내주고,
+        /// 여기서는 <b>그 값을 그대로 씁니다.</b> 읽지 않으므로 순서를 다툴 상대가 없습니다.
         /// </summary>
-        /// <param name="needed">시야 거리를 덮는 데 필요한 짙기</param>
-        private static void EnsureFogCovers(float needed)
+        /// <param name="density">사다리가 정한 짙기. 날씨 요청과 시야 요구 중 짙은 쪽입니다.</param>
+        private static void ApplyFog(float density)
         {
-            // 날씨가 쓰는 것과 같은 방식이어야 합니다. 여기서 모드를 바꾸면
-            // 다음 프레임에 날씨가 되돌려 놓아 두 값이 매 프레임 번갈아 적용됩니다.
+            RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-
-            if (!RenderSettings.fog)
-            {
-                RenderSettings.fog = true;
-                RenderSettings.fogDensity = needed;
-                return;
-            }
-
-            // 날씨가 더 짙게 했으면 그대로 둡니다. 우리는 모자랄 때만 올립니다.
-            RenderSettings.fogDensity = Mathf.Max(RenderSettings.fogDensity, needed);
+            RenderSettings.fogDensity = density;
         }
 
         /// <summary>
-        /// 나무를 잘라내는 거리를 지형에 대입합니다.
+        /// 지형에 직접 쓰는 값들을 <b>한 번의 순회로</b> 대입합니다.
         ///
-        /// 값은 사다리가 정합니다. 디더 페이드가 그보다 먼저 끝나도록
-        /// 이미 맞춰져 있으므로, 잘리는 순간은 보이지 않습니다.
+        /// 나무 잘라내기 거리는 사다리가 정합니다. 디더 페이드가 그보다 먼저 끝나도록
+        /// 이미 맞춰져 있으므로 잘리는 순간은 보이지 않습니다.
+        ///
+        /// LOD 오차와 베이스맵 거리는 설정이 정합니다. 예전에는 에디터 도구가
+        /// <c>private const</c> 로 들고 있다가 씬에 구워 넣었는데, 그러면 실행 중에
+        /// 값을 바꿔 가며 비교할 수가 없었습니다.
         /// </summary>
-        /// <param name="treeCut">대입할 거리(m)</param>
-        private static void ApplyTreeCut(float treeCut)
+        /// <param name="treeCut">대입할 나무 잘라내기 거리(m)</param>
+        /// <param name="lodError">대입할 지형 LOD 오차. 0 미만이면 건드리지 않습니다.</param>
+        /// <param name="basemapDistance">대입할 베이스맵 거리(m). 0 미만이면 건드리지 않습니다.</param>
+        private static void ApplyTerrainSettings(float treeCut, float lodError, float basemapDistance)
         {
             Terrain[] terrains = Object.FindObjectsByType<Terrain>(FindObjectsInactive.Include);
 
             for (int i = 0; i < terrains.Length; i++)
             {
                 if (terrains[i] == null) continue;
+
                 terrains[i].treeDistance = treeCut;
+
+                // 음수는 "이 값은 씬이 정한 대로 두라"는 뜻입니다.
+                // 손으로 맞춰 둔 값을 코드가 덮어쓰지 않게 하는 통로입니다.
+                if (lodError >= 0f) terrains[i].heightmapPixelError = lodError;
+                if (basemapDistance >= 0f) terrains[i].basemapDistance = basemapDistance;
             }
 
             // 컬러가 접는 거리를 이 값으로 정해 두므로, 바꿨으면 알려 줘야 합니다.
             // 그러지 않으면 2초 동안 낡은 접는 거리가 남아 그 사이 페이드가 보이지 않습니다.
             TerrainChunkCuller.InvalidateCache();
-        }
-
-        /// <summary>씬에 없으면 게임이 시작될 때 스스로 하나 생겨납니다.</summary>
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void Spawn()
-        {
-            GameObject go = new GameObject("ViewRangeScaler");
-            go.hideFlags = HideFlags.DontSave;
-
-            go.AddComponent<ViewRangeScaler>();
-            DontDestroyOnLoad(go);
         }
 
         /// <summary>
@@ -157,6 +180,8 @@ namespace CarDrive.Systems
         {
             retargeted = -1f;
             nextRetarget = 0f;
+            appliedLodError = float.NaN;
+            appliedBasemap = float.NaN;
         }
     }
 }

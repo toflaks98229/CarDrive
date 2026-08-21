@@ -503,7 +503,21 @@ namespace CarDrive.Gameplay
             // 인스펙터의 기준 수치(activeDistance · instantDistance)는 Start 에서 등록해 두었습니다.
             Systems.ViewDistances.Ladder ladder = Systems.ViewDistances.Current;
 
-            float sqrRange = ladder.TerrainActive * ladder.TerrainActive;
+            // <b>켜는 거리와 끄는 거리가 다릅니다.</b>
+            //
+            // 예전에는 이 둘이 같은 값 하나였습니다. 그래서 경계에 걸친 타일은 플레이어가
+            // 그 선을 오갈 때마다 <c>SetActive</c> 를 반복했습니다. 길을 따라 왕복하거나
+            // 경계 근처에서 방향을 바꾸면 <b>같은 타일이 몇 초 간격으로 계속 껐다 켜졌습니다.</b>
+            //
+            // 그 토글이 이 프로젝트에서 가장 비싼 일입니다. 지형이 렌더링 시스템에서 빠졌다가
+            // 다시 등록되고 렌더 데이터가 통째로 재구성됩니다. 예산제(아래)는 <b>여러 장이
+            // 한꺼번에 몰리는 것</b>은 막아 주지만, <b>같은 한 장이 반복되는 것</b>은 막지 못합니다.
+            // 그건 애초에 토글이 일어나지 않게 해야 합니다.
+            //
+            // <see cref="TerrainChunkCuller"/> 는 훨씬 싼 토글에 이미 이 장치를 쓰고 있었습니다.
+            // 비싼 쪽에만 빠져 있었습니다.
+            float sqrActivate = ladder.TerrainActive * ladder.TerrainActive;
+            float sqrRelease = ladder.TerrainActiveRelease * ladder.TerrainActiveRelease;
             int active = 0;
 
             // <b>한 번에 켜는 타일 수를 제한합니다.</b>
@@ -525,10 +539,17 @@ namespace CarDrive.Gameplay
                 if (tile == null) continue;
 
                 float sqr = SqrDistanceToTile(tile, p);
-                bool shouldBeActive = sqr <= sqrRange;
+
+                // 이미 켜져 있으면 <b>더 멀리</b> 가야 꺼집니다. 꺼져 있으면 원래 거리에서 켜집니다.
+                // 이 한 줄이 경계에서 같은 타일이 반복 토글되는 것을 막습니다.
+                bool wasActive = tile.activeSelf;
+                bool shouldBeActive = wasActive ? sqr <= sqrRelease : sqr <= sqrActivate;
 
                 if (force)
                 {
+                    // 첫 적용에는 히스테리시스를 쓰지 않습니다. 아직 "지난 상태"가 없으므로
+                    // 켜는 거리 하나로 판정해야 시작 시점의 켜진 범위가 설정 그대로가 됩니다.
+                    shouldBeActive = sqr <= sqrActivate;
                     tile.SetActive(shouldBeActive);
                 }
                 else if (tile.activeSelf != shouldBeActive)

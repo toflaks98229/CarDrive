@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace CarDrive.Systems
 {
@@ -24,6 +24,10 @@ namespace CarDrive.Systems
     /// <b>기준값은 씬이 갖고 있습니다.</b> 카메라의 파클립과 스트리머의 활성 거리가
     /// 그것입니다. 각자 시작할 때 여기에 등록합니다. 등록 전에 물어보면
     /// 설정만으로 낼 수 있는 값으로 물러섭니다.
+    ///
+    /// <b><see cref="Ladder"/> 는 순수합니다.</b> 필요한 값을 전부 인자로 받고 정적 상태를
+    /// 읽지 않습니다. 그래서 위의 부등식을 <b>씬 없이 EditMode 테스트로 고정</b>할 수 있습니다.
+    /// 같은 종류의 버그가 세 번 난 자리라, 코드로 막아 두는 편이 낫습니다.
     /// </summary>
     public static class ViewDistances
     {
@@ -63,6 +67,14 @@ namespace CarDrive.Systems
 
         /// <summary>기준값이 등록되기 전에 쓸 타일 활성 거리(m)입니다.</summary>
         private const float FallbackActive = 360f;
+
+        /// <summary>
+        /// 날씨가 시야를 줄일 수 있는 하한입니다.
+        ///
+        /// 아무리 나빠도 이보다 좁아지지 않습니다. 폭우에서 시야가 0에 가까워지면
+        /// 지형이 발밑까지 와서야 보이고, 그것은 <b>연출이 아니라 고장으로 보입니다.</b>
+        /// </summary>
+        private const float MinWeatherVisibility = 0.35f;
 
         // --- Public Types ---
 
@@ -110,8 +122,21 @@ namespace CarDrive.Systems
             /// <summary>이 안쪽 타일은 예산 천장까지 즉시 켭니다.</summary>
             public readonly float TerrainInstant;
 
-            /// <summary>타일이 켜져 있는 가장 먼 거리(m)입니다.</summary>
+            /// <summary>타일을 <b>켜는</b> 거리(m)입니다.</summary>
             public readonly float TerrainActive;
+
+            /// <summary>
+            /// 타일을 <b>끄는</b> 거리(m)입니다. 켜는 거리보다 멉니다.
+            ///
+            /// <b>이 항목이 없어서 생긴 문제가 있었습니다.</b> 예전에는 켜는 기준과 끄는 기준이
+            /// 같은 값 하나였습니다. 그래서 경계에 걸친 타일은 플레이어가 그 선을 오갈 때마다
+            /// <c>SetActive</c> 를 반복했고, <b>그것이 이 프로젝트에서 가장 비싼 토글입니다.</b>
+            /// (지형이 렌더링 시스템에서 빠졌다 다시 등록되고 렌더 데이터가 재구성됩니다)
+            ///
+            /// 더 이상한 것은 <see cref="TerrainChunkCuller"/> 는 훨씬 싼 토글에 이미
+            /// 히스테리시스를 쓰고 있었다는 점입니다. 비싼 쪽에만 빠져 있었습니다.
+            /// </summary>
+            public readonly float TerrainActiveRelease;
 
             /// <summary>카메라 파클립(m)입니다. 켜져 있는 타일을 자르지 않을 만큼 멉니다.</summary>
             public readonly float FarClip;
@@ -123,12 +148,19 @@ namespace CarDrive.Systems
             /// <param name="baseView">기준 시야 거리(m). 보통 씬의 카메라 파클립입니다.</param>
             /// <param name="baseActive">기준 타일 활성 거리(m)</param>
             /// <param name="baseInstant">기준 즉시 활성 거리(m)</param>
-            public Ladder(CarDriveWorldSettings settings, float baseView, float baseActive, float baseInstant)
+            /// <param name="weatherFog">날씨가 요청한 안개 짙기. 0이면 요청 없음입니다.</param>
+            /// <param name="weatherView">날씨가 요청한 시야 배율(0~1). 1이면 요청 없음입니다.</param>
+            public Ladder(CarDriveWorldSettings settings, float baseView, float baseActive, float baseInstant,
+                          float weatherFog, float weatherView)
             {
                 Scale = Mathf.Clamp(settings.rangeScale, 0.05f, 1f);
 
-                View = Mathf.Max(20f, baseView * Scale);
-                FogDensity = FogReachFactor / View;
+                // <b>날씨는 시야를 좁히기만 합니다.</b> 넓히지 않습니다 —
+                // 씬이 적어 둔 거리보다 멀리 보이게 만들면 타일이 없는 곳까지 보게 됩니다.
+                View = Mathf.Max(20f, baseView * Scale * Mathf.Clamp(weatherView, MinWeatherVisibility, 1f));
+
+                // 시야 거리를 덮는 데 필요한 짙기가 바닥이고, 날씨가 더 짙게 하려 하면 그것을 씁니다.
+                FogDensity = Mathf.Max(FogReachFactor / View, weatherFog);
 
                 Grass = settings.detailDistance * Scale;
 
@@ -152,8 +184,14 @@ namespace CarDrive.Systems
                 TerrainInstant = baseInstant * Scale;
                 TerrainActive = Mathf.Max(TerrainInstant, baseActive * Scale);
 
-                // 켜져 있는 타일의 먼 쪽 모서리까지 담아야 합니다.
-                FarClip = Mathf.Max(View, TerrainActive + FarClipMargin);
+                // 끄는 거리는 켜는 거리보다 <b>넉넉히</b> 멉니다.
+                // 컬링 히스테리시스(20m)보다 크게 잡는 이유가 있습니다 — 타일을 껐다 켜는 일이
+                // 나무·풀을 접는 일보다 훨씬 비싸므로, 떨림을 막는 값도 그만큼 커야 합니다.
+                TerrainActiveRelease = TerrainActive + Mathf.Max(0f, settings.tileStreamingHysteresis);
+
+                // <b>꺼지지 않고 남아 있는</b> 타일의 먼 쪽 모서리까지 담아야 합니다.
+                // 여기에 TerrainActive 를 쓰면 히스테리시스 구간의 타일 뒤쪽이 잘려 하늘이 뚫립니다.
+                FarClip = Mathf.Max(View, TerrainActiveRelease + FarClipMargin);
             }
         }
 
@@ -167,6 +205,17 @@ namespace CarDrive.Systems
 
         /// <summary>씬이 알려 준 기준 즉시 활성 거리입니다.</summary>
         private static float baseInstant = -1f;
+
+        /// <summary>
+        /// 날씨가 요청한 안개 짙기입니다. 0이면 요청이 없다는 뜻입니다.
+        ///
+        /// <b>요청이지 명령이 아닙니다.</b> 시야 거리를 덮는 데 필요한 짙기가 이보다 크면
+        /// 그쪽이 이깁니다. 안개가 시야보다 옅으면 지형이 끝나는 자리가 그대로 보이기 때문입니다.
+        /// </summary>
+        private static float weatherFogDensity;
+
+        /// <summary>날씨가 요청한 시야 배율입니다. 1이면 요청이 없다는 뜻입니다.</summary>
+        private static float weatherVisibility = 1f;
 
         // --- Public Properties ---
 
@@ -184,7 +233,9 @@ namespace CarDrive.Systems
                     CarDriveWorldSettings.Instance,
                     baseView > 0f ? baseView : FallbackView,
                     baseActive > 0f ? baseActive : FallbackActive,
-                    baseInstant > 0f ? baseInstant : FallbackActive);
+                    baseInstant > 0f ? baseInstant : FallbackActive,
+                    weatherFogDensity,
+                    weatherVisibility);
             }
         }
 
@@ -214,6 +265,37 @@ namespace CarDrive.Systems
             if (instant > 0f) baseInstant = instant;
         }
 
+        /// <summary>
+        /// 날씨가 시야에 미칠 영향을 <b>요청합니다.</b> 매 프레임 불러도 됩니다.
+        ///
+        /// <b>왜 요청인가.</b> 예전에는 <see cref="WeatherRig"/>가 <c>RenderSettings.fog*</c>와
+        /// <c>camera.farClipPlane</c>을 <b>직접</b> 썼습니다. 그런데 같은 값을
+        /// <see cref="ViewRangeScaler"/>도 매 프레임 썼고, 실행 순서가 각각 0과 200이라
+        /// <b>늦게 도는 쪽이 언제나 이겼습니다.</b> 그래서 날씨의 시야 축소는 한 프레임도
+        /// 화면에 남지 못했고, 그 사실이 어디에도 드러나지 않았습니다.
+        ///
+        /// 이제 <b>전역 상태를 쓰는 곳은 <see cref="ViewRangeScaler"/> 하나뿐입니다.</b>
+        /// 날씨는 값을 여기에 맡기고, 두 요구의 조정은 <see cref="Ladder"/>의 읽을 수 있는
+        /// 두 줄이 합니다. 순서를 다투던 것이 계산 한 줄로 바뀌었습니다.
+        /// </summary>
+        /// <param name="fogDensity">날씨가 원하는 안개 짙기. 0이면 요청하지 않습니다.</param>
+        /// <param name="visibility">날씨가 원하는 시야 배율(0~1). 1이면 요청하지 않습니다.</param>
+        public static void ReportWeather(float fogDensity, float visibility)
+        {
+            weatherFogDensity = Mathf.Max(0f, fogDensity);
+            weatherVisibility = Mathf.Clamp(visibility, 0f, 1f);
+        }
+
+        /// <summary>
+        /// 날씨의 요청을 물립니다. 날씨 표현이 꺼질 때 부르세요.
+        /// 부르지 않으면 마지막으로 요청한 폭우가 그대로 남습니다.
+        /// </summary>
+        public static void ClearWeather()
+        {
+            weatherFogDensity = 0f;
+            weatherVisibility = 1f;
+        }
+
         // --- Private Methods ---
 
         /// <summary>
@@ -226,6 +308,8 @@ namespace CarDrive.Systems
             baseView = -1f;
             baseActive = -1f;
             baseInstant = -1f;
+            weatherFogDensity = 0f;
+            weatherVisibility = 1f;
         }
     }
 }
