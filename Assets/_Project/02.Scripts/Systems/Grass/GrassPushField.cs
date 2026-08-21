@@ -33,6 +33,16 @@ namespace CarDrive.Systems
         /// <summary>가까운 것부터 고르기 위해 거리와 함께 담아 두는 임시 목록입니다.</summary>
         private static readonly List<Entry> sorted = new List<Entry>(MaxPushers * 2);
 
+        /// <summary>
+        /// 가까운 것이 앞에 오도록 하는 비교자입니다.
+        ///
+        /// <b>메서드 이름을 그대로 Sort 에 넘기면 호출할 때마다 델리게이트가 새로 생깁니다.</b>
+        /// 이 코드는 <b>매 프레임</b> 도는데, <see cref="Gameplay.WorldStreamer"/> 와
+        /// <see cref="TerrainChunkCuller"/> 는 훨씬 뜸하게 도는데도 이미 이것을 캐시해 두었습니다.
+        /// 가장 자주 도는 이곳만 빠져 있었습니다.
+        /// </summary>
+        private static readonly System.Comparison<Entry> ByDistance = CompareByDistance;
+
         /// <summary>지나간 길에 남는 자국을 담아 두는 지도입니다.</summary>
         private static GrassTrampleMap trample;
 
@@ -84,8 +94,6 @@ namespace CarDrive.Systems
         {
             IReadOnlyList<GrassPusher> pushers = GrassPusher.All;
 
-            Vector3 eye = GameContext.MainCameraPosition;
-
             sorted.Clear();
 
             for (int i = 0; i < pushers.Count; i++)
@@ -96,7 +104,7 @@ namespace CarDrive.Systems
                 Vector3 position = pusher.transform.position;
 
                 Entry entry;
-                entry.distanceSqr = (position - eye).sqrMagnitude;
+                entry.distanceSqr = 0f;   // 아직 구하지 않습니다. 아래를 보세요.
                 entry.packed = new Vector4(position.x, position.y, position.z, pusher.radius);
 
                 sorted.Add(entry);
@@ -108,7 +116,32 @@ namespace CarDrive.Systems
                 return;
             }
 
-            sorted.Sort(CompareByDistance);
+            // <b>자리가 모자랄 때만 거리를 구하고 줄을 세웁니다.</b>
+            //
+            // 줄을 세우는 이유는 하나뿐입니다 — 넘길 자리(16)보다 누르개가 많을 때
+            // 가까운 것부터 골라야 하기 때문입니다. 그런데 실제로 땅을 밟는 것은
+            // 바퀴 넷·차체·플레이어와 유령 몇뿐이라, <b>대개 자리가 남습니다.</b>
+            // 자리가 남으면 순서는 아무 의미가 없는데도 매 프레임 거리를 구하고 정렬했습니다.
+            //
+            // (<see cref="TerrainChunkCuller"/> 의 예산 처리가 같은 판단을 이미 하고 있습니다)
+            if (sorted.Count > MaxPushers)
+            {
+                Vector3 eye = GameContext.MainCameraPosition;
+
+                for (int i = 0; i < sorted.Count; i++)
+                {
+                    Entry entry = sorted[i];
+
+                    float dx = entry.packed.x - eye.x;
+                    float dy = entry.packed.y - eye.y;
+                    float dz = entry.packed.z - eye.z;
+                    entry.distanceSqr = dx * dx + dy * dy + dz * dz;
+
+                    sorted[i] = entry;
+                }
+
+                sorted.Sort(ByDistance);
+            }
 
             int count = Mathf.Min(sorted.Count, MaxPushers);
             for (int i = 0; i < count; i++)
