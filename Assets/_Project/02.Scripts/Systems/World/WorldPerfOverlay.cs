@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using CarDrive.Common;
 
 namespace CarDrive.Systems
@@ -113,12 +113,14 @@ namespace CarDrive.Systems
             GUI.Label(new Rect(x, y, width, line), "── 초당 토글 횟수 ──", labelStyle);
             y += line;
 
-            y = Row(x, y, width, line, "타일 켜기  (가장 비쌈)", WorldProfiler.Counter.TileActivated);
-            y = Row(x, y, width, line, "타일 끄기  (가장 비쌈)", WorldProfiler.Counter.TileDeactivated);
-            y = Row(x, y, width, line, "지면 enabled", WorldProfiler.Counter.SurfaceToggled);
-            y = Row(x, y, width, line, "나무·풀 접기", WorldProfiler.Counter.FoliageToggled);
-            y = Row(x, y, width, line, "풀 거리 재대입", WorldProfiler.Counter.DetailDistanceWritten);
-            y = Row(x, y, width, line, "지형 목록 재탐색", WorldProfiler.Counter.TerrainScanned);
+            // 임계는 항목마다 다릅니다. 타일을 통째로 켜고 끄는 일은 초당 두 번만 되어도
+            // 눈에 띄지만, 나무·풀 접기는 시야를 돌리면 원래 수십 번씩 일어납니다.
+            y = Row(x, y, width, line, "타일 켜기  (가장 비쌈)", WorldProfiler.Counter.TileActivated, 2f);
+            y = Row(x, y, width, line, "타일 끄기  (가장 비쌈)", WorldProfiler.Counter.TileDeactivated, 2f);
+            y = Row(x, y, width, line, "지면 enabled", WorldProfiler.Counter.SurfaceToggled, 5f);
+            y = Row(x, y, width, line, "나무·풀 접기", WorldProfiler.Counter.FoliageToggled, 40f);
+            y = Row(x, y, width, line, "풀 거리 재대입", WorldProfiler.Counter.DetailDistanceWritten, 20f);
+            y = Row(x, y, width, line, "지형 목록 재탐색", WorldProfiler.Counter.TerrainScanned, 2f);
 
             y += line * 0.4f;
 
@@ -139,15 +141,19 @@ namespace CarDrive.Systems
         /// <param name="line">한 줄의 높이</param>
         /// <param name="label">항목 이름</param>
         /// <param name="counter">읽을 항목</param>
+        /// <param name="warnAbove">이 값을 넘으면 노랗게 칠할 기준(초당 횟수)</param>
         /// <returns>다음 줄의 위쪽 위치</returns>
         private float Row(float x, float y, float width, float line,
-                          string label, WorldProfiler.Counter counter)
+                          string label, WorldProfiler.Counter counter, float warnAbove)
         {
             float perSecond = WorldProfiler.PerSecond(counter);
 
+            // <b>0보다 크다고 경고하지 않습니다.</b> 처음에는 그렇게 만들었는데,
+            // 그러면 정상 동작까지 전부 노랗게 보여서 <b>어느 숫자가 실제로 문제인지</b>
+            // 구분할 수 없습니다. 항목마다 "이 정도면 많다"는 기준이 다릅니다.
             GUI.Label(new Rect(x, y, width, line),
                 label + "   " + perSecond.ToString("0.0") + " /초",
-                perSecond > 0f ? warnStyle : labelStyle);
+                perSecond > warnAbove ? warnStyle : labelStyle);
 
             return y + line;
         }

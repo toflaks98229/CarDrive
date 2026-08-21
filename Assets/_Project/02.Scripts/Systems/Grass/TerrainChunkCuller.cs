@@ -277,8 +277,19 @@ namespace CarDrive.Systems
                 //
                 // <b>켤 때와 끌 때의 기준이 다릅니다.</b> 같으면 경계에 걸친 타일이
                 // 시야가 미세하게 흔들릴 때마다 껐다 켜기를 반복하고, 그 전환이 곧 비용입니다.
-                // 이미 켜져 있는 타일은 더 넓은 경계를 벗어나야 꺼집니다.
-                bool visible = entries[i].LastEnabled
+                // 이미 켜져 있는 것은 더 넓은 경계를 벗어나야 꺼집니다.
+                //
+                // <b>기준이 되는 "지금 상태"는 쓰는 쪽마다 다릅니다.</b> 예전에는 하나의
+                // <c>visible</c> 을 구해 지면과 나무·풀이 함께 썼고, 그 히스테리시스는
+                // <c>LastEnabled</c>(지면 상태)에 묶여 있었습니다.
+                //
+                // 지면 컬링을 기본에서 끄자 <c>LastEnabled</c> 가 <b>모든 타일에서 항상 true</b> 가
+                // 되었고, 그 순간 나무·풀 판정은 늘 KeepBounds 하나만 보게 되었습니다.
+                // 즉 <b>히스테리시스가 통째로 사라졌습니다.</b> 계측을 붙이고 나서야 드러났습니다 —
+                // 화면 밖 접기가 초당 112회까지 올라갔습니다.
+                //
+                // 그래서 각자 <b>자기 상태</b>를 기준으로 삼습니다.
+                bool foliageVisible = entries[i].LastDrawFoliage
                     ? GeometryUtility.TestPlanesAABB(planes, entries[i].KeepBounds)
                     : GeometryUtility.TestPlanesAABB(planes, entries[i].PaddedBounds);
 
@@ -293,6 +304,12 @@ namespace CarDrive.Systems
 
                 if (surfaceCheck)
                 {
+                    // 지면은 자기 상태(LastEnabled)를 기준으로 다시 판정합니다.
+                    // 나무·풀과 상태가 다를 수 있으므로 위의 결과를 빌려 쓸 수 없습니다.
+                    bool surfaceVisible = entries[i].LastEnabled
+                        ? GeometryUtility.TestPlanesAABB(planes, entries[i].KeepBounds)
+                        : GeometryUtility.TestPlanesAABB(planes, entries[i].PaddedBounds);
+
                     // <b>가까운 지면은 판정에서 뺍니다.</b>
                     //
                     // 발밑 타일은 제자리에서 한 바퀴만 돌아도 화면을 들락날락합니다.
@@ -303,7 +320,7 @@ namespace CarDrive.Systems
                         ? sqrToEyeSurface < entries[i].NearReleaseSqr
                         : sqrToEyeSurface < entries[i].NearDistanceSqr;
 
-                    bool surfaceOn = isNear || visible;
+                    bool surfaceOn = isNear || surfaceVisible;
 
                     if (entries[i].LastEnabled != surfaceOn)
                     {
@@ -330,7 +347,7 @@ namespace CarDrive.Systems
                     terrain.enabled = true;
                 }
 
-                if (visible) shown++;
+                if (foliageVisible) shown++;
 
                 // <b>거리로는 더 이상 접지 않습니다. 화면 밖일 때만 접습니다.</b>
                 //
@@ -345,8 +362,8 @@ namespace CarDrive.Systems
                 // 그 목록을 훑습니다. 타일이 103장이면 그 비용이 쌓입니다.
                 // (타일을 크게 키워 장수가 줄면 이 항목도 꺼도 됩니다 — foldOffscreenFoliage)
                 //
-                // 켤 때와 끌 때의 화면 판정 기준이 다른 것은 위의 visible 이 이미 처리합니다.
-                bool drawFoliage = !settings.foldOffscreenFoliage || visible;
+                // 켤 때와 끌 때의 화면 판정 기준이 다른 것은 위의 foliageVisible 이 이미 처리합니다.
+                bool drawFoliage = !settings.foldOffscreenFoliage || foliageVisible;
 
                 if (entries[i].LastDrawFoliage == drawFoliage) continue;
 
