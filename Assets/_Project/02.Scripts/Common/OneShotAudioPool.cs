@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Pool;
 
-namespace CarDrive.Systems
+namespace CarDrive.Common
 {
     /// <summary>
     /// 위치 기반 일회성 사운드를 재생할 AudioSource를 재사용합니다.

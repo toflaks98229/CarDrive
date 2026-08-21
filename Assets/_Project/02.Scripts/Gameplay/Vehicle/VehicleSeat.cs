@@ -108,17 +108,13 @@ namespace CarDrive.Gameplay
             healthDisplay.SetActive(visible);
         }
 
-        /// <summary>이 차량의 내구도입니다. (표시가 아니라 값)</summary>
-        /// <returns>차량의 VehicleHealth. 찾지 못하면 null입니다.</returns>
-        public VehicleHealth GetHealth()
-        {
-            if (healthDisplay != null)
-            {
-                VehicleHealth onDisplay = healthDisplay.GetComponent<VehicleHealth>();
-                if (onDisplay != null) return onDisplay;
-            }
-            return GetComponentInChildren<VehicleHealth>(true);
-        }
+        // 내구도 값이 필요하면 Vehicle.health 를 쓰세요.
+        //
+        // 예전에는 이 자리에 GetHealth() 가 있었습니다. 부르는 곳은 없었지만, 표시 오브젝트에서
+        // 먼저 찾고 없으면 자식을 뒤지는 <b>자기만의 탐색 규칙</b>을 갖고 있었습니다.
+        // 그래서 Vehicle.health 와 다른 인스턴스를 잡을 수 있었습니다.
+        // 이 좌석이 소유하는 것은 <b>내구도를 보여 줄 오브젝트</b>(healthDisplay)이지 내구도 자체가
+        // 아닙니다. 값과 표시를 한 클래스가 겸하던 것이 애초에 Health 를 쪼갠 이유였습니다.
 
         /// <summary>
         /// 막히지 않은 하차 지점을 찾습니다.

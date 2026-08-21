@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using CarDrive.Common;
 
-namespace CarDrive.Systems
+namespace CarDrive.Gameplay
 {
     /// <summary>
     /// 플레이어의 행동(앙크 공격, 상호작용) 관련 사운드를 전담합니다.

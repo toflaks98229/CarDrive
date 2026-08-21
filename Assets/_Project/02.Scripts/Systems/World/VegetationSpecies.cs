@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace CarDrive.Systems
@@ -48,8 +48,22 @@ namespace CarDrive.Systems
         [Range(0.1f, 2f)]
         public float bladeHeight = 0.55f;
 
-        /// <summary>잎 하나의 밑동 폭(m)입니다.</summary>
-        [Tooltip("잎 밑동의 폭(m). 넓히면 두꺼운 잎, 좁히면 가는 풀이 됩니다.")]
+        /// <summary>
+        /// 잎 하나의 밑동 <b>반폭</b>(m)입니다. 실제 밑변은 이 값의 두 배입니다.
+        ///
+        /// <b>넓히는 것은 공짜입니다.</b> 잎 하나는 삼각형 한 장이고, 이 값은 밑변의 두
+        /// 꼭짓점을 좌우로 벌릴 뿐입니다. 삼각형도 그리기 횟수도 늘지 않습니다.
+        /// (<see cref="EditorTools.VegetationBuilder"/> 의 메시 생성부를 보세요)
+        ///
+        /// 그래서 이것이 <see cref="CarDriveWorldSettings.detailDensity"/> 의 짝입니다.
+        /// 밀도를 내려 포기 수를 줄이고 이 값을 그만큼 넓히면,
+        /// <b>비용은 줄고 덮이는 넓이는 유지</b>됩니다. 한쪽만 움직이지 마세요.
+        ///
+        /// 다만 종의 성격은 지켜야 합니다. 갈대를 다른 종만큼 넓히면 갈대로 보이지 않습니다.
+        /// </summary>
+        [Tooltip("잎 밑동의 반폭(m). 실제 밑변은 두 배입니다. " +
+                 "잎이 삼각형 한 장이라 넓혀도 삼각형이 늘지 않습니다 — 밀도를 내린 만큼 " +
+                 "여기를 넓히면 비용은 줄고 덮이는 넓이는 유지됩니다.")]
         [Range(0.005f, 0.2f)]
         public float bladeWidth = 0.034f;
 
@@ -171,7 +185,7 @@ namespace CarDrive.Systems
                     bladesPerTuft = Mathf.Clamp(legacyBlades * 4, 8, 96),
                     tuftRadius = Mathf.Min(legacyRadius * 2.8f, 1.6f),
                     bladeHeight = legacyHeight * 1.05f,
-                    bladeWidth = 0.034f,
+                    bladeWidth = 0.055f,
                     lean = 0.25f,
                     tint = Color.white,
                     seed = 20260818,
@@ -189,7 +203,7 @@ namespace CarDrive.Systems
                     bladesPerTuft = legacyBlades,
                     tuftRadius = legacyRadius,
                     bladeHeight = legacyHeight,
-                    bladeWidth = 0.034f,
+                    bladeWidth = 0.055f,
                     lean = 0.2f,
                     tint = Color.white,
                     seed = 660214,
@@ -211,7 +225,7 @@ namespace CarDrive.Systems
                     bladesPerTuft = Mathf.Max(4, legacyBlades / 2),
                     tuftRadius = legacyRadius * 0.7f,
                     bladeHeight = legacyHeight * 0.55f,
-                    bladeWidth = 0.055f,
+                    bladeWidth = 0.085f,
                     lean = 0.45f,
                     tint = new Color(0.82f, 0.90f, 0.78f),
                     seed = 771103,
@@ -232,7 +246,7 @@ namespace CarDrive.Systems
                     bladesPerTuft = Mathf.Max(3, legacyBlades / 3),
                     tuftRadius = legacyRadius * 0.5f,
                     bladeHeight = legacyHeight * 1.9f,
-                    bladeWidth = 0.022f,
+                    bladeWidth = 0.030f,
                     lean = 0.1f,
                     tint = new Color(0.95f, 0.88f, 0.62f),
                     seed = 480921,

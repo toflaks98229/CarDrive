@@ -23,9 +23,16 @@ namespace CarDrive.Gameplay
         [Tooltip("흔들 시야. 보통 Head에 붙은 PlayerCameraShake입니다.")]
         public PlayerCameraShake cameraShake;
 
-        /// <summary>체력을 깎을 대상입니다. 비워두면 체력은 줄지 않습니다.</summary>
-        [Tooltip("체력을 깎을 대상. 보통 플레이어의 PlayerHealth입니다. 비워두면 체력은 줄지 않습니다.")]
-        public Health healthBar;
+        /// <summary>
+        /// 체력을 깎을 대상입니다. 비워두면 체력은 줄지 않습니다.
+        ///
+        /// <b>추상 <c>Health</c>가 아니라 <see cref="PlayerHealth"/>입니다.</b>
+        /// 이 컴포넌트는 도보 플레이어가 맞은 것을 처리하므로 차량 내구도가 들어올 자리가 아니고,
+        /// 타입으로 막아 두면 인스펙터에서 잘못 끼우는 일이 아예 불가능해집니다.
+        /// (<see cref="Systems.NeedsSystem.healthBar"/>와 같은 이유입니다)
+        /// </summary>
+        [Tooltip("체력을 깎을 대상. 플레이어의 PlayerHealth입니다. 비워두면 체력은 줄지 않습니다.")]
+        public PlayerHealth healthBar;
 
         /// <summary>한 번 부딪혔을 때의 시야 흔들림 배율입니다.</summary>
         [Header("피격 효과")]

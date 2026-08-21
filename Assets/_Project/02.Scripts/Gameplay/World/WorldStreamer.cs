@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using CarDrive.Common;
 
@@ -89,6 +89,19 @@ namespace CarDrive.Gameplay
         [Range(1, 8)]
         public int maxTileActivationsPerCheck = 1;
 
+        /// <summary>
+        /// 한 번의 검사에서 켤 수 있는 <b>총</b> 타일 수입니다. 안쪽(instantDistance) 타일도 지킵니다.
+        ///
+        /// <see cref="maxTileActivationsPerCheck"/>는 <b>아직 안 보이는</b> 타일에만 걸리는 예산이라,
+        /// 안쪽 타일이 한꺼번에 들어오는 순간(시작 직후·불러오기 직후)에는 아무것도 막지 못했습니다.
+        /// 이 값이 그 천장입니다. 넘친 것은 <b>다음 프레임에 곧바로</b> 이어서 켜므로
+        /// 빈 곳이 오래 남지 않습니다.
+        /// </summary>
+        [Tooltip("한 번의 검사에서 켤 수 있는 총 타일 수. 안쪽 타일도 이 천장을 지킵니다. " +
+                 "넘친 것은 다음 프레임에 이어서 켜므로 빈 곳이 오래 남지 않습니다.")]
+        [Range(1, 16)]
+        public int maxInstantActivationsPerCheck = 4;
+
         /// <summary>배치 무작위 시드입니다. 같은 값이면 항상 같은 세계가 깔립니다.</summary>
         [Tooltip("배치 무작위 시드. 같은 값이면 항상 같은 세계가 깔립니다.")]
         public int layoutSeed = 20260817;
@@ -175,6 +188,12 @@ namespace CarDrive.Gameplay
         /// <summary>다음 거리 검사까지 남은 시간(초)입니다.</summary>
         private float checkTimer;
 
+        /// <summary>
+        /// 지난 검사에서 천장에 걸려 켜지 못한 타일이 남았는지입니다.
+        /// 남았으면 0.25초를 기다리지 않고 다음 프레임에 이어서 켭니다.
+        /// </summary>
+        private bool backlog;
+
         // --- Unity Event Functions ---
 
         /// <summary>
@@ -209,7 +228,12 @@ namespace CarDrive.Gameplay
             checkTimer -= Time.deltaTime;
             if (checkTimer > 0f) return;
 
-            checkTimer = Mathf.Max(0.02f, checkInterval);
+            // 켤 것이 남아 있으면 주기를 기다리지 않고 <b>다음 프레임에</b> 이어서 합니다.
+            //
+            // 예전에는 안쪽 타일을 한 프레임에 전부 켜서 그 프레임이 통째로 늘어졌습니다.
+            // 이제는 천장(maxInstantActivationsPerCheck)만큼만 켜는 대신, 남으면 곧바로 다시 옵니다.
+            // 0.25초마다 두 장이 아니라 <b>매 프레임 네 장</b>이 되므로 메워지는 속도는 오히려 빠릅니다.
+            checkTimer = backlog ? 0f : Mathf.Max(0.02f, checkInterval);
             UpdateStreaming(false);
         }
 
@@ -453,7 +477,14 @@ namespace CarDrive.Gameplay
             }
 
             Vector3 p = followTarget.position;
-            WorldLocation.UpdateCurrent(p);
+
+            // 장소 판정(WorldLocation.UpdateCurrent)은 여기서 하지 않습니다.
+            //
+            // 예전에는 이 줄에 있었습니다. 그래서 위의 "따라다닐 대상을 못 찾으면 반환"이
+            // <b>장소 판정까지 데리고 나갔고</b>, 기준도 카메라라 타고 내릴 때마다 흔들렸습니다.
+            // 무엇보다 앞으로의 의뢰·상점·대화가 전부 지형 스트리밍의 부산물에 매달리게 됩니다.
+            // 이제 WorldLocationTracker 가 자기 주기로 돕니다. 여기에 다시 넣지 마세요 —
+            // 양쪽에서 돌면 진입·이탈 이벤트가 두 번씩 터집니다.
 
             if (!streamingEnabled)
             {
@@ -461,7 +492,12 @@ namespace CarDrive.Gameplay
                 return;
             }
 
-            float sqrRange = activeDistance * activeDistance;
+            // 전체 거리 배율을 여기서 곱합니다. 인스펙터의 기준 수치는 그대로 두므로
+            // 배율을 1 로 되돌리면 원래 거리로 돌아옵니다.
+            float rangeScale = Mathf.Clamp(Systems.CarDriveWorldSettings.Instance.rangeScale, 0.05f, 1f);
+
+            float scaledActive = activeDistance * rangeScale;
+            float sqrRange = scaledActive * scaledActive;
             int active = 0;
 
             // <b>한 번에 켜는 타일 수를 제한합니다.</b>
@@ -505,16 +541,40 @@ namespace CarDrive.Gameplay
             // 순서가 고정이라 늘 같은 타일이 뒤로 밀려, 결국 눈앞에 와서야 켜졌습니다.
             pending.Sort(ByDistance);
 
-            float instantSqr = instantDistance * instantDistance;
+            float scaledInstant = instantDistance * rangeScale;
+            float instantSqr = scaledInstant * scaledInstant;
+
+            // <b>한 번의 검사에서 켜는 총량에 천장을 둡니다.</b>
+            //
+            // 예전에는 안쪽(instantDistance) 타일이 예산을 무시하고 <b>전부</b> 켜졌습니다.
+            // 평소 주행에서는 문제가 없습니다. 한 번에 한두 장씩만 들어오기 때문입니다.
+            // 그런데 여럿이 동시에 들어오는 순간이 있습니다 — 시작 직후, 세이브 불러오기 직후,
+            // 스트리밍을 껐다 켠 직후. 이 월드는 400m 안에 타일이 <b>52장</b>이고
+            // 그중 44장이 340m 안이라, 그때 한 프레임에 44장을 켜게 됩니다.
+            // 프로파일러에 남은 436ms · 1708ms 프레임이 그 모양입니다.
+            //
+            // 그래서 안쪽도 천장을 지키게 하고, 대신 <b>남으면 다음 프레임에 곧바로</b>
+            // 이어서 켭니다. (아래 backlog 와 Update 를 보세요)
+            // 0.25초를 기다리며 두 장씩 켜던 것이 매 프레임 두 장씩으로 바뀌므로,
+            // 빈 곳이 메워지는 속도는 오히려 <b>빨라집니다.</b>
+            int ceiling = Mathf.Max(budget, Mathf.Max(1, maxInstantActivationsPerCheck));
+            int opened = 0;
 
             for (int i = 0; i < pending.Count; i++)
             {
-                // 예산이 남았거나, 이미 보이는 거리면 켭니다.
-                if (i >= budget && pending[i].sqrDistance > instantSqr) break;
+                bool visibleNow = pending[i].sqrDistance <= instantSqr;
+
+                // 예산이 남았거나, 이미 보이는 거리면 켭니다. 다만 천장은 둘 다 지킵니다.
+                if (!visibleNow && i >= budget) break;
+                if (opened >= ceiling) break;
 
                 pending[i].tile.SetActive(true);
+                opened++;
                 active++;
             }
+
+            // 아직 켤 것이 남았으면 다음 프레임에 이어서 합니다.
+            backlog = opened < pending.Count && opened >= ceiling;
 
             ActiveTileCount = active;
         }

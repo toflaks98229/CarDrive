@@ -1,8 +1,7 @@
 ﻿using UnityEngine;
 using CarDrive.Common;
-using CarDrive.Gameplay;
 
-namespace CarDrive.Systems
+namespace CarDrive.Gameplay
 {
     /// <summary>
     /// 장애물(Obstacle) 등 환경 오브젝트의 사운드를 전담합니다.

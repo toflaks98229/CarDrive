@@ -264,6 +264,18 @@ namespace CarDrive.EditorTools
                         },
                         new CarDriveTool
                         {
+                            MenuPath = "CarDrive/Gameplay/사운드 배선 설정",
+                            Label = "사운드 배선",
+                            Description = "차량·적·귀신·플레이어에 사운드 컨트롤러와 AudioSource 를 붙입니다. 클립은 넣지 않습니다."
+                        },
+                        new CarDriveTool
+                        {
+                            MenuPath = "CarDrive/World/풀 그리는 거리만 적용",
+                            Label = "풀 그리는 거리",
+                            Description = "월드 설정의 detailDistance·detailDensity 만 지형에 대입합니다. 풀을 다시 심지 않습니다."
+                        },
+                        new CarDriveTool
+                        {
                             MenuPath = "CarDrive/World/풀 눕히기 배선",
                             Label = "풀 눕히기 배선",
                             Description = "바퀴·발·유령에 누르개를 붙입니다."

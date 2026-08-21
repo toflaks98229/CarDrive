@@ -42,10 +42,19 @@ namespace CarDrive.Systems
         [Tooltip("체크를 해제하면 니즈가 더 이상 차오르지 않습니다. (디버그용)")]
         public bool needsEnabled = true;
 
+        /// <summary>
+        /// 한계 초과 시 체력을 깎을 대상입니다.
+        ///
+        /// <b>타입이 <see cref="PlayerHealth"/>인 것이 요점입니다.</b> 예전에는 추상 <c>Health</c>였고,
+        /// 그러면 인스펙터에서 이 자리에 <see cref="VehicleHealth"/>를 끌어다 놓을 수 있었습니다.
+        /// 그 상태로 갈증이 한계를 넘으면 플레이어 대신 <b>차가 부서집니다.</b>
+        /// Health를 셋으로 쪼갠 이유가 그런 오배선을 컴파일 단계에서 막는 것이었는데,
+        /// 정작 피해를 주는 이 자리가 열려 있었습니다.
+        /// </summary>
         [Header("연동 컴포넌트")]
-        [Tooltip("한계 초과 시 체력을 깎을 대상. 보통 플레이어의 PlayerHealth입니다. " +
+        [Tooltip("한계 초과 시 체력을 깎을 대상. 플레이어의 PlayerHealth입니다. " +
                  "비워두면 체력은 줄지 않고 이벤트만 발생합니다.")]
-        public Health healthBar;
+        public PlayerHealth healthBar;
 
         [Header("기절 설정")]
         [Tooltip("피로가 한계를 넘어 기절했을 때 회복되는 피로 수치")]

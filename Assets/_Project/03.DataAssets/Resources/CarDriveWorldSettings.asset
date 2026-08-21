@@ -13,12 +13,13 @@ MonoBehaviour:
   m_Name: CarDriveWorldSettings
   m_EditorClassIdentifier: Assembly-CSharp::CarDriveWorldSettings
   maxPerCell: 1
-  detailDensity: 0.85
+  detailDensity: 0.55
   detailDistance: 70
   grassThreshold: 0.4
   bladesPerTuft: 18
   tuftRadius: 0.32
   bladeHeight: 0.55
+  vegetation: []
   gradientNear: 10
   gradientFar: 30
   pushLay: 1
@@ -29,9 +30,13 @@ MonoBehaviour:
   playerRadius: 0.5
   ghostRadius: 0.6
   playerMass: 70
+  rangeScale: 1
   foliageDistance: 95
   shadowMargin: 55
-  cullTerrainSurface: 0
+  terrainNearDistance: 160
+  cullTerrainSurface: 1
+  maxSurfaceActivationsPerFrame: 2
+  surfaceCheckInterval: 0.25
   maxFoliageActivationsPerFrame: 2
   cullingHysteresis: 20
   chunkCulling: 1

@@ -22,6 +22,30 @@ CarDrive는 플레이어가 1인칭 시점으로 차를 몰고 밤길을 달리�
 - **외부 에셋**: LowPolyRetroCars, Cartoon FX Remaster (JMO Assets), tree_pack, Crate/Barrels, Bottles
 - **빌드 타깃**: Windows 스탠드얼론 (`BUILD/CarDrive.exe` 빌드 산출물 포함)
 
+### 레이어 규칙
+
+런타임은 어셈블리 하나지만 네임스페이스로 층을 나눕니다. **참조는 아래로만 흐릅니다.**
+
+```
+UI        →  Gameplay  →  Systems  →  Common
+(표시)       (씬 배우)     (전역 시뮬)   (기반)
+```
+
+- `Common` 은 **아무것도 참조하지 않습니다.** 위 세 층 중 하나라도 `using` 하면 규칙 위반입니다.
+- `Systems` 는 시간·날씨·니즈·재화·세이브처럼 씬에 하나씩 있는 전역 시뮬레이션입니다.
+- `Gameplay` 는 씬에 놓이는 배우(플레이어·차량·적·월드)와 그 부품입니다. **사운드 컨트롤러도 여기입니다** — 배우에 붙는 부품이지 시스템이 아닙니다.
+- `UI` 는 상태를 소유하지 않고 읽어서 그리기만 합니다.
+
+**예외는 셋뿐이며, 전부 Unity 직렬화 때문입니다.** 유니티는 인스펙터에서 인터페이스 타입 필드를 직렬화하지 못하므로, 인스펙터 칸이 필요한 참조는 구체 타입을 이름으로 불러야 합니다.
+
+| 위반 | 이유 |
+|---|---|
+| `NeedsSystem` → `PlayerHealth` | 체력을 깎을 대상을 인스펙터에서 연결해야 합니다. `IDamageable` 로 받으면 배선 칸 자체가 사라집니다 |
+| `SaveData` · `SaveSystem` → `Gameplay` | 세이브가 차량·플레이어를 아는 것은 의도입니다. 시스템과 달리 씬에 여럿이고 복원 순서가 얽혀 있습니다 |
+| `Gameplay` → `UI` 4건 | `Vehicle.dashboardShakers`, `VehicleSeat`, `PlayerAttacker.ankhAnimator`, `BeverageConsumer.drinkAnimator` — 모두 인스펙터 참조입니다 |
+
+새 위반을 만들기 전에 **먼저 파일이 옳은 층에 있는지** 확인하세요. 지금까지 나온 위반은 대부분 배치 실수였습니다.
+
 ## 주요 기능 / 시스템
 
 스크립트는 `Assets/_Project/02.Scripts/` 아래에 88개, 약 14,800줄입니다. (에디터 전용 툴 11개 5,200줄은 `CarDrive.Editor` 어셈블리로 분리되어 빌드에 포함되지 않습니다)
@@ -76,7 +100,7 @@ CarDrive는 플레이어가 1인칭 시점으로 차를 몰고 밤길을 달리�
 - 각 시스템이 `CaptureState`/`RestoreState`로 자기 상태를 내주므로 `SaveSystem`은 조립만 합니다.
 - **지형은 저장하지 않습니다.** `WorldStreamer`가 시드로 배치를 고정하므로 같은 세계가 다시 깔립니다.
 
-### 성능 (`Common/PrefabPool.cs`, `Systems/Sound/OneShotAudioPool.cs`)
+### 성능 (`Common/PrefabPool.cs`, `Common/OneShotAudioPool.cs`)
 - 귀신·적·사망 파티클과 위치 기반 일회성 사운드를 오브젝트 풀로 재사용합니다. 전투 중 가장 잦은 할당(앙크 피격음 0.25초, 귀신 공격음 1초 간격)을 없앴습니다.
 - **PooledParticleEffect**: 일회성 파티클이 재생을 마치면 스스로 풀로 돌아갑니다. 프리팹의 Stop Action이 Destroy여도 꺼낼 때 Callback으로 덮어쓰므로 풀에 파괴된 자리가 남지 않습니다.
 - 적 코드에는 `Instantiate`/`Destroy`가 하나도 남아 있지 않습니다.
@@ -98,7 +122,8 @@ CarDrive/
 │  │  ├─ 01.Scenes/                    # SampleScene.unity (메인 플레이 씬)
 │  │  ├─ 02.Scripts/                   # 게임 로직 (C#, 88개)
 │  │  │  ├─ Common/                    # GameInputGate, SkyCover, PlayerAim,
-│  │  │  │                             # GameContext, PrefabPool, PooledObject, AudioUtility,
+│  │  │  │                             # GameContext, PrefabPool, PooledObject,
+│  │  │  │                             # AudioUtility, OneShotAudioPool,
 │  │  │  │                             # Billboard, SpriteFlipper
 │  │  │  ├─ Gameplay/
 │  │  │  │  ├─ Combat/                 # IDamageable, IHostile, Health,
@@ -112,7 +137,8 @@ CarDrive/
 │  │  │  │  ├─ Interaction/            # IInteractable, Carryable,
 │  │  │  │  │                          # VehicleDoorInteractable, SteeringWheelInteractable
 │  │  │  │  ├─ Enemy/                  # EnemyBase, EnemyController, AttachedGhostController, GhostSpawner
-│  │  │  │  ├─ World/                  # WorldStreamer, WorldLocation
+│  │  │  │  ├─ Sound/                  # 차량/적/귀신/플레이어/환경 사운드 컨트롤러
+│  │  │  │  ├─ World/                  # WorldStreamer, WorldLocation, WorldLocationTracker
 │  │  │  │  ├─ Road/                   # ObstacleController
 │  │  │  │  └─ Item/                   # BeverageBox, Beverage
 │  │  │  ├─ Systems/
@@ -120,7 +146,7 @@ CarDrive/
 │  │  │  │  ├─ Weather/                # WeatherSystem, WeatherRig, WeatherDefinitions
 │  │  │  │  ├─ Needs/                  # NeedsSystem, NeedSatisfier, NeedsProfile(SO)
 │  │  │  │  ├─ Save/                   # SaveSystem, SaveData
-│  │  │  │  └─ Sound/                  # 차량/적/플레이어/환경 사운드 + OneShotAudioPool
+│  │  │  │  └─ Sky, Grass, Economy/    # SkyController, 풀 컬링, Wallet
 │  │  │  └─ UI/                        # NeedsUI, InteractionPromptUI, TextHealthBar,
 │  │  │                                # HealthBarImage, AnkhAnimation, DrinkAnimation,
 │  │  │                                # UIElementShaker

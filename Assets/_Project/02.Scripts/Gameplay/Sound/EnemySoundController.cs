@@ -1,8 +1,7 @@
 ﻿using UnityEngine;
 using CarDrive.Common;
-using CarDrive.Gameplay;
 
-namespace CarDrive.Systems
+namespace CarDrive.Gameplay
 {
     /// <summary>
     /// EnemyController(추적형 적)의 사운드를 전담합니다.

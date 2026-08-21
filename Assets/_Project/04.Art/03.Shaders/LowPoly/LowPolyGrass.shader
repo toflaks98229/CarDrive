@@ -1,4 +1,4 @@
-// 로우폴리 · 코지 룩의 풀 셰이더입니다.
+﻿// 로우폴리 · 코지 룩의 풀 셰이더입니다.
 //
 // 터레인 디테일 메시로 심어 인스턴싱으로 그립니다.
 // 지오메트리 셰이더를 쓰지 않습니다. Unity 6의 URP에서는 권장되지 않고 일부 기기에서 아예 못 씁니다.
@@ -86,9 +86,12 @@ Shader "CarDrive/LowPoly Grass"
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #pragma target 3.5
+            #pragma target 4.5
             #pragma multi_compile_fog
             #pragma multi_compile_instancing
+
+            // GPU 구동 경로. 이 변형에서만 아래 Setup 이 컴파일됩니다.
+            #pragma instancing_options procedural:Setup
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
 
             // 아래 둘이 없어서 그림자가 제대로 들어오지 않았습니다.
@@ -157,6 +160,62 @@ Shader "CarDrive/LowPoly Grass"
 
             // xy 가 지도가 덮는 땅의 한가운데, z 가 한 변의 길이(m)입니다.
             float4 _GrassTrampleBounds;
+
+            // --- GPU 구동 경로 ---
+            //
+            // 터레인 디테일 대신 GpuGrassRenderer 가 간접 드로우로 그릴 때만 켜집니다.
+            // 터레인 디테일로 그릴 때는 아래가 통째로 컴파일에서 빠지므로,
+            // <b>기존 경로는 이 변경의 영향을 전혀 받지 않습니다.</b>
+            //
+            // 요점은 unity_ObjectToWorld 를 버퍼에서 만들어 준다는 것뿐입니다.
+            // 밟힘·바람·색은 전부 그 행렬과 셰이더 전역만 보고 있어서 손댈 것이 없습니다.
+        #if defined(UNITY_PROCEDURAL_INSTANCING_ENABLED)
+            StructuredBuffer<float4> _GrassInstances;
+            StructuredBuffer<uint>   _GrassVisibleIndices;
+
+            // 포기 크기의 아래·위입니다. 자리 해시로 이 사이를 고릅니다.
+            float2 _GrassScaleRange;
+
+            // 자리에서 0~1 값을 하나 뽑습니다. 버퍼에 크기를 담지 않으려고 씁니다.
+            // (담으면 인스턴스당 바이트가 늘고, 이 게임은 포기가 백만 단위입니다)
+            float GrassHash01(float3 p)
+            {
+                return frac(sin(dot(p.xz, float2(12.9898, 78.233))) * 43758.5453);
+            }
+
+            void Setup()
+            {
+                uint index = _GrassVisibleIndices[unity_InstanceID];
+                float4 packed = _GrassInstances[index];
+
+                float3 origin = packed.xyz;
+                float yaw = packed.w;
+
+                float s = lerp(_GrassScaleRange.x, _GrassScaleRange.y, GrassHash01(origin));
+
+                float sn, cs;
+                sincos(yaw, sn, cs);
+
+                // y축 회전 + 균일 배율 + 이동. 열 우선으로 씁니다.
+                unity_ObjectToWorld  = float4x4(
+                    cs * s, 0,     sn * s, origin.x,
+                    0,      s,     0,      origin.y,
+                    -sn * s, 0,    cs * s, origin.z,
+                    0,      0,     0,      1);
+
+                // 법선을 쓰려면 역행렬도 필요합니다. 회전과 균일 배율뿐이라
+                // 전치 후 배율로 나누면 됩니다. 일반 역행렬을 구할 이유가 없습니다.
+                float inv = 1.0 / max(s, 1e-5);
+                unity_WorldToObject = float4x4(
+                    cs * inv,  0,        -sn * inv, 0,
+                    0,         inv,       0,        0,
+                    sn * inv,  0,         cs * inv, 0,
+                    0,         0,         0,        1);
+
+                // 이동분은 회전·배율을 되돌린 뒤 빼야 합니다.
+                unity_WorldToObject._m03_m13_m23 = -mul((float3x3)unity_WorldToObject, origin);
+            }
+        #endif
 
             struct Attributes
             {
@@ -360,10 +419,42 @@ Shader "CarDrive/LowPoly Grass"
             HLSLPROGRAM
             #pragma vertex depthVert
             #pragma fragment depthFrag
-            #pragma target 3.0
+            #pragma target 4.5
             #pragma multi_compile_instancing
+            #pragma instancing_options procedural:SetupDepth
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
+        #if defined(UNITY_PROCEDURAL_INSTANCING_ENABLED)
+            StructuredBuffer<float4> _GrassInstances;
+            StructuredBuffer<uint>   _GrassVisibleIndices;
+            float2 _GrassScaleRange;
+
+            float GrassHash01Depth(float3 p)
+            {
+                return frac(sin(dot(p.xz, float2(12.9898, 78.233))) * 43758.5453);
+            }
+
+            // ForwardLit 의 Setup 과 같은 행렬을 만들어야 합니다.
+            // 다르면 깊이와 색이 어긋나 풀이 자기 그림자에 잘립니다.
+            void SetupDepth()
+            {
+                uint index = _GrassVisibleIndices[unity_InstanceID];
+                float4 packed = _GrassInstances[index];
+
+                float3 origin = packed.xyz;
+                float s = lerp(_GrassScaleRange.x, _GrassScaleRange.y, GrassHash01Depth(origin));
+
+                float sn, cs;
+                sincos(packed.w, sn, cs);
+
+                unity_ObjectToWorld = float4x4(
+                    cs * s, 0, sn * s, origin.x,
+                    0,      s, 0,      origin.y,
+                    -sn * s, 0, cs * s, origin.z,
+                    0,      0, 0,      1);
+            }
+        #endif
 
             struct DepthAttributes
             {

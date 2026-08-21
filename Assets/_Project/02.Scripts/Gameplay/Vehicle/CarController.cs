@@ -126,8 +126,8 @@ namespace CarDrive.Gameplay
         /// <summary>엔진·시동 사운드를 담당합니다. 없으면 조용히 넘어갑니다.</summary>
         private CarSoundController _soundController;
 
-        /// <summary>이 차량의 내구도입니다. 처음 물어볼 때 찾습니다.</summary>
-        private VehicleHealth _health;
+        // 내구도 참조는 여기 두지 않습니다. Vehicle.health 가 유일한 출처입니다.
+        // (아래 Public Properties 의 주석을 보세요)
 
         /// <summary>구동력·조향·제동을 바퀴에 거는 구동계입니다.</summary>
         private readonly WheelDriveline _driveline = new WheelDriveline();
@@ -169,15 +169,17 @@ namespace CarDrive.Gameplay
         /// <summary>계기판에 표시할 기어입니다. 후진이면 -1, 중립이면 0입니다.</summary>
         public int CurrentGear { get { return _powertrain != null ? _powertrain.GetDisplayGear() : 0; } }
 
-        /// <summary>이 차량의 내구도입니다. 처음 물어볼 때 자식에서 찾습니다.</summary>
-        public VehicleHealth Health
-        {
-            get
-            {
-                if (_health == null) _health = GetComponentInChildren<VehicleHealth>(true);
-                return _health;
-            }
-        }
+        // 내구도(VehicleHealth)는 여기서 내주지 않습니다.
+        //
+        // 예전에는 이 자리에 자식을 뒤져 찾는 Health 프로퍼티가 있었습니다. 부르는 곳이 하나도
+        // 없었는데도, 같은 컴포넌트를 찾는 <b>네 번째 경로</b>로 남아 있었습니다.
+        // (Vehicle.health · VehicleSeat.GetHealth · GhostSpawner.carHealth 그리고 이것)
+        // 경로가 여럿이면 그중 하나가 다른 인스턴스를 잡는 순간
+        // "귀신은 내구도를 깎는데 충돌은 안 깎는" 증상이 돌아옵니다. VehicleHealth 의 클래스
+        // 주석이 경고하는 바로 그 버그입니다.
+        //
+        // 이제 출처는 Vehicle.health 하나뿐입니다. Vehicle.ResolveParts 가 Awake 에서 한 번 찾고,
+        // 필요한 쪽(CarCollisionHandler · GhostSpawner · SaveSystem)은 그것을 씁니다.
 
         // --- Unity Event Functions ---
 

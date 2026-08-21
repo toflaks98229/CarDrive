@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using CarDrive.Common;
 
@@ -10,13 +10,20 @@ namespace CarDrive.Systems
     /// 이 월드는 100m짜리 타일이 103장인데, 어느 순간이든 화면에 들어오는 것은 몇 장뿐입니다.
     /// 나머지 타일에서 풀 조각을 추려 내고 그리기 명령을 만드는 일을 하지 않게 하는 것이 목적입니다.
     ///
-    /// <b>지면(Terrain.enabled)은 기본적으로 건드리지 않습니다.</b>
+    /// <b>지면은 거리로 두 갈래로 나눠 다룹니다.</b>
     ///
-    /// 예전에는 화면 밖 타일을 통째로 껐습니다. 그런데 그것이 <b>아끼려던 것보다 비쌌습니다.</b>
-    /// 컴포넌트를 껐다 켜면 렌더링 시스템에서 빠졌다가 다시 등록되고 렌더 데이터가 재구성되는데,
-    /// 시야를 돌리면 여러 장이 동시에 그 일을 겪어 그 프레임이 통째로 늘어집니다.
-    /// 반면 지면 자체는 유니티가 이미 패치 단위로 프러스텀 컬링을 하므로 더 벌 것이 거의 없습니다.
-    /// (비교해 보려면 월드 설정의 <c>cullTerrainSurface</c> 를 켜세요)
+    /// 예전에는 화면 밖 타일을 <b>거리와 무관하게</b> 통째로 껐고, 그것이 아끼려던 것보다
+    /// 비쌌습니다. 컴포넌트를 껐다 켜면 렌더 데이터가 재구성되는데, 시야를 돌리면
+    /// 여러 장이 동시에 그 일을 겪어 그 프레임이 통째로 늘어졌기 때문입니다.
+    ///
+    /// 실패한 곳은 <b>둘</b>이었습니다. 하나는 가까운 타일까지 껐다는 것 — 발밑 타일은
+    /// 제자리에서 한 바퀴만 돌아도 화면을 들락날락하므로 가장 자주 토글됩니다.
+    /// 다른 하나는 한 프레임에 켜는 수에 천장이 없었다는 것입니다.
+    ///
+    /// 그래서 지금은 이렇게 합니다.
+    ///   - <b>가까운 지면</b>(<c>terrainNearDistance</c> 안): 화면 밖이어도 늘 켭니다. 판정에서 뺍니다.
+    ///   - <b>먼 지면</b>: 화면 밖이면 끕니다. 끄는 것은 즉시, 켜는 것은 예산제입니다.
+    ///     (<c>maxSurfaceActivationsPerFrame</c>)
     ///
     /// <b>콜라이더는 어느 경우에도 끄지 않습니다.</b>
     /// Terrain 을 끄면 그리기만 멈추고 TerrainCollider 는 따로 살아 있습니다.
@@ -75,6 +82,12 @@ namespace CarDrive.Systems
             /// <summary>나무·풀을 <b>끄는</b> 거리의 제곱입니다. 켜는 거리보다 멉니다.</summary>
             public float FoldReleaseSqr;
 
+            /// <summary>이 거리 제곱 안이면 지면을 <b>화면 밖이어도</b> 켜 둡니다.</summary>
+            public float NearDistanceSqr;
+
+            /// <summary>가까움 판정에서 <b>풀려나는</b> 거리의 제곱입니다. 들어오는 거리보다 멉니다.</summary>
+            public float NearReleaseSqr;
+
             /// <summary>마지막으로 적어 넣은 <c>enabled</c> 값입니다.</summary>
             public bool LastEnabled;
 
@@ -105,6 +118,13 @@ namespace CarDrive.Systems
         /// </summary>
         private static readonly List<FoliageRequest> foliageRequests = new List<FoliageRequest>(16);
 
+        /// <summary>
+        /// 이번 프레임의 <b>지면</b> 켜기 신청 목록입니다. 나무·풀과 예산을 따로 씁니다.
+        /// 지면은 없으면 발밑에 구멍이 보이고, 나무·풀은 없어도 허전할 뿐이라
+        /// 한쪽이 다른 쪽의 예산을 잡아먹으면 안 됩니다.
+        /// </summary>
+        private static readonly List<FoliageRequest> surfaceRequests = new List<FoliageRequest>(16);
+
         /// <summary>가까운 것이 먼저 오도록 하는 비교 기준입니다.</summary>
         private static readonly System.Comparison<FoliageRequest> ByDistance = CompareByDistance;
 
@@ -124,6 +144,18 @@ namespace CarDrive.Systems
 
         /// <summary>캐시를 만들 때 쓴 히스테리시스 간격입니다.</summary>
         private static float cachedHysteresis = float.NaN;
+
+        /// <summary>캐시를 만들 때 쓴 "가까운 지면" 거리입니다.</summary>
+        private static float cachedNearDistance = float.NaN;
+
+        /// <summary>캐시를 만들 때 쓴 전체 거리 배율입니다.</summary>
+        private static float cachedRangeScale = float.NaN;
+
+        /// <summary>다음 지면 판정 시각입니다. 판정은 주기로, 적용은 매 프레임입니다.</summary>
+        private static float nextSurfaceCheck;
+
+        /// <summary>지금 신청 목록이 가까운 순으로 세워져 있는지입니다. 매 프레임 다시 세우지 않기 위한 것입니다.</summary>
+        private static bool surfaceSorted;
 
         // --- Unity Event Functions ---
 
@@ -164,6 +196,23 @@ namespace CarDrive.Systems
 
             foliageRequests.Clear();
 
+            // <b>지면 판정은 매 프레임 하지 않습니다.</b>
+            //
+            // 지면이 화면에 들고 나는 일은 프레임 단위로 일어나지 않습니다. 0.25초 사이에
+            // 사람이 돌 수 있는 각도나 차가 가는 거리로는 판정이 뒤집힐 일이 거의 없습니다.
+            // 그런데도 매 프레임 판정하면 카메라의 미세한 떨림 하나하나가 토글 후보가 되고,
+            // 그 토글이 이 시스템에서 가장 비싼 일입니다.
+            //
+            // 그래서 <b>판정은 주기로, 적용은 매 프레임 조금씩</b> 합니다.
+            // 신청 목록은 주기마다 새로 짜고, 프레임마다 예산만큼 덜어냅니다.
+            bool surfaceDue = Time.unscaledTime >= nextSurfaceCheck;
+            if (surfaceDue)
+            {
+                nextSurfaceCheck = Time.unscaledTime + Mathf.Max(0.05f, settings.surfaceCheckInterval);
+                surfaceRequests.Clear();
+                surfaceSorted = false;
+            }
+
             for (int i = 0; i < entries.Length; i++)
             {
                 Terrain terrain = entries[i].Terrain;
@@ -181,24 +230,40 @@ namespace CarDrive.Systems
                     ? GeometryUtility.TestPlanesAABB(planes, entries[i].KeepBounds)
                     : GeometryUtility.TestPlanesAABB(planes, entries[i].PaddedBounds);
 
-                // <b>지면은 기본적으로 건드리지 않습니다.</b>
-                //
-                // Terrain.enabled 를 토글하면 그 타일이 렌더링 시스템에서 빠졌다가 다시 등록되고
-                // 렌더 데이터가 재구성됩니다. 시야를 돌리면 여러 장이 동시에 그 일을 겪습니다.
-                // 그런데 <b>아끼려던 것(풀 조각 추리기)은 아래의 drawTreesAndFoliage 만으로 이미
-                // 아껴집니다.</b> 지면 자체는 유니티가 패치 단위로 프러스텀 컬링을 하므로
-                // 더 벌 것이 거의 없고, 껐다 켜는 비용만 남습니다.
-                //
-                // 비교해 보고 싶으면 월드 설정의 cullTerrainSurface 를 켜세요.
-                if (settings.cullTerrainSurface)
+                // 거리는 지면 판정과 나무·풀 판정이 함께 씁니다. 한 번만 구합니다.
+                float sqrToEyeSurface = entries[i].RawBounds.SqrDistance(eye);
+
+                if (settings.cullTerrainSurface && surfaceDue)
                 {
-                    if (entries[i].LastEnabled != visible)
+                    // <b>가까운 지면은 판정에서 뺍니다.</b>
+                    //
+                    // 발밑 타일은 제자리에서 한 바퀴만 돌아도 화면을 들락날락합니다.
+                    // 그때마다 렌더 데이터를 다시 짜면 아끼는 것보다 비쌉니다.
+                    // 그래서 가까운 것은 화면 밖이어도 늘 켜 두고, <b>먼 것만</b> 화면으로 거릅니다.
+                    // 여기도 들어오는 거리와 풀려나는 거리를 달리 두어 경계에서 떨리지 않게 합니다.
+                    bool isNear = entries[i].LastEnabled
+                        ? sqrToEyeSurface < entries[i].NearReleaseSqr
+                        : sqrToEyeSurface < entries[i].NearDistanceSqr;
+
+                    bool surfaceOn = isNear || visible;
+
+                    if (entries[i].LastEnabled != surfaceOn)
                     {
-                        entries[i].LastEnabled = visible;
-                        terrain.enabled = visible;
+                        // <b>끄는 것은 즉시, 켜는 것은 신청만.</b>
+                        // 이 옵션이 예전에 손해였던 이유가 정확히 여기입니다.
+                        // 시야를 홱 돌리면 여러 장이 한 프레임에 켜져 그 프레임이 통째로 늘어졌습니다.
+                        if (!surfaceOn)
+                        {
+                            entries[i].LastEnabled = false;
+                            terrain.enabled = false;
+                        }
+                        else
+                        {
+                            surfaceRequests.Add(new FoliageRequest { Index = i, SqrDistance = sqrToEyeSurface });
+                        }
                     }
                 }
-                else if (!entries[i].LastEnabled)
+                else if (!settings.cullTerrainSurface && !entries[i].LastEnabled)
                 {
                     // 지면 컬링을 끈 상태에서는 예전에 꺼 둔 타일을 도로 켜 줘야 합니다.
                     // 그러지 않으면 설정을 바꾼 순간부터 그 타일이 영영 보이지 않습니다.
@@ -225,7 +290,7 @@ namespace CarDrive.Systems
                 //
                 // <b>화면 밖 타일도 여기서 접습니다.</b> 지면을 끄지 않게 되면서,
                 // 풀·나무를 접는 일이 이 컬러가 실제로 아끼는 유일한 항목이 되었습니다.
-                float sqrToEye = entries[i].RawBounds.SqrDistance(eye);
+                float sqrToEye = sqrToEyeSurface;
                 bool nearEnough = entries[i].LastDrawFoliage
                     ? sqrToEye < entries[i].FoldReleaseSqr
                     : sqrToEye < entries[i].FoldDistanceSqr;
@@ -247,6 +312,7 @@ namespace CarDrive.Systems
                 foliageRequests.Add(new FoliageRequest { Index = i, SqrDistance = sqrToEye });
             }
 
+            ApplySurfaceBudget(settings.maxSurfaceActivationsPerFrame);
             ApplyFoliageBudget(settings.maxFoliageActivationsPerFrame);
 
             return shown;
@@ -302,11 +368,54 @@ namespace CarDrive.Systems
             return a.SqrDistance.CompareTo(b.SqrDistance);
         }
 
+        /// <summary>
+        /// 신청된 타일 중 예산만큼만 지면을 켭니다. <b>가까운 것이 먼저입니다.</b>
+        ///
+        /// 나무·풀과 예산을 나눠 쓰는 이유가 있습니다. 지면이 늦게 켜지면 발밑에 구멍이
+        /// 보이지만 나무가 늦게 서는 것은 허전할 뿐입니다. 한 예산을 나눠 쓰면
+        /// 나무 신청이 몰린 프레임에 지면이 밀립니다. 무게가 다른 둘을 같은 줄에 세우지 않습니다.
+        ///
+        /// 못 켠 것은 다음 프레임에 다시 신청됩니다. 조건이 그대로면 계속 신청되므로
+        /// 놓치는 타일은 없고, 켜지는 시점만 몇 프레임 흩어집니다.
+        /// </summary>
+        /// <param name="budget">이번 프레임에 켤 수 있는 최대 수</param>
+        private static void ApplySurfaceBudget(int budget)
+        {
+            if (surfaceRequests.Count == 0) return;
+
+            // 새로 짜인 목록이면 가까운 것부터 세웁니다. 이미 세워 둔 것은 다시 세우지 않습니다.
+            if (!surfaceSorted)
+            {
+                surfaceRequests.Sort(ByDistance);
+                surfaceSorted = true;
+            }
+
+            int count = Mathf.Min(budget, surfaceRequests.Count);
+            for (int i = 0; i < count; i++)
+            {
+                int index = surfaceRequests[i].Index;
+                if (index < 0 || index >= entries.Length) continue;
+
+                Terrain terrain = entries[index].Terrain;
+                if (terrain == null) continue;
+
+                entries[index].LastEnabled = true;
+                terrain.enabled = true;
+            }
+
+            // <b>처리한 것은 목록에서 덜어냅니다.</b>
+            // 판정은 주기로만 하므로, 남은 것을 그대로 두면 다음 주기까지 켜지지 않습니다.
+            // 매 프레임 조금씩 덜어내면 판정은 드물게 하면서 빈 곳은 빨리 메워집니다.
+            surfaceRequests.RemoveRange(0, count);
+        }
+
         private static void RefreshIfNeeded(CarDriveWorldSettings settings)
         {
             bool settingsChanged = !Mathf.Approximately(cachedShadowMargin, settings.shadowMargin)
                                    || !Mathf.Approximately(cachedFoliageDistance, settings.foliageDistance)
-                                   || !Mathf.Approximately(cachedHysteresis, settings.cullingHysteresis);
+                                   || !Mathf.Approximately(cachedHysteresis, settings.cullingHysteresis)
+                                   || !Mathf.Approximately(cachedNearDistance, settings.terrainNearDistance)
+                                   || !Mathf.Approximately(cachedRangeScale, settings.rangeScale);
 
             bool due = entries == null || Time.realtimeSinceStartup >= nextRefresh;
             if (!due && !settingsChanged) return;
@@ -315,6 +424,8 @@ namespace CarDrive.Systems
             cachedShadowMargin = settings.shadowMargin;
             cachedFoliageDistance = settings.foliageDistance;
             cachedHysteresis = settings.cullingHysteresis;
+            cachedNearDistance = settings.terrainNearDistance;
+            cachedRangeScale = settings.rangeScale;
 
             // <b>꺼져 있는 것까지 담습니다.</b>
             // WorldStreamer 가 멀어진 타일을 통째로 껐다가 다시 켜는데,
@@ -352,8 +463,17 @@ namespace CarDrive.Systems
                 Bounds keep = padded;
                 keep.Expand(settings.cullingHysteresis * 2f);
 
-                float fold = Mathf.Max(settings.foliageDistance, terrain.treeDistance);
+                // 전체 거리 배율을 여기서 곱합니다. 캐시를 짤 때 한 번만 곱하면 되므로
+                // 매 프레임 판정에는 아무 비용도 붙지 않습니다.
+                float scale = Mathf.Clamp(settings.rangeScale, 0.05f, 1f);
+
+                float fold = Mathf.Max(settings.foliageDistance, terrain.treeDistance) * scale;
                 float release = fold + settings.cullingHysteresis;
+
+                // 지면을 늘 켜 둘 거리입니다. 들어오는 기준과 풀려나는 기준을 달리 두어
+                // 경계에 걸친 타일이 껐다 켜기를 반복하지 않게 합니다.
+                float near = settings.terrainNearDistance * scale;
+                float nearRelease = near + settings.cullingHysteresis;
 
                 entries[i] = new TerrainEntry
                 {
@@ -364,6 +484,8 @@ namespace CarDrive.Systems
                     KeepBounds = keep,
                     FoldDistanceSqr = fold * fold,
                     FoldReleaseSqr = release * release,
+                    NearDistanceSqr = near * near,
+                    NearReleaseSqr = nearRelease * nearRelease,
 
                     // 지금 실제 상태를 기준으로 잡아야, 첫 프레임에 불필요한 대입이 일어나지 않습니다.
                     LastEnabled = terrain.enabled,
@@ -390,6 +512,11 @@ namespace CarDrive.Systems
             // 여기서 지형을 직접 건드렸으므로 캐시가 기억하는 상태와 어긋납니다.
             // 비워 두면 다음 호출에서 지금 상태를 다시 읽어 갑니다.
             entries = null;
+
+            // 신청 목록은 지워진 색인을 가리키게 되므로 함께 비웁니다.
+            surfaceRequests.Clear();
+            surfaceSorted = false;
+            nextSurfaceCheck = 0f;
         }
 
         // --- Private Methods ---
@@ -419,6 +546,11 @@ namespace CarDrive.Systems
             cachedShadowMargin = float.NaN;
             cachedFoliageDistance = float.NaN;
             cachedHysteresis = float.NaN;
+            cachedNearDistance = float.NaN;
+            cachedRangeScale = float.NaN;
+            nextSurfaceCheck = 0f;
+            surfaceRequests.Clear();
+            surfaceSorted = false;
         }
     }
 }

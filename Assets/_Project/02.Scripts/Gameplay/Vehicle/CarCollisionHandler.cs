@@ -1,7 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 using CarDrive.Systems;
-using CarDrive.UI;
 using CarDrive.Common;
 
 namespace CarDrive.Gameplay

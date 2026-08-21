@@ -1,8 +1,7 @@
 ﻿using UnityEngine;
 using CarDrive.Common;
-using CarDrive.Gameplay;
 
-namespace CarDrive.Systems
+namespace CarDrive.Gameplay
 {
     /// <summary>
     /// 차량의 모든 사운드(엔진, 충돌, 시동)를 전담하는 컨트롤러입니다.

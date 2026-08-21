@@ -365,7 +365,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -459,7 +459,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -820,7 +820,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -914,7 +914,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -4242,6 +4242,99 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 82230975}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &82503722
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 82503723}
+  - component: {fileID: 82503726}
+  - component: {fileID: 82503725}
+  - component: {fileID: 82503724}
+  m_Layer: 0
+  m_Name: FPS
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &82503723
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 82503722}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1980622191}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 883, y: 463}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &82503724
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 82503722}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a080b2252c3a59546a7462b0fb3ef79e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Lofelt.NiceVibrations.Demo::Lofelt.NiceVibrations.MMFPSCounter
+  UpdateInterval: 0.3
+--- !u!114 &82503725
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 82503722}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FontData:
+    m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
+    m_FontSize: 30
+    m_FontStyle: 0
+    m_BestFit: 0
+    m_MinSize: 3
+    m_MaxSize: 40
+    m_Alignment: 0
+    m_AlignByGeometry: 0
+    m_RichText: 1
+    m_HorizontalOverflow: 0
+    m_VerticalOverflow: 0
+    m_LineSpacing: 1
+  m_Text: 
+--- !u!222 &82503726
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 82503722}
+  m_CullTransparentMesh: 1
 --- !u!1001 &82842377
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4577,7 +4670,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -5102,7 +5195,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -6178,7 +6271,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -6840,7 +6933,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -8738,7 +8831,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -8832,7 +8925,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -10172,7 +10265,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -10751,7 +10844,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -11201,7 +11294,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -20311,7 +20404,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -20850,7 +20943,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -21567,7 +21660,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -21928,7 +22021,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -23290,7 +23383,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -24972,7 +25065,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -26728,7 +26821,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -27341,7 +27434,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -27435,7 +27528,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -27948,7 +28041,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -28576,7 +28669,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -28670,7 +28763,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -29482,7 +29575,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -31356,7 +31449,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -33761,7 +33854,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -35621,7 +35714,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -36685,7 +36778,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -37566,7 +37659,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -37927,7 +38020,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -39231,7 +39324,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -39499,7 +39592,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -40161,7 +40254,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -40522,7 +40615,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -41239,7 +41332,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -42312,7 +42405,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -42869,7 +42962,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -45150,7 +45243,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -45928,7 +46021,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -46872,7 +46965,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -47945,7 +48038,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -53126,7 +53219,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -53576,7 +53669,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -54115,7 +54208,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -54209,7 +54302,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -54392,7 +54485,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -54486,7 +54579,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -55025,7 +55118,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -55762,7 +55855,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -55856,7 +55949,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -56306,7 +56399,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -56538,7 +56631,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -57166,7 +57259,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -57438,7 +57531,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -58155,7 +58248,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -59125,7 +59218,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -60643,7 +60736,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -60826,7 +60919,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -61810,7 +61903,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -62334,7 +62427,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -62852,6 +62945,7 @@ MonoBehaviour:
     tileCount: 6
     endPlaceName: "\uB3D9\uCABD \uACE0\uAC2F\uAE38"
   maxTileActivationsPerCheck: 2
+  maxInstantActivationsPerCheck: 4
   layoutSeed: 20260817
   bakedRoot: {fileID: 2027057111}
   followTarget: {fileID: 0}
@@ -63283,7 +63377,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -64850,7 +64944,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -67071,7 +67165,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -67383,7 +67477,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -67655,7 +67749,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -67749,7 +67843,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -68733,7 +68827,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -69970,7 +70064,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -70153,7 +70247,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -70247,7 +70341,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -70341,7 +70435,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -70613,7 +70707,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -71835,7 +71929,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -72880,7 +72974,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -74269,7 +74363,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -74541,7 +74635,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -74991,7 +75085,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -75530,7 +75624,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -77093,7 +77187,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -78166,7 +78260,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -78512,7 +78606,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -78784,7 +78878,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -79145,7 +79239,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -80154,7 +80248,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -80337,7 +80431,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -82082,7 +82176,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -89354,7 +89448,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -90160,7 +90254,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -91027,7 +91121,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -91833,7 +91927,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -91927,7 +92021,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -92676,7 +92770,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -98570,7 +98664,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -99273,7 +99367,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -100920,7 +101014,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -103051,7 +103145,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -103234,7 +103328,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -104543,6 +104637,7 @@ RectTransform:
   - {fileID: 526905401}
   - {fileID: 1029390284}
   - {fileID: 302290781}
+  - {fileID: 82503723}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -107208,7 +107303,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -108014,7 +108109,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -109443,7 +109538,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
@@ -109893,7 +109988,7 @@ Terrain:
   m_TreeCrossFadeLength: 5
   m_TreeMaximumFullLODCount: 50
   m_DetailObjectDistance: 70
-  m_DetailObjectDensity: 0.85
+  m_DetailObjectDensity: 0.55
   m_HeightmapPixelError: 2
   m_SplatMapDistance: 20000
   m_HeightmapMinimumLODSimplification: 0
