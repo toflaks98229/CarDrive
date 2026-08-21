@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace CarDrive.EditorTools
 {
@@ -233,6 +233,12 @@ namespace CarDrive.EditorTools
                             MenuPath = "CarDrive/Look/시야 거리 배선",
                             Label = "시야 거리 배선",
                             Description = "안개·카메라 far·터레인 거리를 한 벌로 맞춥니다."
+                        },
+                        new CarDriveTool
+                        {
+                            MenuPath = "CarDrive/Look/바위 · 건물에 디더 페이드 켜기",
+                            Label = "프롭 페이드 켜기",
+                            Description = "나무만 켜져 있던 디더 페이드를 바위·건물로 넓힙니다. 거리는 실행 중에 시야 거리에서 유도됩니다."
                         },
                         new CarDriveTool
                         {

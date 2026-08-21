@@ -55,6 +55,27 @@ namespace CarDrive.Systems
         /// <summary>확인 주기(초)입니다. 나무 거리처럼 비싼 대입은 이 주기로만 합니다.</summary>
         private const float RetargetSeconds = 0.5f;
 
+        /// <summary>
+        /// 디더 페이드가 <b>시작</b>되는 지점입니다. 시야 거리에 대한 비율입니다.
+        /// ViewDistanceSetup 이 재질을 구울 때 쓴 값과 같게 두어 배율 1 에서 그림이 같습니다.
+        /// </summary>
+        private const float FadeStartRatio = 0.70f;
+
+        /// <summary>
+        /// 디더 페이드가 <b>끝나는</b> 지점입니다. 시야 거리에 대한 비율입니다.
+        ///
+        /// 1 보다 작아야 합니다. 나무를 지우는 일이 <c>treeDistance</c> 로 잘라내는 것보다
+        /// <b>먼저</b> 끝나야 하기 때문입니다. 뒤집히면 페이드가 다 되기도 전에
+        /// 나무가 타일 단위로 사라집니다.
+        /// </summary>
+        private const float FadeEndRatio = 0.97f;
+
+        /// <summary>디더 페이드 시작 거리를 넘길 전역 이름입니다.</summary>
+        private static readonly int FadeStartId = Shader.PropertyToID("_CarDriveFadeStart");
+
+        /// <summary>디더 페이드 종료 거리를 넘길 전역 이름입니다.</summary>
+        private static readonly int FadeEndId = Shader.PropertyToID("_CarDriveFadeEnd");
+
         // --- Private Member Variables ---
 
         /// <summary>기준 시야 거리입니다. 처음 본 파클립을 기억합니다.</summary>
@@ -104,7 +125,14 @@ namespace CarDrive.Systems
             // WorldStreamer 가 그보다 멀리 있는 타일을 아예 켜지 않기 때문입니다.
             camera.farClipPlane = Mathf.Max(baseViewDistance * scale, TerrainExtent(scale, view) + FarClipMargin);
 
-            // 3. 나무 거리는 비싸므로 주기로만 맞춥니다.
+            // 3. 나무·바위·건물의 디더 페이드를 시야 거리에 맞춥니다.
+            //
+            // 전역이라 매 프레임 넘겨도 쌉니다. 재질을 건드리지 않으므로
+            // 에셋이 오염되지도, 재질을 복제할 필요도 없습니다.
+            Shader.SetGlobalFloat(FadeStartId, view * FadeStartRatio);
+            Shader.SetGlobalFloat(FadeEndId, view * FadeEndRatio);
+
+            // 4. 나무 거리는 비싸므로 주기로만 맞춥니다.
             if (Time.unscaledTime >= nextRetarget && !Mathf.Approximately(retargeted, scale))
             {
                 nextRetarget = Time.unscaledTime + RetargetSeconds;

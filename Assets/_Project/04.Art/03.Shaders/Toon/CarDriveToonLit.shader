@@ -1,4 +1,4 @@
-// 메시용 툰 셰이더입니다. 차량·소품·귀신처럼 지면이 아닌 것에 씁니다.
+﻿// 메시용 툰 셰이더입니다. 차량·소품·귀신처럼 지면이 아닌 것에 씁니다.
 //
 // 조명 계산은 CarDriveToonLighting.hlsl 이 갖고 있고, 지면 셰이더와 <b>같은 것</b>을 씁니다.
 // 그래야 땅과 그 위의 물체에 같은 모양의 경계가 생깁니다. 서로 다른 음영을 쓰면
@@ -100,6 +100,20 @@ Shader "CarDrive/Toon Lit"
             float  _FadeEnd;
         CBUFFER_END
 
+        // 시야 거리에서 유도한 디더 페이드 구간입니다. ViewRangeScaler 가 매 프레임 씁니다.
+        //
+        // <b>왜 전역인가.</b> 위의 _FadeStart/_FadeEnd 는 재질에 구워져 있습니다(240~330m).
+        // 시야 거리를 줄이면 그리기 거리가 그보다 앞으로 당겨져, <b>페이드가 시작되기도 전에
+        // 나무가 통째로 잘립니다.</b> 이 프로젝트가 한 번 겪은 문제이고 그 기록이
+        // TerrainPerformanceSetup 주석에 남아 있습니다.
+        //
+        // 재질 값을 실행 중에 고치면 에디터에서 그 변경이 에셋에 저장됩니다.
+        // 전역은 그런 일이 없고 재질을 복제할 필요도 없습니다.
+        //
+        // 설정되지 않으면 0 이므로, 그때는 재질 값으로 물러섭니다.
+        float _CarDriveFadeStart;
+        float _CarDriveFadeEnd;
+
         TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
 
         // LOD 가 바뀔 때 메시가 툭 갈리지 않도록 유니티가 주는 디더 크로스페이드입니다.
@@ -144,7 +158,14 @@ Shader "CarDrive/Toon Lit"
         {
             #if defined(_DITHER_FADE)
                 float d = length(GetCameraPositionWS() - positionWS);
-                return saturate(1.0 - (d - _FadeStart) / max(0.001, _FadeEnd - _FadeStart));
+
+                // 전역이 들어와 있으면 그것을 씁니다. 시야 거리와 함께 움직여야
+                // 그리기 거리보다 페이드가 먼저 끝납니다.
+                bool useGlobal = _CarDriveFadeEnd > 0.001;
+                float s = useGlobal ? _CarDriveFadeStart : _FadeStart;
+                float e = useGlobal ? _CarDriveFadeEnd : _FadeEnd;
+
+                return saturate(1.0 - (d - s) / max(0.001, e - s));
             #else
                 return 1.0h;
             #endif
