@@ -16,7 +16,7 @@ namespace CarDrive.Tests
         [SetUp]
         public void SetUp()
         {
-            WorldProfiler.Reset();
+            WorldProfiler.ResetAll();
         }
 
         /// <summary>
@@ -48,6 +48,49 @@ namespace CarDrive.Tests
             Assert.AreEqual(0, WorldProfiler.HitchTotal);
             Assert.AreEqual(0, WorldProfiler.BadHitchTotal);
             Assert.AreEqual(0f, WorldProfiler.WorstFrame, 0.0001f);
+        }
+
+        /// <summary>
+        /// <b>로딩 프레임이 플레이 최악값을 오염시키면 안 됩니다.</b>
+        ///
+        /// 씬을 불러오고 첫 프레임을 그리는 동안에는 수백 ms 짜리 프레임이 반드시 나옵니다.
+        /// 그 값이 세션 최악에 섞이면 <b>그 뒤로 어떤 숫자를 봐도 의미가 없습니다</b> —
+        /// 플레이 중에 40ms 가 나오든 400ms 가 나오든 최악값은 로딩 프레임 그대로입니다.
+        /// 실제로 그 상태로 한 번 계측했다가 "신뢰할 수 없다"는 지적을 받았습니다.
+        /// </summary>
+        [Test]
+        public void 기동_구간_프레임은_플레이_최악값을_오염시키지_않는다()
+        {
+            // 첫 기록은 언제나 기동 구간입니다. (경과 시간이 0초이므로)
+            WorldProfiler.Tick(0.5f);   // 500ms 짜리 로딩 프레임
+
+            Assert.Greater(WorldProfiler.StartupWorstMs, 400f,
+                "기동 구간 최악값에 기록되지 않았습니다.");
+
+            Assert.AreEqual(0f, WorldProfiler.WorstFrame, 0.0001f,
+                "로딩 프레임이 플레이 최악값에 섞였습니다.");
+            Assert.AreEqual(0, WorldProfiler.HitchTotal,
+                "로딩 프레임이 끊김으로 세어졌습니다.");
+            Assert.AreEqual(0, WorldProfiler.BadHitchTotal);
+        }
+
+        /// <summary>
+        /// 손으로 비우는 것은 "지금부터 다시 보겠다"는 뜻이지
+        /// "기동에 얼마나 걸렸는지 잊겠다"는 뜻이 아닙니다.
+        /// </summary>
+        [Test]
+        public void 비우기는_기동_구간_값을_남기고_전체_비우기는_지운다()
+        {
+            WorldProfiler.Tick(0.5f);
+            Assert.Greater(WorldProfiler.StartupWorstMs, 400f);
+
+            WorldProfiler.Reset();
+            Assert.Greater(WorldProfiler.StartupWorstMs, 400f,
+                "Reset 이 기동 구간 값까지 지웠습니다.");
+
+            WorldProfiler.ResetAll();
+            Assert.AreEqual(0f, WorldProfiler.StartupWorstMs, 0.0001f,
+                "ResetAll 이 기동 구간 값을 지우지 않았습니다.");
         }
 
         /// <summary>

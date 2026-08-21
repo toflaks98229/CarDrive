@@ -73,7 +73,7 @@ namespace CarDrive.Systems
             float x = margin.x;
             float y = margin.y;
 
-            GUI.Box(new Rect(x - 8f, y - 8f, width + 16f, line * 15f + 16f), GUIContent.none);
+            GUI.Box(new Rect(x - 8f, y - 8f, width + 16f, line * 16f + 16f), GUIContent.none);
 
             GUI.Label(new Rect(x, y, width, line),
                 "월드 계측  (" + toggleKey + " 로 표시 전환)", titleStyle);
@@ -96,10 +96,22 @@ namespace CarDrive.Systems
                 worstRecent > WorldProfiler.HitchMilliseconds ? warnStyle : labelStyle);
             y += line;
 
-            GUI.Label(new Rect(x, y, width, line),
-                "세션 최악 " + WorldProfiler.WorstFrame.ToString("0.0") + "ms",
-                labelStyle);
-            y += line;
+            // <b>기동 구간과 플레이 구간을 나눠 보여 줍니다.</b>
+            // 로딩 프레임을 섞으면 그 뒤의 어떤 숫자도 의미가 없습니다 —
+            // 플레이 중에 40ms 가 나오든 400ms 가 나오든 최악값은 로딩 프레임 그대로입니다.
+            if (!WorldProfiler.WarmedUp)
+            {
+                GUI.Label(new Rect(x, y, width, line),
+                    "기동 구간 측정 중… (" + WorldProfiler.WarmupSeconds.ToString("0") + "초)", warnStyle);
+                y += line;
+            }
+            else
+            {
+                GUI.Label(new Rect(x, y, width, line),
+                    "플레이 최악 " + WorldProfiler.WorstFrame.ToString("0.0") + "ms  (기동 제외)",
+                    labelStyle);
+                y += line;
+            }
 
             int hitches = WorldProfiler.HitchTotal;
             int bad = WorldProfiler.BadHitchTotal;
@@ -107,18 +119,32 @@ namespace CarDrive.Systems
             GUI.Label(new Rect(x, y, width, line),
                 "끊김 " + hitches + "회 (33ms↑)   심함 " + bad + "회 (100ms↑)",
                 hitches > 0 ? warnStyle : labelStyle);
+            y += line;
+
+            GUI.Label(new Rect(x, y, width, line),
+                "기동 구간 최악 " + WorldProfiler.StartupWorstMs.ToString("0") + "ms  (로딩 포함)",
+                labelStyle);
             y += line * 1.5f;
 
             // --- 토글 ---
             GUI.Label(new Rect(x, y, width, line), "── 초당 토글 횟수 ──", labelStyle);
             y += line;
 
-            // 임계는 항목마다 다릅니다. 타일을 통째로 켜고 끄는 일은 초당 두 번만 되어도
-            // 눈에 띄지만, 나무·풀 접기는 시야를 돌리면 원래 수십 번씩 일어납니다.
+            // <b>임계는 실측에서 나왔습니다.</b> 처음에는 "0보다 크면 경고"로 두었다가
+            // 정상 동작까지 전부 노랗게 보여 쓸모가 없었고, 다음에는 접기를 40 으로 잡았다가
+            // <b>평범한 시야 회전</b>이 그 값을 넘는 것을 확인했습니다.
+            //
+            // 실제로 잰 값은 이렇습니다. (타일 103장, 활성 거리 280m 기준)
+            //   시야를 30도 돌림      접기 약 40/초
+            //   아주 급하게 돌림      접기 약 170/초   ← 이때도 프레임 최악은 18ms 였습니다
+            //
+            // 즉 접기가 세 자리로 올라가도 그 자체로는 프레임을 흔들지 않습니다.
+            // 그래서 기준을 "회전으로는 닿지 않는 값"인 200 에 둡니다.
+            // 이 값을 넘으면 회전이 아니라 무언가 떨리고 있다는 뜻입니다.
             y = Row(x, y, width, line, "타일 켜기  (가장 비쌈)", WorldProfiler.Counter.TileActivated, 2f);
             y = Row(x, y, width, line, "타일 끄기  (가장 비쌈)", WorldProfiler.Counter.TileDeactivated, 2f);
             y = Row(x, y, width, line, "지면 enabled", WorldProfiler.Counter.SurfaceToggled, 5f);
-            y = Row(x, y, width, line, "나무·풀 접기", WorldProfiler.Counter.FoliageToggled, 40f);
+            y = Row(x, y, width, line, "나무·풀 접기", WorldProfiler.Counter.FoliageToggled, 200f);
             y = Row(x, y, width, line, "풀 거리 재대입", WorldProfiler.Counter.DetailDistanceWritten, 20f);
             y = Row(x, y, width, line, "지형 목록 재탐색", WorldProfiler.Counter.TerrainScanned, 2f);
 

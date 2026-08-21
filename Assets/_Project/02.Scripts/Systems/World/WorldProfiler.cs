@@ -30,6 +30,20 @@ namespace CarDrive.Systems
         /// <summary>이보다 오래 걸린 프레임을 <b>심한 끊김</b>으로 셉니다.</summary>
         public const float BadHitchMilliseconds = 100f;
 
+        /// <summary>
+        /// 기동 구간으로 볼 시간(초)입니다. 이 동안의 프레임은 <b>따로 셉니다.</b>
+        ///
+        /// <b>왜 나누는가.</b> 씬을 불러오고 첫 프레임을 그리는 동안에는 수백 ms 짜리 프레임이
+        /// 반드시 나옵니다. 에셋 로드·셰이더 컴파일·타일 첫 활성화가 거기 다 몰려 있습니다.
+        /// 그 값을 세션 최악에 섞으면 <b>그 뒤로 어떤 숫자를 봐도 의미가 없습니다</b> —
+        /// 플레이 중에 40ms 가 나오든 400ms 가 나오든 최악값은 로딩 프레임 그대로입니다.
+        ///
+        /// 그래서 기동 구간은 <see cref="StartupWorstMs"/> 로 따로 두고, 플레이 구간의
+        /// 숫자는 이 시간이 지난 뒤부터 셉니다. 기동 비용을 버리는 것이 아니라
+        /// <b>다른 질문의 답으로 옮기는</b> 것입니다.
+        /// </summary>
+        public const float WarmupSeconds = 5f;
+
         // --- Public Types ---
 
         /// <summary>세고 있는 항목 하나입니다.</summary>
@@ -92,8 +106,17 @@ namespace CarDrive.Systems
         /// <summary>이번 세션에서 센 심한 끊김 프레임 수입니다.</summary>
         private static int badHitchTotal;
 
-        /// <summary>이번 세션에서 가장 오래 걸린 프레임(ms)입니다.</summary>
+        /// <summary>기동 구간을 뺀 뒤 가장 오래 걸린 프레임(ms)입니다.</summary>
         private static float worstFrame;
+
+        /// <summary>기동 구간에서 가장 오래 걸린 프레임(ms)입니다. 로딩·첫 활성화 비용입니다.</summary>
+        private static float startupWorst;
+
+        /// <summary>처음 기록한 시각입니다. 기동 구간의 기준점입니다.</summary>
+        private static float firstTickTime;
+
+        /// <summary>기동 구간이 끝났는지입니다.</summary>
+        private static bool warmedUp;
 
         // --- Public Properties ---
 
@@ -103,8 +126,22 @@ namespace CarDrive.Systems
         /// <summary>이번 세션의 심한 끊김(100ms 초과) 프레임 수입니다.</summary>
         public static int BadHitchTotal { get { return badHitchTotal; } }
 
-        /// <summary>이번 세션에서 가장 오래 걸린 프레임(ms)입니다.</summary>
+        /// <summary>
+        /// 기동 구간을 <b>뺀</b> 뒤 가장 오래 걸린 프레임(ms)입니다.
+        /// 플레이 중에 실제로 얼마나 튀는지를 보려면 이 값을 보세요.
+        /// </summary>
         public static float WorstFrame { get { return worstFrame; } }
+
+        /// <summary>
+        /// 기동 구간에서 가장 오래 걸린 프레임(ms)입니다.
+        ///
+        /// 씬 로드·셰이더 컴파일·타일 첫 활성화가 여기 다 들어 있어 <b>어느 하나의 비용이라고
+        /// 말할 수 없습니다.</b> 그래도 "기동에 얼마나 튀는가"의 상한으로는 쓸 수 있습니다.
+        /// </summary>
+        public static float StartupWorstMs { get { return startupWorst; } }
+
+        /// <summary>기동 구간이 끝나 플레이 구간을 재고 있는지입니다.</summary>
+        public static bool WarmedUp { get { return warmedUp; } }
 
         // --- Public Methods : 세기 ---
 
@@ -140,6 +177,23 @@ namespace CarDrive.Systems
         public static void Tick(float unscaledDeltaTime)
         {
             float ms = unscaledDeltaTime * 1000f;
+            float now = Time.realtimeSinceStartup;
+
+            if (firstTickTime <= 0f) firstTickTime = now;
+
+            // <b>기동 구간은 따로 셉니다.</b> 로딩 프레임을 섞으면 그 뒤의 어떤 숫자도
+            // 의미가 없어집니다. (위 WarmupSeconds 주석을 보세요)
+            if (!warmedUp)
+            {
+                if (ms > startupWorst) startupWorst = ms;
+
+                if (now - firstTickTime < WarmupSeconds) return;
+
+                // 구간이 끝났습니다. 여기서부터가 플레이 구간입니다.
+                warmedUp = true;
+                windowStart = now;
+                return;
+            }
 
             frames[frameCursor] = ms;
             frameCursor = (frameCursor + 1) % FrameWindow;
@@ -150,7 +204,6 @@ namespace CarDrive.Systems
             if (ms > worstFrame) worstFrame = ms;
 
             // 1초마다 창을 닫고 다음 창을 엽니다.
-            float now = Time.realtimeSinceStartup;
             if (windowStart <= 0f) windowStart = now;
 
             float span = now - windowStart;
@@ -225,6 +278,20 @@ namespace CarDrive.Systems
             hitchTotal = 0;
             badHitchTotal = 0;
             worstFrame = 0f;
+
+            // <b>기동 구간 값은 남깁니다.</b> 손으로 비우는 것은 "지금부터 다시 보겠다"는
+            // 뜻이지 "기동에 얼마나 걸렸는지 잊겠다"는 뜻이 아닙니다.
+            // 그것까지 지우려면 ResetAll 을 쓰세요.
+        }
+
+        /// <summary>기동 구간 값까지 포함해 전부 비웁니다.</summary>
+        public static void ResetAll()
+        {
+            Reset();
+
+            startupWorst = 0f;
+            firstTickTime = 0f;
+            warmedUp = false;
         }
 
         // --- Private Methods ---
@@ -236,7 +303,7 @@ namespace CarDrive.Systems
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
-            Reset();
+            ResetAll();
         }
     }
 }
