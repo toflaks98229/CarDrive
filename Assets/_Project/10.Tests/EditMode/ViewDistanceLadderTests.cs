@@ -160,6 +160,79 @@ namespace CarDrive.Tests
         }
 
         /// <summary>
+        /// 그림자는 <b>시야를 넘지 못합니다.</b>
+        ///
+        /// 안개에 다 묻히는 거리까지 그려도 보이지 않고, 섀도맵 해상도만 그만큼 넓게 퍼져
+        /// 가까운 그림자가 거칠어집니다.
+        /// </summary>
+        /// <param name="scale">확인할 전체 거리 배율</param>
+        [TestCase(1.0f)]
+        [TestCase(0.5f)]
+        [TestCase(0.25f)]
+        public void 그림자가_시야를_넘지_않는다(float scale)
+        {
+            ViewDistances.Ladder l = Build(scale);
+
+            Assert.LessOrEqual(l.Shadow, l.View,
+                "안개에 다 묻히는 거리까지 그림자를 그리고 있습니다.");
+        }
+
+        /// <summary>
+        /// 그림자 거리가 시야보다 길면 <b>시야에서 잘려야</b> 합니다.
+        ///
+        /// 날씨가 시야를 줄이면 실제로 이 상황이 됩니다. URP 에셋에 적힌 값을 그대로 쓰면
+        /// 안개에 다 묻힌 거리까지 섀도맵을 펼치게 되고, 그만큼 가까운 그림자가 거칠어집니다.
+        /// </summary>
+        [Test]
+        public void 그림자_거리가_시야보다_길면_시야에서_잘린다()
+        {
+            settings.shadowDistance = 300f;
+
+            // 폭우로 시야가 절반이 된 상황입니다. 시야 170m, 그림자 요구 300m.
+            ViewDistances.Ladder l = Build(1f, weatherView: 0.5f);
+
+            Assert.AreEqual(l.View, l.Shadow, 0.01f,
+                "시야보다 긴 그림자 거리가 잘리지 않았습니다.");
+        }
+
+        /// <summary>
+        /// <b>화면 밖 캐스터를 담을 여유는 그림자 거리 이상이어야 합니다.</b>
+        ///
+        /// 화면 밖 언덕이 화면 안으로 그림자를 드리울 수 있는 거리가 정확히 그림자 거리입니다.
+        /// 그보다 좁게 자르면 화면 가장자리에서 그림자가 통째로 사라집니다.
+        ///
+        /// 예전에는 이 여유가 설정에 손으로 적힌 55m 하나였고 실제 그림자 거리를 몰랐습니다.
+        /// URP 에셋의 50m 와 우연히 맞아떨어져 있었을 뿐이라, 품질을 올리면 어긋났습니다.
+        /// </summary>
+        /// <param name="shadowDistance">확인할 그림자 기준 거리</param>
+        [TestCase(50f)]
+        [TestCase(150f)]
+        [TestCase(300f)]
+        public void 그림자_여유가_그림자_거리_이상이다(float shadowDistance)
+        {
+            settings.shadowDistance = shadowDistance;
+            ViewDistances.Ladder l = Build(1f);
+
+            Assert.GreaterOrEqual(l.ShadowCasterMargin, l.Shadow,
+                "여유가 그림자 거리보다 좁습니다. 화면 가장자리에서 그림자가 사라집니다.");
+        }
+
+        /// <summary>
+        /// 그림자가 짧아도 설정의 하한은 지켜야 합니다.
+        /// 먼 언덕의 실루엣처럼 그림자 말고도 남겨 두고 싶은 것이 있습니다.
+        /// </summary>
+        [Test]
+        public void 그림자가_짧으면_설정의_하한을_쓴다()
+        {
+            settings.shadowDistance = 10f;
+            settings.shadowMargin = 55f;
+
+            ViewDistances.Ladder l = Build(1f);
+
+            Assert.AreEqual(55f, l.ShadowCasterMargin, 0.01f);
+        }
+
+        /// <summary>
         /// 안개는 <b>어떤 경우에도</b> 시야 거리를 덮을 만큼은 짙어야 합니다.
         /// 날씨가 더 옅게 요청해도 그 요청이 이기면 지형이 끝나는 자리가 그대로 보입니다.
         /// </summary>

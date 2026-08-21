@@ -135,8 +135,11 @@ namespace CarDrive.Systems
         private static int cachedRegistryVersion = -1;
 
         /// <summary>
-        /// 캐시를 만들 때 쓴 설정값입니다. 이 값이 달라지면 경계를 다시 구해야 합니다.
-        /// (실행 중에 그림자 여유나 접는 거리를 조절할 수 있습니다)
+        /// 캐시를 만들 때 <b>실제로 쓴</b> 그림자 여유입니다. 달라지면 경계를 다시 구합니다.
+        ///
+        /// 설정의 <c>shadowMargin</c> 이 아니라 사다리가 낸 <c>ShadowCasterMargin</c> 을 기억합니다.
+        /// 여유는 그림자 거리에서도 나오므로, 설정값만 보면 <b>배율이나 그림자 거리가 바뀐 것을
+        /// 놓칩니다.</b>
         /// </summary>
         private static float cachedShadowMargin = float.NaN;
 
@@ -489,7 +492,11 @@ namespace CarDrive.Systems
 
         private static void RefreshIfNeeded(CarDriveWorldSettings settings)
         {
-            bool settingsChanged = !Mathf.Approximately(cachedShadowMargin, settings.shadowMargin)
+            // 사다리를 먼저 구합니다. 여유가 그림자 거리에서 나오므로, 바뀌었는지 판단하려면
+            // 설정값이 아니라 <b>사다리가 낸 값</b>을 봐야 합니다.
+            ViewDistances.Ladder ladder = ViewDistances.Current;
+
+            bool settingsChanged = !Mathf.Approximately(cachedShadowMargin, ladder.ShadowCasterMargin)
                                    || !Mathf.Approximately(cachedHysteresis, settings.cullingHysteresis)
                                    || !Mathf.Approximately(cachedNearDistance, settings.terrainNearDistance)
                                    || !Mathf.Approximately(cachedRangeScale, settings.rangeScale);
@@ -512,10 +519,8 @@ namespace CarDrive.Systems
             surfaceRequests.Clear();
             surfaceSorted = false;
 
-            ViewDistances.Ladder ladder = ViewDistances.Current;
-
             cachedRegistryVersion = registryVersion;
-            cachedShadowMargin = settings.shadowMargin;
+            cachedShadowMargin = ladder.ShadowCasterMargin;
             cachedHysteresis = settings.cullingHysteresis;
             cachedNearDistance = settings.terrainNearDistance;
             cachedRangeScale = settings.rangeScale;
@@ -550,7 +555,12 @@ namespace CarDrive.Systems
 
                 // 그림자가 넘어오는 만큼 넓혀 둡니다. 이것이 <b>켜는</b> 기준입니다.
                 Bounds padded = raw;
-                padded.Expand(settings.shadowMargin * 2f);
+                //
+                // <b>여유는 사다리가 정합니다.</b> 예전에는 설정의 shadowMargin(55m) 하나를 썼는데,
+                // 그 값은 <b>실제 그림자 거리를 몰랐습니다.</b> URP 에셋의 50m 와 우연히 맞아떨어져
+                // 있었을 뿐이라, 품질을 High Fidelity(150m)로 올리면 여유가 모자라
+                // 화면 가장자리에서 그림자가 통째로 사라졌을 것입니다.
+                padded.Expand(ladder.ShadowCasterMargin * 2f);
 
                 // 히스테리시스만큼 더 넓힌 것이 <b>끄는</b> 기준입니다.
                 Bounds keep = padded;

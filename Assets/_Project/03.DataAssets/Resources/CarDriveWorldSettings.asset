@@ -34,6 +34,8 @@ MonoBehaviour:
   hideDrawDistanceWithFog: 1
   foliageDistance: 95
   shadowMargin: 55
+  shadowDistance: 50
+  applyShadowDistanceAtRuntime: 1
   terrainNearDistance: 160
   cullTerrainSurface: 0
   maxSurfaceActivationsPerFrame: 2

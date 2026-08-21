@@ -1,4 +1,6 @@
 ﻿using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using CarDrive.Common;
 
 namespace CarDrive.Systems
@@ -61,6 +63,7 @@ namespace CarDrive.Systems
         /// <summary>마지막으로 대입한 베이스맵 거리입니다. -1 이면 런타임 반영이 꺼진 상태입니다.</summary>
         private static float appliedBasemap = float.NaN;
 
+
         // --- Unity Event Functions ---
 
         /// <summary>
@@ -84,12 +87,15 @@ namespace CarDrive.Systems
             // 2. 파클립. 켜져 있는 타일을 자르지 않을 만큼 멉니다.
             camera.farClipPlane = ladder.FarClip;
 
-            // 3. 나무·바위·건물의 디더 페이드 구간을 셰이더 전역으로 넘깁니다.
+            // 3. 그림자 거리. <b>이 프로젝트에서 URP 에셋의 그림자 거리를 쓰는 유일한 곳입니다.</b>
+            if (settings.applyShadowDistanceAtRuntime) ApplyShadowDistance(ladder.Shadow);
+
+            // 4. 나무·바위·건물의 디더 페이드 구간을 셰이더 전역으로 넘깁니다.
             //    전역이라 매 프레임 넘겨도 싸고, 재질을 건드리지 않아 에셋이 오염되지 않습니다.
             Shader.SetGlobalFloat(FadeStartId, ladder.FadeStart);
             Shader.SetGlobalFloat(FadeEndId, ladder.FadeEnd);
 
-            // 4. 지형에 직접 쓰는 값들은 비싸므로 <b>바뀌었을 때만, 주기로만</b> 맞춥니다.
+            // 5. 지형에 직접 쓰는 값들은 비싸므로 <b>바뀌었을 때만, 주기로만</b> 맞춥니다.
             //
             // 나무 거리·LOD 오차·베이스맵 거리를 한 번의 순회로 함께 씁니다.
             // 예전에는 나무 거리만 여기서 쓰고 LOD 둘은 에디터 도구가 씬에 구워 넣었는데,
@@ -135,6 +141,35 @@ namespace CarDrive.Systems
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogDensity = density;
+        }
+
+        /// <summary>
+        /// 그림자 거리를 URP 에셋에 씁니다.
+        ///
+        /// <b>왜 여기인가.</b> 이 값은 URP 에셋 안에 있어서 이 프로젝트의 다른 거리들과
+        /// <b>서로를 모르는 채</b>였습니다. 그래서 <see cref="TerrainChunkCuller"/> 가 화면 밖
+        /// 캐스터를 담으려고 둔 여유(55m)가 실제 그림자 거리를 모르고 있었고,
+        /// 품질을 올리면 어긋날 상태였습니다. 이제 사다리가 둘을 함께 냅니다.
+        ///
+        /// <b>주의: 에디터에서는 이 쓰기가 디스크에 저장됩니다.</b> URP 에셋은 실제 에셋 파일이라
+        /// 플레이 중에 바꾸면 그 변경이 남습니다. 그래서 <b>값이 실제로 달라질 때만</b> 씁니다.
+        /// 그것도 싫으면 설정에서 <c>applyShadowDistanceAtRuntime</c> 을 끄세요.
+        ///
+        /// 품질 레벨을 바꾸면 활성 에셋이 통째로 바뀌므로, 대입해 둔 값을 기억하는 것만으로는
+        /// 부족합니다. <b>에셋의 현재 값과 직접 견줍니다.</b>
+        /// </summary>
+        /// <param name="distance">사다리가 정한 그림자 거리(m)</param>
+        private static void ApplyShadowDistance(float distance)
+        {
+            UniversalRenderPipelineAsset urp = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
+            if (urp == null) return;
+
+            if (Mathf.Approximately(urp.shadowDistance, distance)) return;
+
+            urp.shadowDistance = distance;
+
+            // 컬러의 경계 여유가 이 거리에서 나오므로, 바꿨으면 다시 구하게 합니다.
+            TerrainChunkCuller.InvalidateCache();
         }
 
         /// <summary>

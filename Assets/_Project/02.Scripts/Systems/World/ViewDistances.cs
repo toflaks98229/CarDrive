@@ -7,7 +7,7 @@ namespace CarDrive.Systems
     ///
     /// <b>왜 만들었는가.</b> 이 거리들은 서로 순서를 지켜야 합니다.
     /// <code>
-    ///   풀 &lt; 나무 페이드 시작 &lt; 페이드 끝 ≤ 타일 접기 = 나무 컷 ≤ 터레인 있는 거리 &lt; 파클립
+    ///   그림자 ≤ 시야   ·   풀 &lt; 페이드 시작 &lt; 페이드 끝 ≤ 타일 접기 = 나무 컷 ≤ 터레인 &lt; 파클립
     /// </code>
     /// 하나라도 뒤집히면 그 자리가 <b>눈에 보이는 선</b>이 됩니다. 안개보다 파클립이
     /// 가까우면 지형이 잘리고, 페이드보다 접기가 가까우면 나무가 통째로 사라집니다.
@@ -98,6 +98,26 @@ namespace CarDrive.Systems
             /// <summary>디더로 <b>다 지워지는</b> 거리(m)입니다.</summary>
             public readonly float FadeEnd;
 
+            /// <summary>
+            /// 그림자를 그리는 거리(m)입니다. <b>시야 거리를 넘지 않습니다.</b>
+            ///
+            /// 안개에 다 묻히는 거리까지 그림자를 그릴 이유가 없습니다. 그린다 해도
+            /// 보이지 않고, 섀도맵 해상도만 그만큼 넓게 퍼져 가까운 그림자가 거칠어집니다.
+            /// </summary>
+            public readonly float Shadow;
+
+            /// <summary>
+            /// 화면 밖 지형을 판정할 때 둘 여유(m)입니다.
+            ///
+            /// <b>왜 그림자 거리와 같은가.</b> 화면 밖 언덕이 화면 안으로 그림자를 드리울 수 있는
+            /// 거리가 정확히 그림자 거리입니다. 그보다 좁게 자르면 화면 가장자리에서
+            /// 그림자가 통째로 사라집니다.
+            ///
+            /// 예전에는 이 값이 설정에 손으로 적힌 55m 하나였고 <b>실제 그림자 거리를 몰랐습니다.</b>
+            /// URP 에셋의 50m 와 우연히 맞아떨어져 있었을 뿐이라, 품질을 올리면 어긋났습니다.
+            /// </summary>
+            public readonly float ShadowCasterMargin;
+
             /// <summary>안개가 거의 다 덮는 거리(m)입니다. 시야 거리와 같습니다.</summary>
             public readonly float View;
 
@@ -163,6 +183,14 @@ namespace CarDrive.Systems
                 FogDensity = Mathf.Max(FogReachFactor / View, weatherFog);
 
                 Grass = settings.detailDistance * Scale;
+
+                // <b>그림자는 시야를 넘지 못합니다.</b> 안개에 다 묻히는 거리까지 그려도
+                // 보이지 않고, 섀도맵만 넓게 퍼져 가까운 그림자가 거칠어집니다.
+                Shadow = Mathf.Min(settings.shadowDistance * Scale, View);
+
+                // 화면 밖 캐스터를 담을 여유는 <b>그림자 거리</b>입니다.
+                // 설정의 값은 하한으로만 씁니다. (그림자가 짧아도 먼 언덕 실루엣은 남기고 싶을 때)
+                ShadowCasterMargin = Mathf.Max(Shadow, settings.shadowMargin);
 
                 FadeStart = View * FadeStartRatio;
                 FadeEnd = View * FadeEndRatio;
