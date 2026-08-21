@@ -186,6 +186,7 @@ namespace CarDrive.Systems
                 if (terrain == null) continue;
 
                 terrain.detailObjectDistance = pendingDistance;
+                WorldProfiler.Count(WorldProfiler.Counter.DetailDistanceWritten);
             }
 
             pending.RemoveRange(0, count);

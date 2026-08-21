@@ -559,7 +559,11 @@ namespace CarDrive.Gameplay
                 }
                 else if (tile.activeSelf != shouldBeActive)
                 {
-                    if (!shouldBeActive) tile.SetActive(false);
+                    if (!shouldBeActive)
+                    {
+                        tile.SetActive(false);
+                        Systems.WorldProfiler.Count(Systems.WorldProfiler.Counter.TileDeactivated);
+                    }
                     else pending.Add(new PendingTile(tile, sqr));
                 }
 
@@ -600,6 +604,7 @@ namespace CarDrive.Gameplay
                 if (opened >= ceiling) break;
 
                 pending[i].tile.SetActive(true);
+                Systems.WorldProfiler.Count(Systems.WorldProfiler.Counter.TileActivated);
                 opened++;
                 active++;
             }

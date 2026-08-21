@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace CarDrive.Systems
 {
@@ -105,6 +105,8 @@ namespace CarDrive.Systems
             nextRefresh = Time.realtimeSinceStartup + RefreshSeconds;
             cached = Object.FindObjectsByType<Terrain>(FindObjectsInactive.Include);
             version++;
+
+            WorldProfiler.Count(WorldProfiler.Counter.TerrainScanned);
         }
 
         /// <summary>

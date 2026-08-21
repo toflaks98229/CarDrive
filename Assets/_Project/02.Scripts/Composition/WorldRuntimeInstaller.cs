@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using VContainer;
 using VContainer.Unity;
 using CarDrive.Common;
@@ -42,6 +42,21 @@ namespace CarDrive.Composition
         [Tooltip("실험용 GPU 풀 렌더러를 함께 만듭니다. 월드 설정의 gpuGrass 와 함께 켜세요.")]
         public bool createGpuGrassRenderer = false;
 
+        /// <summary>
+        /// 계측 오버레이를 함께 만들지 여부입니다.
+        ///
+        /// 지금까지의 최적화는 "타일을 너무 자주 켜고 끈다"는 진단 위에 서 있었고,
+        /// 그 진단은 코드를 읽어서 나온 것입니다. <b>실제로 줄었는지 확인할 창구</b>가 있어야
+        /// 다음 판단을 추측으로 하지 않습니다.
+        ///
+        /// 세는 일 자체는 릴리즈 빌드에서 컴파일 단계에 사라지므로, 켜 두어도 출시본에는
+        /// 영향이 없습니다.
+        /// </summary>
+        [Tooltip("F3 으로 여는 계측 오버레이를 함께 만듭니다. " +
+                 "초당 토글 횟수와 끊김 프레임 수를 보여 줍니다. " +
+                 "세는 코드는 릴리즈 빌드에서 사라집니다.")]
+        public bool createPerfOverlay = true;
+
         // --- Private Member Variables ---
 
         /// <summary>이번에 만든(또는 씬에서 찾은) 구동체들의 부모입니다.</summary>
@@ -69,6 +84,15 @@ namespace CarDrive.Composition
             {
                 builder.RegisterComponent(Ensure<GpuGrassRenderer>());
             }
+
+            // 계측은 개발 중에만 의미가 있습니다. 세는 코드가 릴리즈에서 사라지므로
+            // 오버레이만 남으면 <b>언제나 0 을 보여 주는 창</b>이 됩니다. 아예 만들지 않습니다.
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (createPerfOverlay)
+            {
+                builder.RegisterComponent(Ensure<WorldPerfOverlay>());
+            }
+#endif
 
             GameLog.InfoFormat(GameLog.Channel.World,
                 "[WorldRuntimeInstaller] 월드 구동체를 '{0}' 아래에 확보했습니다.", driverObjectName, this);

@@ -314,6 +314,7 @@ namespace CarDrive.Systems
                         {
                             entries[i].LastEnabled = false;
                             terrain.enabled = false;
+                            WorldProfiler.Count(WorldProfiler.Counter.SurfaceToggled);
                         }
                         else
                         {
@@ -356,6 +357,7 @@ namespace CarDrive.Systems
                 {
                     entries[i].LastDrawFoliage = false;
                     terrain.drawTreesAndFoliage = false;
+                    WorldProfiler.Count(WorldProfiler.Counter.FoliageToggled);
                     continue;
                 }
 
@@ -411,6 +413,7 @@ namespace CarDrive.Systems
 
                 entries[index].LastDrawFoliage = true;
                 terrain.drawTreesAndFoliage = true;
+                WorldProfiler.Count(WorldProfiler.Counter.FoliageToggled);
             }
         }
 
@@ -458,6 +461,7 @@ namespace CarDrive.Systems
 
                 entries[index].LastEnabled = true;
                 terrain.enabled = true;
+                WorldProfiler.Count(WorldProfiler.Counter.SurfaceToggled);
             }
 
             // <b>처리한 것은 목록에서 덜어냅니다.</b>
