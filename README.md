@@ -55,7 +55,9 @@ CarDrive.UI  CarDrive.Gameplay  CarDrive.Systems  CarDrive.Common
 
 ## 주요 기능 / 시스템
 
-스크립트는 `Assets/_Project/02.Scripts/` 아래에 88개, 약 14,800줄입니다. (에디터 전용 툴 11개 5,200줄은 `CarDrive.Editor` 어셈블리로 분리되어 빌드에 포함되지 않습니다)
+스크립트는 `Assets/_Project/02.Scripts/` 아래에 171개, 약 38,000줄입니다.
+그중 빌드에 들어가는 런타임은 133개 약 24,800줄이고, 나머지 38개 약 13,200줄은
+에디터 전용 툴이라 `CarDrive.Editor` 어셈블리로 분리되어 출시본에 포함되지 않습니다.
 
 ### 세계의 시계 — 시간 · 날씨 (`Systems/Time/`, `Systems/Weather/`)
 - **TimeSystem**: 게임 시계·시간대(새벽/아침/낮/저녁/밤)·햇빛의 **단일 소스**. 니즈와 날씨가 각자 시간을 세지 않고 여기서 배율을 읽어 가므로, 수면으로 시간을 건너뛰면 모든 시스템이 함께 움직입니다.
@@ -127,11 +129,13 @@ CarDrive/
 ├─ Assets/
 │  ├─ _Project/                        # 자체 제작물 (외부 에셋과 분리)
 │  │  ├─ 01.Scenes/                    # SampleScene.unity (메인 플레이 씬)
-│  │  ├─ 02.Scripts/                   # 게임 로직 (C#, 88개)
-│  │  │  ├─ Common/                    # GameInputGate, SkyCover, PlayerAim,
-│  │  │  │                             # GameContext, PrefabPool, PooledObject,
-│  │  │  │                             # AudioUtility, OneShotAudioPool,
-│  │  │  │                             # Billboard, SpriteFlipper
+│  │  ├─ 02.Scripts/                   # 게임 로직 (C#, 171개 · 폴더 하나가 어셈블리 하나)
+│  │  │  ├─ Common/                    # 계약(IGameClock, IRoadConditions, IAnkhView,
+│  │  │  │                             #  IDamageable, IInteractable, ISpeedSource…),
+│  │  │  │                             # GameContext, GameInput, GameLog,
+│  │  │  │                             # PrefabPool, OneShotAudioPool, PlayerAim
+│  │  │  ├─ Composition/               # CarDriveLifetimeScope(조립 루트), GameBootstrap,
+│  │  │  │                             # SimulationScope, PlayerScope, WorldRuntimeInstaller
 │  │  │  ├─ Gameplay/
 │  │  │  │  ├─ Combat/                 # IDamageable, IHostile, Health,
 │  │  │  │  │                          # PlayerHealth, VehicleHealth, HitFlicker
@@ -152,18 +156,22 @@ CarDrive/
 │  │  │  │  ├─ Time/                   # TimeSystem, TimeDebugOverlay
 │  │  │  │  ├─ Weather/                # WeatherSystem, WeatherRig, WeatherDefinitions
 │  │  │  │  ├─ Needs/                  # NeedsSystem, NeedSatisfier, NeedsProfile(SO)
-│  │  │  │  ├─ Save/                   # SaveSystem, SaveData
-│  │  │  │  └─ Sky, Grass, Economy/    # SkyController, 풀 컬링, Wallet
-│  │  │  └─ UI/                        # NeedsUI, InteractionPromptUI, TextHealthBar,
-│  │  │                                # HealthBarImage, AnkhAnimation, DrinkAnimation,
-│  │  │                                # UIElementShaker
+│  │  │  │  ├─ Save/                   # SaveSystem, SaveRegistry, SaveData
+│  │  │  │  ├─ Economy/                # Wallet, CurrencyDefinitions
+│  │  │  │  └─ Sky, Grass, World/      # SkyController, 풀 컬링, ViewDistances,
+│  │  │  │                             # TerrainRegistry, WorldProfiler
+│  │  │  ├─ UI/                        # NeedsUI, CurrencyUI, InteractionPromptUI,
+│  │  │  │                             # TextHealthBar, HealthBarImage,
+│  │  │  │                             # AnkhAnimation, DrinkAnimation, UIElementShaker
+│  │  │  └─ Editor/                    # 에디터 전용 툴 38개 (빌드 제외)
 │  │  ├─ 03.DataAssets/                # Vehicles(CarData), Terrain
 │  │  ├─ 04.Art/                       # 01.Images, 02.Models, 03.Shaders, 04.Animations
 │  │  │                                # (Pixelize / Palette 렌더러 피처 포함)
 │  │  ├─ 05.Prefabs/                   # Player, Monster, Prop, Effects, Items, Map, UI
 │  │  ├─ 07.Settings/                  # URP 에셋 및 렌더러
 │  │  ├─ 09.Docs/                      # TODO.md
-│  │  └─ 06.Sound, 08.Behavior, 10.Tests  # 예약된 빈 슬롯
+│  │  ├─ 10.Tests/                     # EditMode 93건 · PlayMode 6건
+│  │  └─ 06.Sound, 08.Behavior         # 예약된 빈 슬롯
 │  ├─ Imports/                         # 외부 에셋 (LowPolyRetroCars, Cartoon FX Remaster 등)
 │  └─ TerrainSampleAssets/             # 지형 샘플 에셋
 ├─ ProjectSettings/            # Unity 프로젝트 설정 (ProductName: CarDrive)
@@ -234,6 +242,9 @@ CarDrive/
 - **허기와 피로는 해소할 방법이 전혀 없습니다.** `NeedSatisfier`가 식사·수면 프리셋까지 갖추고 있지만 이를 사용하는 오브젝트가 씬에 배치되어 있지 않습니다. (갈증은 음료·빗물, 배뇨는 `P`, 청결·스트레스는 날씨로 일부 해소됩니다)
 - **연료를 보충할 수단이 없습니다.** 연료는 유일한 하드 실패 조건인데 주유소가 없습니다.
 - 게임 오버/승리 조건, 메뉴, 다중 세이브 슬롯이 없습니다.
-- ~~어셈블리 정의와 네임스페이스 부재~~ → 해결. 런타임·에디터·테스트 세 어셈블리로 나뉘고 모든 타입이 `CarDrive.*` 네임스페이스 아래에 있습니다.
-- 테스트가 EditMode 18건뿐입니다. (`NeedDefaults`·`GameContext`·`NeedsSystem`) `Powertrain`·`WeatherSystem`의 계산도 프레임과 무관한 순수 로직이라 확대 비용이 낮습니다. PlayMode 테스트는 아직 없습니다.
+- ~~어셈블리 정의와 네임스페이스 부재~~ → 해결. 층마다 어셈블리가 하나씩 있고(`Common` / `Systems` / `Gameplay` / `UI` / `Composition` + `Editor` / `Tests`)
+  참조가 아래로만 흐르는 것을 컴파일러가 강제합니다. 모든 타입이 `CarDrive.*` 네임스페이스 아래에 있습니다.
+- 테스트는 EditMode 93건 · PlayMode 6건입니다.
+  (`GameContext`·`NeedDefaults`·`NeedsSystem`·`Powertrain`·`RoadConditions`·`ViewDistances`·`Wallet`·`WorldProfiler`)
+  아직 덮이지 않은 큰 덩어리는 `WeatherSystem`의 전환·혼합 계산입니다. 프레임과 무관한 순수 로직이라 확대 비용이 낮습니다.
 - 귀신의 시인성이 낮아 개선이 필요합니다. (`Assets/_Project/09.Docs/TODO.md`)
