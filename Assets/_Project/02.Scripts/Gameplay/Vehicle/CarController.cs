@@ -36,17 +36,10 @@ namespace CarDrive.Gameplay
         /// <summary>m/s를 km/h로 바꾸는 계수입니다.</summary>
         private const float MetersPerSecondToKmh = 3.6f;
 
-        /// <summary>스로틀을 놓고 관성 주행할 때 걸리는 엔진 브레이크 토크입니다.</summary>
-        private const float EngineBrakeTorque = 50f;
-
-        /// <summary>엔진 브레이크가 걸리기 시작하는 속도(km/h)입니다. 정차 직전에는 걸지 않습니다.</summary>
-        private const float EngineBrakeMinSpeed = 1f;
-
-        /// <summary>고속에서 조향각을 줄일 때 기준으로 삼는 속도(km/h)입니다.</summary>
-        private const float SteerReferenceSpeed = 100f;
-
-        /// <summary>고속에서도 최소한 이만큼은 꺾입니다. 완전히 직진만 하게 되면 운전이 불가능합니다.</summary>
-        private const float MinDynamicSteerAngle = 10f;
+        // 엔진 브레이크·고속 조향 억제 값은 예전에 이 자리에 상수로 박혀 있었습니다.
+        // 그런데 이것들은 차량마다 달라야 하는 튜닝 값입니다 — 트럭과 경차가 같은
+        // 엔진 브레이크를 가질 이유가 없습니다. 지금은 CarData 에 있어 재컴파일 없이
+        // 차량별로 조절합니다.
 
         // --- Serialized Fields ---
         //
@@ -237,7 +230,7 @@ namespace CarDrive.Gameplay
 
             // <b>토크를 연료 소모보다 먼저 구합니다.</b> 순서를 바꾸면 연료가 바닥나는 그 프레임에
             // 시동이 먼저 꺼져서 토크가 0이 됩니다. 한 틱 차이지만 원래 동작이 아닙니다.
-            float motorTorque = _powertrain.CalculateMotorTorque(
+            float motorTorque = _powertrain.UpdateAndGetTorque(
                 _driveline.GetAverageDrivenRpm(), ThrottleInput, CurrentSpeed, IsEngineOn);
 
             UpdateEngine();
@@ -335,9 +328,9 @@ namespace CarDrive.Gameplay
         /// <param name="steerInput">-1에서 1 사이의 조향 입력</param>
         private void UpdateSteerAngle(float steerInput)
         {
-            float speedRatio = CurrentSpeed / SteerReferenceSpeed;
+            float speedRatio = CurrentSpeed / _carData.steerReferenceSpeed;
             float allowedAngle = _carData.maxSteerAngle * (1f - speedRatio * _carData.steerHelper);
-            allowedAngle = Mathf.Clamp(allowedAngle, MinDynamicSteerAngle, _carData.maxSteerAngle);
+            allowedAngle = Mathf.Clamp(allowedAngle, _carData.minSteerAngle, _carData.maxSteerAngle);
 
             float targetAngle = allowedAngle * steerInput;
             _currentSteerAngle = Mathf.Lerp(
@@ -356,9 +349,9 @@ namespace CarDrive.Gameplay
 
             bool coasting = IsEngineOn
                             && Mathf.Approximately(ThrottleInput, 0f)
-                            && CurrentSpeed > EngineBrakeMinSpeed;
+                            && CurrentSpeed > _carData.engineBrakeMinSpeed;
 
-            return coasting ? EngineBrakeTorque : 0f;
+            return coasting ? _carData.engineBrakeTorque : 0f;
         }
 
         /// <summary>

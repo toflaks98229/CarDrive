@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 using CarDrive.Common;
 
@@ -11,6 +11,21 @@ namespace CarDrive.Gameplay
     /// </summary>
     public class Powertrain : MonoBehaviour
     {
+        // --- Constants : 기어 번호 ---
+        //
+        // 기어는 정수 하나로 표현됩니다. 0 이 후진, 1 이 중립, 2 부터가 전진 1단입니다.
+        // 예전에는 이 숫자들이 조건문마다 그대로 박혀 있어서, CurrentGear > 1 이 "전진인가"를
+        // 뜻하는지 "2단 이상인가"를 뜻하는지 매번 세어 봐야 했습니다.
+
+        /// <summary>후진 기어의 번호입니다.</summary>
+        private const int ReverseGear = 0;
+
+        /// <summary>중립 기어의 번호입니다.</summary>
+        private const int NeutralGear = 1;
+
+        /// <summary>전진 1단의 번호입니다. 기어비 목록의 0번이 여기에 해당합니다.</summary>
+        private const int FirstForwardGear = 2;
+
         // --- Public Properties ---
 
         /// <summary>현재 엔진 회전수입니다. 사운드 피치와 계기판 표시에 쓰입니다.</summary>
@@ -45,16 +60,15 @@ namespace CarDrive.Gameplay
 
         /// <summary>
         /// 기어비를 정규화할 기준값입니다. <see cref="Initialize"/>에서 한 번 정합니다.
-        /// 계산식은 <see cref="CalculateMotorTorque"/>의 주석을 보세요.
+        /// 계산식은 <see cref="GearTorqueFactor"/>의 주석을 보세요.
         /// </summary>
         private float referenceRatio = 1f;
 
         /// <summary>
         /// 노면·바람 상태입니다. 연료 소모 배율을 여기서 읽습니다.
         ///
-        /// <b>이 한 줄이 이번 리팩토링의 핵심입니다.</b> 예전에는 연료 계산 본문에서
-        /// <c>WeatherSystem.GetFuelConsumption()</c>을 정적으로 불렀습니다. 그래서
-        /// 이 클래스의 어떤 시그니처에도 날씨가 없는데 연료는 날씨에 좌우되었고,
+        /// 예전에는 연료 계산 본문에서 <c>WeatherSystem.GetFuelConsumption()</c>을 정적으로 불렀습니다.
+        /// 그래서 이 클래스의 어떤 시그니처에도 날씨가 없는데 연료는 날씨에 좌우되었고,
         /// 순수 산술인 동력계를 <b>씬 없이 검증할 수 없었습니다.</b>
         /// 이제 <see cref="Initialize"/>로 받으므로, 테스트가 가짜 노면을 끼워
         /// 폭우와 맑은 날의 연료 소모를 각각 확인할 수 있습니다.
@@ -79,7 +93,7 @@ namespace CarDrive.Gameplay
                 return;
             }
 
-            // 기어비는 CalculateMotorTorque에서 인덱스로 직접 접근하므로,
+            // 기어비는 UpdateRpm·EvaluateTorque에서 인덱스로 직접 접근하므로,
             // 비어 있으면 첫 주행에서 IndexOutOfRange가 납니다. 여기서 미리 막습니다.
             //
             // 대체값은 <b>이 컴포넌트 안에만</b> 담습니다. 에셋은 건드리지 않습니다.
@@ -105,7 +119,7 @@ namespace CarDrive.Gameplay
             if (referenceRatio <= 0.0001f) referenceRatio = 1f;
 
             CurrentFuel = carData.maxFuel;
-            CurrentGear = 1; // 중립에서 시작
+            CurrentGear = NeutralGear;
             CurrentRPM = 0;
         }
 
@@ -124,16 +138,19 @@ namespace CarDrive.Gameplay
                 return;
             }
 
-            if (isEngineOn)
-            {
-                float consumption = (carData.fuelConsumptionRate / 10f) + (CurrentRPM / carData.maxRPM) * Mathf.Abs(throttleInput) * carData.fuelConsumptionRate;
+            if (!isEngineOn) return;
 
-                // 맞바람·젖은 노면에서는 연료를 더 먹습니다.
-                // WeatherSystem이 씬에 없으면 1이 돌아오므로 아무 영향이 없습니다.
-                consumption *= road.FuelConsumptionMultiplier;
+            // 소모는 두 몫으로 나뉩니다.
+            //  - 공회전분: 시동이 걸려 있기만 하면 나가는 몫
+            //  - 부하분  : 회전수와 스로틀에 비례해 더 나가는 몫
+            float idlePortion = carData.fuelConsumptionRate * carData.idleFuelPortion;
+            float loadPortion = (CurrentRPM / carData.maxRPM) * Mathf.Abs(throttleInput) * carData.fuelConsumptionRate;
 
-                CurrentFuel -= consumption * Time.fixedDeltaTime;
-            }
+            // 맞바람·젖은 노면에서는 연료를 더 먹습니다.
+            // 노면이 주입되지 않았으면 1이 돌아오므로 아무 영향이 없습니다.
+            float consumption = (idlePortion + loadPortion) * road.FuelConsumptionMultiplier;
+
+            CurrentFuel -= consumption * Time.fixedDeltaTime;
         }
 
         /// <summary>
@@ -153,82 +170,35 @@ namespace CarDrive.Gameplay
         }
 
         /// <summary>
-        /// RPM, 기어, 최종 모터 토크를 계산하여 반환합니다.
-        /// CarController가 FixedUpdate()에서 호출합니다.
+        /// 동력계를 이번 물리 프레임만큼 <b>진행시키고</b> 그 결과 걸어야 할 토크를 돌려줍니다.
+        /// <see cref="CarController"/>가 <c>FixedUpdate</c>에서 한 번 부릅니다.
+        ///
+        /// <b>이름이 바뀐 이유가 있습니다.</b> 예전 이름은 <c>CalculateMotorTorque</c>였지만
+        /// 실제로는 기어와 RPM 을 바꾸는 <b>명령</b>이었습니다. "계산한다"는 이름을 믿고
+        /// 값만 보려고 한 번 더 부르면 기어가 한 번 더 바뀝니다. 이름이 하는 일을 말하게 했습니다.
+        ///
+        /// 안은 네 단계이고 <b>순서가 서로의 전제</b>입니다 — 기어를 정해야 RPM 을 알고,
+        /// RPM 을 알아야 변속을 판단하고, 변속이 끝나야 어느 기어비로 토크를 낼지 정해집니다.
+        /// 예전에는 이 넷이 한 메서드 안에서 <c>if</c> 사슬로 뒤엉켜 있었습니다.
         /// </summary>
         /// <param name="wheelRPM">구동륜의 현재 회전수. 전진 기어일 때 엔진 RPM 계산에 쓰입니다.</param>
         /// <param name="throttleInput">스로틀 입력값. 음수면 후진으로 봅니다.</param>
         /// <param name="currentSpeed">현재 주행 속도. 기어 결정과 후진 속도 제한에 쓰입니다.</param>
         /// <param name="isEngineOn">시동이 걸려 있는지 여부. 꺼져 있으면 토크가 0입니다.</param>
         /// <returns>이번 프레임에 구동륜에 걸 모터 토크</returns>
-        public float CalculateMotorTorque(float wheelRPM, float throttleInput, float currentSpeed, bool isEngineOn)
+        public float UpdateAndGetTorque(float wheelRPM, float throttleInput, float currentSpeed, bool isEngineOn)
         {
-            if (carData == null) return 0;
+            if (carData == null) return 0f;
 
-            // 1. 기어 상태 결정 (원본 HandleEngineAndGears 로직)
-            if (!isEngineOn)
-            {
-                CurrentRPM = Mathf.Lerp(CurrentRPM, 0, Time.fixedDeltaTime * 2f);
-                CurrentGear = 1; // 시동 꺼지면 중립
-            }
-            else if (throttleInput < 0 && currentSpeed < 5f) { CurrentGear = 0; } // 후진
-            else if (throttleInput == 0 && currentSpeed < 5f) { CurrentGear = 1; } // 중립
-            else if (CurrentGear < 2 && throttleInput > 0) { CurrentGear = 2; } // 1단 출발
+            SelectGear(throttleInput, currentSpeed, isEngineOn);
 
-            // 2. RPM 계산 (원본 HandleEngineAndGears 로직)
-            if (isEngineOn)
-            {
-                if (CurrentGear > 1) // 전진
-                {
-                    CurrentRPM = Mathf.Abs(wheelRPM * gearRatios[CurrentGear - 2]) + carData.idleRPM;
-                }
-                else // 후진 또는 중립
-                {
-                    CurrentRPM = carData.idleRPM + (Mathf.Abs(throttleInput) * 1500f);
-                }
-                CurrentRPM = Mathf.Clamp(CurrentRPM, 0, carData.maxRPM);
+            // 시동이 꺼져 있으면 회전수는 SelectGear 가 잦아들게 했고, 바퀴에 걸 것은 없습니다.
+            if (!isEngineOn) return 0f;
 
-                // 3. 자동 변속 (원본 HandleEngineAndGears 로직)
-                if (CurrentGear > 1 && CurrentRPM > carData.shiftUpRPM && CurrentGear - 2 < gearRatios.Count - 1)
-                {
-                    CurrentGear++;
-                }
-                else if (CurrentRPM < carData.shiftDownRPM && CurrentGear > 2)
-                {
-                    CurrentGear--;
-                }
-            }
+            UpdateRpm(wheelRPM, throttleInput);
+            ApplyAutoShift();
 
-            // 4. 모터 토크 계산 (원본 HandleMotor 로직)
-            //
-            // <b>기어비는 곱합니다. 예전에는 나눴습니다.</b>
-            // 구동계에서 기어비는 회전수와 토크에 <b>같은 방향으로</b> 걸립니다.
-            // 회전수는 엔진 쪽이 빨라지고(위 2번에서 이미 곱하고 있습니다) 토크는 바퀴 쪽이 세집니다.
-            // 그런데 여기만 나누고 있어서, 기어비 4.0인 1단이 1.0인 4단보다 <b>토크가 약했습니다.</b>
-            // 기본 에셋 기준으로 1단 1250 · 4단 5000 — 출발이 굼뜨고 고단에서 튀어 나갔습니다.
-            // 인스펙터 툴팁("높을수록 초반 가속에 유리")과도 정반대라, 값을 조율하는 사람이
-            // 반대 방향으로 튜닝하게 되는 것이 더 나빴습니다.
-            float motorTorque = 0f;
-            if (isEngineOn)
-            {
-                if (CurrentGear > 1) // 전진
-                {
-                    float normalizedRPM = Mathf.Clamp01(CurrentRPM / carData.maxRPM);
-                    float torqueMultiplier = carData.torqueCurve.Evaluate(normalizedRPM);
-                    motorTorque = carData.motorTorque * throttleInput * torqueMultiplier * GearTorqueFactor(CurrentGear - 2);
-                }
-                else if (CurrentGear == 0) // 후진
-                {
-                    // 후진은 1단과 같은 기어비를 씁니다. (실제 차도 후진비는 1단과 비슷합니다)
-                    motorTorque = carData.motorTorque * throttleInput * GearTorqueFactor(0);
-                }
-
-                // 5. 속도 제한 (원본 HandleMotor 로직)
-                if (throttleInput < 0 && currentSpeed > carData.maxReverseSpeed) { motorTorque = 0; }
-                if (CurrentRPM >= carData.maxRPM) { motorTorque = 0; }
-            }
-
-            return motorTorque;
+            return EvaluateTorque(throttleInput, currentSpeed);
         }
 
         /// <summary>
@@ -237,15 +207,130 @@ namespace CarDrive.Gameplay
         /// <returns>후진이면 -1(R), 중립이면 0(N), 전진이면 1부터의 단수</returns>
         public int GetDisplayGear()
         {
-            if (CurrentGear == 0) return -1; // R
-            if (CurrentGear == 1) return 0;  // N
-            return CurrentGear - 1;          // 1, 2...
+            if (CurrentGear == ReverseGear) return -1;  // R
+            if (CurrentGear == NeutralGear) return 0;   // N
+            return CurrentGear - NeutralGear;           // 1, 2...
+        }
+
+        // --- Private Methods : 진행 네 단계 ---
+
+        /// <summary>
+        /// 지금 어느 기어에 있어야 하는지 정합니다. <b>①단계</b>
+        ///
+        /// <b>속도 문턱이 있는 이유.</b> 달리는 중에 스로틀을 놓았다고 기어가 빠지면
+        /// 엔진 브레이크가 사라지고 다시 밟을 때 1단부터 붙습니다. 그래서
+        /// <see cref="CarData.gearChangeSpeed"/> 아래에서만 후진·중립으로 바뀝니다.
+        /// </summary>
+        /// <param name="throttleInput">스로틀 입력값</param>
+        /// <param name="currentSpeed">현재 주행 속도(km/h)</param>
+        /// <param name="isEngineOn">시동 여부</param>
+        private void SelectGear(float throttleInput, float currentSpeed, bool isEngineOn)
+        {
+            // 시동이 꺼지면 중립으로 떨어지고 회전수가 잦아듭니다.
+            if (!isEngineOn)
+            {
+                CurrentRPM = Mathf.Lerp(CurrentRPM, 0f, Time.fixedDeltaTime * carData.engineStopRpmDecay);
+                CurrentGear = NeutralGear;
+                return;
+            }
+
+            bool slowEnoughToChange = currentSpeed < carData.gearChangeSpeed;
+
+            if (throttleInput < 0f && slowEnoughToChange) CurrentGear = ReverseGear;
+            else if (throttleInput == 0f && slowEnoughToChange) CurrentGear = NeutralGear;
+            else if (CurrentGear < FirstForwardGear && throttleInput > 0f) CurrentGear = FirstForwardGear;
+        }
+
+        /// <summary>
+        /// 지금 기어에서 엔진이 몇 바퀴 도는지 구합니다. <b>②단계</b>
+        ///
+        /// 전진 중에는 <b>바퀴가 엔진을 돌립니다</b> — 휠 회전수에 기어비를 곱한 것이 엔진 회전수입니다.
+        /// 중립·후진에서는 바퀴와 엔진이 떨어져 있으므로 스로틀을 밟은 만큼만 공회전이 오릅니다.
+        /// </summary>
+        /// <param name="wheelRPM">구동륜의 현재 회전수</param>
+        /// <param name="throttleInput">스로틀 입력값</param>
+        private void UpdateRpm(float wheelRPM, float throttleInput)
+        {
+            if (CurrentGear > NeutralGear)
+            {
+                CurrentRPM = Mathf.Abs(wheelRPM * gearRatios[CurrentGear - FirstForwardGear]) + carData.idleRPM;
+            }
+            else
+            {
+                CurrentRPM = carData.idleRPM + Mathf.Abs(throttleInput) * carData.neutralRpmSpan;
+            }
+
+            CurrentRPM = Mathf.Clamp(CurrentRPM, 0f, carData.maxRPM);
+        }
+
+        /// <summary>
+        /// 회전수를 보고 한 단 올리거나 내립니다. <b>③단계</b>
+        ///
+        /// 한 번에 한 단만 움직입니다. 다음 프레임에 다시 판단하므로 급가속에서는
+        /// 여러 프레임에 걸쳐 연속으로 올라갑니다.
+        /// </summary>
+        private void ApplyAutoShift()
+        {
+            bool hasHigherGear = CurrentGear - FirstForwardGear < gearRatios.Count - 1;
+
+            if (CurrentGear > NeutralGear && CurrentRPM > carData.shiftUpRPM && hasHigherGear)
+            {
+                CurrentGear++;
+            }
+            else if (CurrentRPM < carData.shiftDownRPM && CurrentGear > FirstForwardGear)
+            {
+                CurrentGear--;
+            }
+        }
+
+        /// <summary>
+        /// 지금 상태에서 바퀴에 걸 토크를 구합니다. <b>④단계 · 부수 효과가 없습니다.</b>
+        ///
+        /// <b>이 메서드는 아무것도 바꾸지 않습니다.</b> 읽기만 하므로 같은 상태에서 몇 번을 불러도
+        /// 같은 값이 나옵니다. 예전에는 이 계산이 기어·RPM 갱신과 한 메서드에 뒤엉켜 있어
+        /// "지금 토크가 얼마인가"를 물어볼 방법 자체가 없었습니다.
+        /// </summary>
+        /// <param name="throttleInput">스로틀 입력값</param>
+        /// <param name="currentSpeed">현재 주행 속도(km/h)</param>
+        /// <returns>바퀴에 걸 모터 토크</returns>
+        private float EvaluateTorque(float throttleInput, float currentSpeed)
+        {
+            // 레브 리미터. 최대 회전수에 닿으면 더 밀지 않습니다.
+            if (CurrentRPM >= carData.maxRPM) return 0f;
+
+            // 후진 속도 상한. 뒤로 이만큼 빨라지면 더 밀지 않습니다.
+            if (throttleInput < 0f && currentSpeed > carData.maxReverseSpeed) return 0f;
+
+            if (CurrentGear > NeutralGear)
+            {
+                float normalizedRPM = Mathf.Clamp01(CurrentRPM / carData.maxRPM);
+                float torqueMultiplier = carData.torqueCurve.Evaluate(normalizedRPM);
+                return carData.motorTorque * throttleInput * torqueMultiplier
+                       * GearTorqueFactor(CurrentGear - FirstForwardGear);
+            }
+
+            if (CurrentGear == ReverseGear)
+            {
+                // 후진은 1단과 같은 기어비를 씁니다. (실제 차도 후진비는 1단과 비슷합니다)
+                return carData.motorTorque * throttleInput * GearTorqueFactor(0);
+            }
+
+            // 중립에서는 바퀴에 아무것도 걸리지 않습니다.
+            return 0f;
         }
 
         // --- Private Methods ---
 
         /// <summary>
         /// 이 기어에서 <see cref="CarData.motorTorque"/>에 곱할 배율을 돌려줍니다.
+        ///
+        /// <b>기어비는 곱합니다. 예전에는 나눴습니다.</b>
+        /// 구동계에서 기어비는 회전수와 토크에 <b>같은 방향으로</b> 걸립니다.
+        /// 회전수는 엔진 쪽이 빨라지고(<see cref="UpdateRpm"/>에서 이미 곱하고 있습니다)
+        /// 토크는 바퀴 쪽이 세집니다. 그런데 예전에는 여기만 나누고 있어서,
+        /// 기어비 4.0인 1단이 1.0인 4단보다 <b>토크가 약했습니다.</b>
+        /// 인스펙터 툴팁("높을수록 초반 가속에 유리")과도 정반대라, 값을 조율하는 사람이
+        /// 반대 방향으로 튜닝하게 되는 것이 더 나빴습니다.
         ///
         /// <b>기준 기어비로 나눠서 정규화합니다.</b> 기어비를 그대로 곱하면 기본 에셋 기준으로
         /// 1단 토크가 20,000이 되어, 브레이크 힘·차체 질량·타이어 마찰을 전부 다시 잡아야 합니다.

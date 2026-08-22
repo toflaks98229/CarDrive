@@ -21,6 +21,13 @@ namespace CarDrive.Gameplay
         [Tooltip("최대 후진 속도 (km/h). 이 속도에 도달하면 후진 가속이 멈춥니다.")]
         public float maxReverseSpeed = 20f;
 
+        [Tooltip("스로틀을 놓고 굴러갈 때 걸리는 제동 토크입니다. 클수록 빨리 잦아듭니다.")]
+        public float engineBrakeTorque = 50f;
+
+        [Tooltip("이 속도(km/h) 아래에서는 엔진 브레이크를 걸지 않습니다. " +
+                 "거의 멈춘 차를 계속 붙잡아 덜컹거리는 것을 막습니다.")]
+        public float engineBrakeMinSpeed = 1f;
+
         [Header("조향 설정")]
         [Tooltip("바퀴의 최대 조향 각도 (단위: 도)")]
         public float maxSteerAngle = 30f;
@@ -31,6 +38,14 @@ namespace CarDrive.Gameplay
         [Tooltip("고속 주행 시 조향 각도를 줄여 안정성을 높이는 값. 0(효과 없음) ~ 1(최대 효과)")]
         [Range(0, 1)]
         public float steerHelper = 0.8f;
+
+        [Tooltip("조향 억제를 계산할 기준 속도 (km/h). 이 속도에서 steerHelper 가 최대로 작용합니다. " +
+                 "낮출수록 더 낮은 속도부터 핸들이 무거워집니다.")]
+        public float steerReferenceSpeed = 100f;
+
+        [Tooltip("고속에서도 남겨 둘 최소 조향각 (단위: 도). " +
+                 "0에 가깝게 두면 고속에서 핸들이 아예 돌지 않습니다.")]
+        public float minSteerAngle = 10f;
 
         [Header("엔진 및 기어 상세 설정")]
         [Tooltip("RPM에 따른 엔진 토크 곡선. X축: RPM 비율(0~1), Y축: 토크 배율(0~1)")]
@@ -47,6 +62,17 @@ namespace CarDrive.Gameplay
 
         [Tooltip("기어를 이전 단으로 내리는 RPM 임계값")]
         public float shiftDownRPM = 2000f;
+
+        [Tooltip("이 속도(km/h) 아래에서만 후진·중립으로 바뀝니다. " +
+                 "달리는 중에 스로틀을 놓았다고 기어가 빠지지 않도록 막는 문턱입니다.")]
+        public float gearChangeSpeed = 5f;
+
+        [Tooltip("중립·후진에서 스로틀을 끝까지 밟았을 때 공회전 위로 더 오르는 RPM 폭입니다. " +
+                 "정차 중 공회전 소리와 계기판 바늘이 이 값으로 움직입니다.")]
+        public float neutralRpmSpan = 1500f;
+
+        [Tooltip("시동이 꺼진 뒤 RPM 이 0 으로 잦아드는 속도입니다. 클수록 빨리 멎습니다.")]
+        public float engineStopRpmDecay = 2f;
 
         [Tooltip("기어비 설정 (1단, 2단...). 값이 높을수록 토크가 세지고 엔진 RPM이 빨리 오릅니다. " +
                  "낮을수록 같은 속도에서 RPM이 낮아 고속에 유리합니다. 앞에서부터 큰 값으로 두세요.")]
@@ -65,5 +91,10 @@ namespace CarDrive.Gameplay
 
         [Tooltip("연료 소모율. RPM과 엔진 부하(토크 사용량)에 비례하여 소모됩니다.")]
         public float fuelConsumptionRate = 0.005f;
+
+        [Tooltip("스로틀을 밟지 않아도 공회전만으로 나가는 몫입니다. " +
+                 "0.1이면 연료 소모율의 10%가 시동이 걸려 있는 동안 항상 나갑니다.")]
+        [Range(0f, 1f)]
+        public float idleFuelPortion = 0.1f;
     }
 }
