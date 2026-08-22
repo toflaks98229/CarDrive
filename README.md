@@ -13,10 +13,11 @@ CarDrive는 플레이어가 1인칭 시점으로 차를 몰고 밤길을 달리�
 ## 기술 스택
 
 - **엔진**: Unity 6000.5.3f1 (Unity 6)
-- **언어**: C# (asmdef 3분할 · `CarDrive.Runtime` / `CarDrive.Editor` / `CarDrive.Tests.*`, 네임스페이스 `CarDrive.*`)
+- **언어**: C# (asmdef 층별 분할 · `CarDrive.Common` / `CarDrive.Systems` / `CarDrive.Gameplay` / `CarDrive.UI` / `CarDrive.Composition` + `CarDrive.Editor` / `CarDrive.Tests.*`, 네임스페이스 `CarDrive.*`)
 - **렌더 파이프라인**: Universal RP 17.5.0, Shader Graph 기반 스프라이트 셰이더
 - **주요 패키지**: uGUI 2.5.0 (TextMeshPro 포함), Splines 2.9.0, Timeline 1.8.12, Visual Scripting 1.9.11, Test Framework 1.7.0
 - **물리**: Unity 내장 Rigidbody + WheelCollider
+- **의존성 주입**: VContainer 1.19 (조립 루트 `CarDriveLifetimeScope` 하나)
 - **오브젝트 풀**: `UnityEngine.Pool.ObjectPool<T>` (내장)
 - **연출**: DOTween (트윈) + Feel / MMFeedbacks (피드백 오케스트레이션)
 - **외부 에셋**: LowPolyRetroCars, Cartoon FX Remaster (JMO Assets), tree_pack, Crate/Barrels, Bottles
@@ -24,25 +25,31 @@ CarDrive는 플레이어가 1인칭 시점으로 차를 몰고 밤길을 달리�
 
 ### 레이어 규칙
 
-런타임은 어셈블리 하나지만 네임스페이스로 층을 나눕니다. **참조는 아래로만 흐릅니다.**
+층마다 어셈블리가 하나씩 있고, **참조는 아래로만 흐릅니다.** 규칙이 아니라 **컴파일 제약**입니다 — 위로 참조하면 빌드가 실패합니다.
 
 ```
 UI        →  Gameplay  →  Systems  →  Common
 (표시)       (씬 배우)     (전역 시뮬)   (기반)
+
+CarDrive.UI  CarDrive.Gameplay  CarDrive.Systems  CarDrive.Common
 ```
+
+조립은 `CarDrive.Composition` 이 맡습니다. 위 넷을 전부 알고 있는 유일한 어셈블리이며, 무엇이 존재하고 무엇이 무엇을 아는지가 여기서 정해집니다.
 
 - `Common` 은 **아무것도 참조하지 않습니다.** 위 세 층 중 하나라도 `using` 하면 규칙 위반입니다.
 - `Systems` 는 시간·날씨·니즈·재화·세이브처럼 씬에 하나씩 있는 전역 시뮬레이션입니다.
 - `Gameplay` 는 씬에 놓이는 배우(플레이어·차량·적·월드)와 그 부품입니다. **사운드 컨트롤러도 여기입니다** — 배우에 붙는 부품이지 시스템이 아닙니다.
 - `UI` 는 상태를 소유하지 않고 읽어서 그리기만 합니다.
 
-**예외는 셋뿐이며, 전부 Unity 직렬화 때문입니다.** 유니티는 인스펙터에서 인터페이스 타입 필드를 직렬화하지 못하므로, 인스펙터 칸이 필요한 참조는 구체 타입을 이름으로 불러야 합니다.
+**지금 위반은 없습니다.** 예전에는 Unity 직렬화 때문에 예외 셋을 허용했지만, 셋 다 해소되었습니다.
 
-| 위반 | 이유 |
+| 옛 위반 | 어떻게 없앴나 |
 |---|---|
-| `NeedsSystem` → `PlayerHealth` | 체력을 깎을 대상을 인스펙터에서 연결해야 합니다. `IDamageable` 로 받으면 배선 칸 자체가 사라집니다 |
-| `SaveData` · `SaveSystem` → `Gameplay` | 세이브가 차량·플레이어를 아는 것은 의도입니다. 시스템과 달리 씬에 여럿이고 복원 순서가 얽혀 있습니다 |
-| `Gameplay` → `UI` 4건 | `Vehicle.dashboardShakers`, `VehicleSeat`, `PlayerAttacker.ankhAnimator`, `BeverageConsumer.drinkAnimator` — 모두 인스펙터 참조입니다 |
+| `NeedsSystem` → `PlayerHealth` | 타입 안전성이 `PlayerScope` 로 옮겨 갔습니다. 그 필드가 여전히 `PlayerHealth` 타입이라 오배선은 지금도 컴파일 에러이고, `NeedsSystem` 은 `IDamageable` 만 압니다 |
+| `SaveData` · `SaveSystem` → `Gameplay` | 세이브가 Gameplay 를 아는 코드를 `*SaveParticipant` 로 떼어 Gameplay 쪽에 두었습니다. `SaveData` 는 순수 DTO 입니다 |
+| `Gameplay` → `UI` 4건 | 셋은 계약(`IImpactShakable`·`IAnkhView`·`IDrinkView`)으로, 하나는 인스펙터 필드를 `GameObject` 로 두어 끊었습니다 |
+
+**인스펙터 칸이 필요한데 계약으로 받고 싶다면** — 유니티는 인터페이스 타입 필드를 그리지 못하므로, 필드는 `MonoBehaviour` 로 두고 시작할 때 계약으로 캐스팅합니다. 잘못 끼우면 그 자리에서 오류가 납니다. `PlayerAttacker.ankhAnimator` 가 그 예입니다.
 
 새 위반을 만들기 전에 **먼저 파일이 옳은 층에 있는지** 확인하세요. 지금까지 나온 위반은 대부분 배치 실수였습니다.
 

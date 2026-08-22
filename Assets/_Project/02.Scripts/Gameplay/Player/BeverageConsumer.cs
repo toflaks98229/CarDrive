@@ -4,7 +4,6 @@ using MoreMountains.Feedbacks;
 using VContainer;
 using CarDrive.Common;
 using CarDrive.Systems;
-using CarDrive.UI;
 
 namespace CarDrive.Gameplay
 {
@@ -52,7 +51,17 @@ namespace CarDrive.Gameplay
 
         /// <summary>마시는 연출입니다. 이 연출이 끝나는 시점에 병을 던집니다.</summary>
         [Tooltip("마시는 연출. 이 연출이 끝나는 시점에 빈 병을 던집니다.")]
-        public DrinkAnimation drinkAnimator;
+        /// <summary>
+        /// 마시는 동작을 그리는 쪽입니다. 인스펙터에서 <c>DrinkAnimation</c>을 끌어다 놓습니다.
+        ///
+        /// 타입이 <c>MonoBehaviour</c>인 이유는 <see cref="PlayerAttacker.ankhAnimator"/>와 같습니다 —
+        /// 필요한 것은 <see cref="IDrinkView"/>인데 유니티가 인터페이스 필드를 인스펙터에
+        /// 그리지 못하고, 연출 클래스를 이름으로 알면 계층 화살표가 거꾸로 납니다.
+        /// </summary>
+        public MonoBehaviour drinkAnimator;
+
+        /// <summary>실제로 부리는 마시기 연출입니다. <see cref="drinkAnimator"/>를 계약으로 본 것입니다.</summary>
+        private IDrinkView drinkView;
 
         [Tooltip("Feel 로 대체하고 싶을 때만 연결하세요. 연결하면 위의 drinkAnimator 대신 이쪽이 재생됩니다. " +
                  "둘 다 같은 위치를 건드리므로 동시에 쓰면 서로 밀어냅니다.")]
@@ -154,14 +163,20 @@ namespace CarDrive.Gameplay
         {
             aim = PlayerAim.Resolve(footThrowOrigin, this);
 
+            drinkView = drinkAnimator as IDrinkView;
+            if (drinkAnimator != null && drinkView == null)
+            {
+                GameLog.Error(GameLog.Channel.Player, "BeverageConsumer: drinkAnimator 에 끼운 " + drinkAnimator.GetType().Name +
+                               " 은(는) IDrinkView 를 구현하지 않아 마시는 연출이 나오지 않습니다.", this);
+            }
+
             if (playerHealth == null) playerHealth = GameContext.Resolve<PlayerHealth>(this);
-            if (drinkAnimator == null) drinkAnimator = GameContext.Resolve<DrinkAnimation>(this);
             if (modeController == null) modeController = GameContext.Resolve<PlayerModeController>(this);
             if (soundController == null) soundController = GetComponent<PlayerSoundController>();
 
             if (playerHealth == null)
             {
-                Debug.LogWarning("BeverageConsumer: PlayerHealth를 찾지 못해 음료로 회복할 수 없습니다.", this);
+                GameLog.Warn(GameLog.Channel.Player, "BeverageConsumer: PlayerHealth를 찾지 못해 음료로 회복할 수 없습니다.", this);
             }
         }
 
@@ -243,10 +258,10 @@ namespace CarDrive.Gameplay
                 drinkFeedback.PlayFeedbacks();
                 wait = drinkFeedback.TotalDuration;
             }
-            else if (drinkAnimator != null)
+            else if (drinkView != null)
             {
-                drinkAnimator.PlayDrinkAnimation();
-                wait = drinkAnimator.TotalDuration;
+                drinkView.PlayDrinkAnimation();
+                wait = drinkView.TotalDuration;
             }
 
             yield return new WaitForSeconds(wait);

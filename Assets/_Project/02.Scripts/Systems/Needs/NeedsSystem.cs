@@ -522,7 +522,7 @@ namespace CarDrive.Systems
             if (nowCritical && !state.isCritical)
             {
                 state.isCritical = true;
-                Debug.Log("NeedsSystem: " + setting.displayName + " 한계 초과!");
+                GameLog.Info(GameLog.Channel.Simulation, "NeedsSystem: " + setting.displayName + " 한계 초과!");
                 if (onNeedCritical != null) onNeedCritical.Invoke(state.type);
             }
             else if (!nowCritical && state.isCritical)
@@ -580,7 +580,7 @@ namespace CarDrive.Systems
         /// </summary>
         private void TriggerBlackout(NeedState fatigueState, NeedSetting setting)
         {
-            Debug.Log("NeedsSystem: 피로 한계 초과 - 기절합니다.");
+            GameLog.Info(GameLog.Channel.Simulation, "NeedsSystem: 피로 한계 초과 - 기절합니다.");
 
             // 먼저 피로를 낮춰 두어야 시간을 흘릴 때 다시 기절 판정이 나지 않습니다.
             fatigueState.value = Mathf.Clamp(blackoutFatigueReset, 0f, setting.overflowLimit);

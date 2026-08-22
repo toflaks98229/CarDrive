@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using CarDrive.Gameplay;
+using CarDrive.Common;
 
 namespace CarDrive.UI
 {
@@ -83,7 +84,7 @@ namespace CarDrive.UI
         {
             if (source == null)
             {
-                Debug.LogWarning("HealthBarImage: 표시할 Health가 연결되지 않았습니다.", this);
+                GameLog.Warn(GameLog.Channel.UI, "HealthBarImage: 표시할 Health가 연결되지 않았습니다.", this);
                 enabled = false;
                 return;
             }

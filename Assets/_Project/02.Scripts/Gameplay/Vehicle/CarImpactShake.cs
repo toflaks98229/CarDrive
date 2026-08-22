@@ -110,7 +110,7 @@ namespace CarDrive.Gameplay
 
             if (logImpacts)
             {
-                Debug.Log("CarImpactShake: 차체 충격 (세기 " + scale.ToString("F2") + ")", this);
+                GameLog.Info(GameLog.Channel.Player, "CarImpactShake: 차체 충격 (세기 " + scale.ToString("F2") + ")", this);
             }
         }
 

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using CarDrive.Common;
 
 namespace CarDrive.Systems
 {
@@ -27,7 +28,7 @@ namespace CarDrive.Systems
         {
             settings = NeedDefaults.CreateSettings();
             couplings = NeedDefaults.CreateCouplings();
-            Debug.Log("NeedsProfile: 기본값으로 채웠습니다.");
+            GameLog.Info(GameLog.Channel.Simulation, "NeedsProfile: 기본값으로 채웠습니다.");
         }
     }
 }

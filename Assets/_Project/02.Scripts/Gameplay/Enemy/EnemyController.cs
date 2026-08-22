@@ -134,7 +134,7 @@ namespace CarDrive.Gameplay
 
                 if (dieOnFootPlayerHit)
                 {
-                    Debug.Log("EnemyController: 도보 플레이어와 충돌해 쓰러집니다.");
+                    GameLog.Info(GameLog.Channel.Enemy, "EnemyController: 도보 플레이어와 충돌해 쓰러집니다.");
                     Die();
                 }
                 return;
@@ -144,7 +144,7 @@ namespace CarDrive.Gameplay
             //    콜라이더가 자식(휠·차체)에 있을 수 있으므로 부모까지 올라가며 찾습니다.
             if (collision.collider.GetComponentInParent<Vehicle>() != null)
             {
-                Debug.Log("EnemyController: 차량과 충돌해 쓰러집니다.");
+                GameLog.Info(GameLog.Channel.Enemy, "EnemyController: 차량과 충돌해 쓰러집니다.");
                 Die();
             }
         }

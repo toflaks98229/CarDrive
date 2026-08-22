@@ -49,11 +49,11 @@ namespace CarDrive.Gameplay
 
             if (vehicle == null)
             {
-                Debug.LogWarning("VehicleDoorInteractable: 이 문이 속한 Vehicle을 찾지 못했습니다.", this);
+                GameLog.Warn(GameLog.Channel.Player, "VehicleDoorInteractable: 이 문이 속한 Vehicle을 찾지 못했습니다.", this);
             }
             if (modeController == null)
             {
-                Debug.LogWarning("VehicleDoorInteractable: PlayerModeController를 찾지 못해 탑승할 수 없습니다.", this);
+                GameLog.Warn(GameLog.Channel.Player, "VehicleDoorInteractable: PlayerModeController를 찾지 못해 탑승할 수 없습니다.", this);
             }
         }
 

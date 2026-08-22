@@ -507,7 +507,7 @@ namespace CarDrive.Systems
         {
             bool isWaypoint = _transition.Target != _transition.FinalTarget;
 
-            Debug.Log("WeatherSystem: " + _transition.Current + " → " + _transition.Target
+            GameLog.Info(GameLog.Channel.Simulation, "WeatherSystem: " + _transition.Current + " → " + _transition.Target
                       + (isWaypoint ? " (최종 " + _transition.FinalTarget + ")" : "")
                       + "  강도 " + _transition.TargetIntensity.ToString("F2"));
         }

@@ -81,7 +81,7 @@ namespace CarDrive.UI
 
             if (wallet == null)
             {
-                Debug.LogWarning("CurrencyUI: Wallet을 찾을 수 없어 재화를 표시하지 않습니다.", this);
+                GameLog.Warn(GameLog.Channel.UI, "CurrencyUI: Wallet을 찾을 수 없어 재화를 표시하지 않습니다.", this);
                 enabled = false;
                 return;
             }

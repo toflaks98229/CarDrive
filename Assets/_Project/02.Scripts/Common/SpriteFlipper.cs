@@ -39,7 +39,7 @@ namespace CarDrive.Common
             // SpriteRenderer가 없는 경우 오류를 기록하고 스크립트를 비활성화합니다.
             if (targetSprite == null)
             {
-                Debug.LogError("SpriteFlipper: SpriteRenderer 컴포넌트를 찾을 수 없습니다! 스크립트가 비활성화됩니다.");
+                GameLog.Error(GameLog.Channel.Core, "SpriteFlipper: SpriteRenderer 컴포넌트를 찾을 수 없습니다! 스크립트가 비활성화됩니다.");
                 this.enabled = false;
                 return;
             }

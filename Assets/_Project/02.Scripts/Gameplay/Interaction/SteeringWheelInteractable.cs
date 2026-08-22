@@ -36,7 +36,7 @@ namespace CarDrive.Gameplay
 
             if (vehicle == null)
             {
-                Debug.LogWarning("SteeringWheelInteractable: 이 운전대가 속한 Vehicle을 찾지 못해 시동을 걸 수 없습니다.", this);
+                GameLog.Warn(GameLog.Channel.Player, "SteeringWheelInteractable: 이 운전대가 속한 Vehicle을 찾지 못해 시동을 걸 수 없습니다.", this);
             }
         }
 

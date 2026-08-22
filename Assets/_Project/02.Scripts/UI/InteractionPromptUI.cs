@@ -66,7 +66,7 @@ namespace CarDrive.UI
 
             if (promptText == null)
             {
-                Debug.LogWarning("InteractionPromptUI: promptText가 없습니다.", this);
+                GameLog.Warn(GameLog.Channel.UI, "InteractionPromptUI: promptText가 없습니다.", this);
                 enabled = false;
             }
         }

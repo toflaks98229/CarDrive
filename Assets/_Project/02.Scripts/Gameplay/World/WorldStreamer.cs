@@ -209,7 +209,7 @@ namespace CarDrive.Gameplay
             // 미리 구운 월드를 쓸 때는 타일을 만들지 않으므로 프리팹이 필요 없습니다.
             if (bakedRoot == null && (tilePrefabs == null || tilePrefabs.Count == 0))
             {
-                Debug.LogError("WorldStreamer: 타일 프리팹이 없어 월드를 깔 수 없습니다. " +
+                GameLog.Error(GameLog.Channel.World, "WorldStreamer: 타일 프리팹이 없어 월드를 깔 수 없습니다. " +
                                "미리 구운 월드를 쓰려면 bakedRoot를 연결하세요.", this);
                 enabled = false;
                 return;
@@ -217,7 +217,7 @@ namespace CarDrive.Gameplay
 
             if (routes == null || routes.Count == 0)
             {
-                Debug.LogWarning("WorldStreamer: 길이 하나도 없습니다. 마을만 만들어집니다.", this);
+                GameLog.Warn(GameLog.Channel.World, "WorldStreamer: 길이 하나도 없습니다. 마을만 만들어집니다.", this);
             }
 
             // 이 두 수치가 시야 사다리의 기준입니다. 계산은 ViewDistances 가 합니다.
@@ -327,7 +327,7 @@ namespace CarDrive.Gameplay
 
             Random.state = savedState;
 
-            Debug.Log("WorldStreamer: 타일 " + tiles.Count + "개, 장소 " + WorldLocation.All.Count + "곳을 깔았습니다.");
+            GameLog.Info(GameLog.Channel.World, "WorldStreamer: 타일 " + tiles.Count + "개, 장소 " + WorldLocation.All.Count + "곳을 깔았습니다.");
         }
 
         /// <summary>
@@ -345,7 +345,7 @@ namespace CarDrive.Gameplay
 
             if (tiles.Count == 0)
             {
-                Debug.LogWarning("WorldStreamer: bakedRoot 아래에 타일이 없습니다. " +
+                GameLog.Warn(GameLog.Channel.World, "WorldStreamer: bakedRoot 아래에 타일이 없습니다. " +
                                  "CarDrive > World > 터레인 월드 굽기 를 먼저 실행하세요.", this);
             }
         }

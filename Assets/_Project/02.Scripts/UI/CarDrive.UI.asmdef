@@ -1,23 +1,19 @@
 {
-    "name": "CarDrive.Editor",
-    "rootNamespace": "CarDrive.EditorTools",
+    "name": "CarDrive.UI",
+    "rootNamespace": "CarDrive.UI",
     "references": [
         "CarDrive.Common",
         "CarDrive.Systems",
         "CarDrive.Gameplay",
-        "CarDrive.UI",
-        "CarDrive.Composition",
         "VContainer",
+        "UnityEngine.UI",
+        "Unity.TextMeshPro",
         "Unity.RenderPipelines.Universal.Runtime",
         "Unity.RenderPipelines.Core.Runtime",
-        "Unity.TextMeshPro",
-        "UnityEngine.UI",
         "MoreMountains.Tools",
-        "MoreMountains.Tools.Editor"
+        "DOTween.Modules"
     ],
-    "includePlatforms": [
-        "Editor"
-    ],
+    "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,

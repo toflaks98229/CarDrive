@@ -133,7 +133,7 @@ namespace CarDrive.UI
         {
             if (needsSystem == null)
             {
-                Debug.LogWarning("NeedsUI: NeedsSystem을 찾을 수 없어 게이지를 표시하지 않습니다.", this);
+                GameLog.Warn(GameLog.Channel.UI, "NeedsUI: NeedsSystem을 찾을 수 없어 게이지를 표시하지 않습니다.", this);
                 enabled = false;
                 return;
             }

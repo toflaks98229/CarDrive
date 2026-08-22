@@ -1,4 +1,5 @@
 using UnityEngine;
+using CarDrive.Common;
 
 namespace CarDrive.Gameplay
 {
@@ -23,7 +24,7 @@ namespace CarDrive.Gameplay
             Vehicle vehicle = player.CurrentVehicle;
             if (vehicle == null)
             {
-                Debug.LogWarning("DrivingState: 탑승할 차량이 없습니다.", player);
+                GameLog.Warn(GameLog.Channel.Player, "DrivingState: 탑승할 차량이 없습니다.", player);
                 return;
             }
 
@@ -58,7 +59,7 @@ namespace CarDrive.Gameplay
             // 5. 마우스 좌우 회전은 운전석 피벗을 돌립니다. (차 안에서 두리번거리기)
             if (player.lookController != null) player.lookController.SetPlayerBody(pivot);
 
-            Debug.Log("PlayerModeController: " + vehicle.displayName + "에 탑승했습니다.");
+            GameLog.Info(GameLog.Channel.Player, "PlayerModeController: " + vehicle.displayName + "에 탑승했습니다.");
         }
 
         /// <summary>

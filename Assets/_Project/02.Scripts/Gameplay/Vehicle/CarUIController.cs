@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.UI; // UI 요소를 사용할 경우를 대비해 추가 (현재는 Transform만 사용)
+using CarDrive.Common;
 
 namespace CarDrive.Gameplay
 {
@@ -74,7 +75,7 @@ namespace CarDrive.Gameplay
             // 다만 그 경우 탑승 전에는 가리킬 차가 없으므로, 의도한 것인지 알려는 둡니다.
             if (vehicle == null)
             {
-                Debug.LogWarning("CarUIController: 이 계기판이 속한 Vehicle을 찾지 못했습니다. " +
+                GameLog.Warn(GameLog.Channel.Player, "CarUIController: 이 계기판이 속한 Vehicle을 찾지 못했습니다. " +
                                  "탑승 중인 차량을 따라갑니다.", this);
             }
         }

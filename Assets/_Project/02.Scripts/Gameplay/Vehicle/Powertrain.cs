@@ -75,7 +75,7 @@ namespace CarDrive.Gameplay
 
             if (carData == null)
             {
-                Debug.LogError("Powertrain: CarData가 없어 동력계를 초기화할 수 없습니다.", this);
+                GameLog.Error(GameLog.Channel.Player, "Powertrain: CarData가 없어 동력계를 초기화할 수 없습니다.", this);
                 return;
             }
 
@@ -85,7 +85,7 @@ namespace CarDrive.Gameplay
             // 대체값은 <b>이 컴포넌트 안에만</b> 담습니다. 에셋은 건드리지 않습니다.
             if (carData.gearRatios == null || carData.gearRatios.Count == 0)
             {
-                Debug.LogError("Powertrain: " + carData.name + "의 기어비가 비어 있습니다. " +
+                GameLog.Error(GameLog.Channel.Player, "Powertrain: " + carData.name + "의 기어비가 비어 있습니다. " +
                                "최소 1단은 있어야 하므로 이 차량에만 임시로 4.0을 사용합니다. " +
                                "에셋을 고쳐 주세요.", this);
                 gearRatios = new List<float> { 4.0f };

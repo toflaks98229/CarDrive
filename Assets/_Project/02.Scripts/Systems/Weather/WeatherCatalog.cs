@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using CarDrive.Common;
 
 namespace CarDrive.Systems
 {
@@ -54,7 +55,7 @@ namespace CarDrive.Systems
             {
                 if (_lookup.ContainsKey(fallback[i].type)) continue;
 
-                Debug.LogWarning("WeatherSystem: " + fallback[i].type + " 프리셋이 없어 기본값을 씁니다.", context);
+                GameLog.Warn(GameLog.Channel.Simulation, "WeatherSystem: " + fallback[i].type + " 프리셋이 없어 기본값을 씁니다.", context);
                 _presets.Add(fallback[i]);
                 _lookup[fallback[i].type] = fallback[i];
             }

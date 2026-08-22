@@ -140,14 +140,14 @@ namespace CarDrive.Systems
         {
             if (!CanUse())
             {
-                Debug.Log(gameObject.name + ": 더 이상 사용할 수 없습니다.");
+                GameLog.Info(GameLog.Channel.Simulation, gameObject.name + ": 더 이상 사용할 수 없습니다.");
                 if (onDepleted != null) onDepleted.Invoke();
                 return false;
             }
 
             if (needs == null)
             {
-                Debug.LogWarning("NeedSatisfier: NeedsSystem이 없어 효과를 적용할 수 없습니다.", this);
+                GameLog.Warn(GameLog.Channel.Simulation, "NeedSatisfier: NeedsSystem이 없어 효과를 적용할 수 없습니다.", this);
                 return false;
             }
 
@@ -175,7 +175,7 @@ namespace CarDrive.Systems
                 }
             }
 
-            Debug.Log(gameObject.name + " 사용: " + promptLabel);
+            GameLog.Info(GameLog.Channel.Simulation, gameObject.name + " 사용: " + promptLabel);
             if (onUsed != null) onUsed.Invoke();
             return true;
         }

@@ -193,7 +193,7 @@ namespace CarDrive.Gameplay
             if (sqrToTarget > attackDistance * attackDistance) return;
 
             hasArrived = true;
-            Debug.Log(gameObject.name + "가 차량에 도착했습니다. 공격을 시작합니다.");
+            GameLog.Info(GameLog.Channel.Enemy, gameObject.name + "가 차량에 도착했습니다. 공격을 시작합니다.");
 
             // 부착되었으니 속삭임·공격 루프를 시작합니다.
             if (soundController != null) soundController.StartAttackLoop();

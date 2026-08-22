@@ -120,12 +120,12 @@ namespace CarDrive.Systems
                 string json = JsonUtility.ToJson(data, prettyPrint);
                 File.WriteAllText(FilePath, json);
 
-                Debug.Log("SaveSystem: 저장했습니다. " + FilePath);
+                GameLog.Info(GameLog.Channel.Simulation, "SaveSystem: 저장했습니다. " + FilePath);
                 if (onSaved != null) onSaved.Invoke();
             }
             catch (Exception e)
             {
-                Debug.LogError("SaveSystem: 저장에 실패했습니다. " + e.Message, this);
+                GameLog.Error(GameLog.Channel.Simulation, "SaveSystem: 저장에 실패했습니다. " + e.Message, this);
             }
         }
 
@@ -138,7 +138,7 @@ namespace CarDrive.Systems
         {
             if (!HasSave)
             {
-                Debug.Log("SaveSystem: 저장된 파일이 없습니다. " + FilePath);
+                GameLog.Info(GameLog.Channel.Simulation, "SaveSystem: 저장된 파일이 없습니다. " + FilePath);
                 return;
             }
 
@@ -149,19 +149,19 @@ namespace CarDrive.Systems
             }
             catch (Exception e)
             {
-                Debug.LogError("SaveSystem: 저장 파일을 읽지 못했습니다. " + e.Message, this);
+                GameLog.Error(GameLog.Channel.Simulation, "SaveSystem: 저장 파일을 읽지 못했습니다. " + e.Message, this);
                 return;
             }
 
             if (data == null)
             {
-                Debug.LogError("SaveSystem: 저장 파일이 비어 있습니다.", this);
+                GameLog.Error(GameLog.Channel.Simulation, "SaveSystem: 저장 파일이 비어 있습니다.", this);
                 return;
             }
 
             Restore(data);
 
-            Debug.Log("SaveSystem: 불러왔습니다. (" + data.savedAtUtc + ")");
+            GameLog.Info(GameLog.Channel.Simulation, "SaveSystem: 불러왔습니다. (" + data.savedAtUtc + ")");
             if (onLoaded != null) onLoaded.Invoke();
         }
 
@@ -172,7 +172,7 @@ namespace CarDrive.Systems
             if (!HasSave) return;
 
             File.Delete(FilePath);
-            Debug.Log("SaveSystem: 저장 파일을 지웠습니다.");
+            GameLog.Info(GameLog.Channel.Simulation, "SaveSystem: 저장 파일을 지웠습니다.");
         }
 
         // --- Private Methods ---

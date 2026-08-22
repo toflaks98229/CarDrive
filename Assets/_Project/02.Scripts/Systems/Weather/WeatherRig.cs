@@ -202,7 +202,7 @@ namespace CarDrive.Systems
         {
             if (weatherSystem == null)
             {
-                Debug.LogWarning("WeatherRig: WeatherSystem을 찾지 못해 날씨가 반영되지 않습니다.", this);
+                GameLog.Warn(GameLog.Channel.Simulation, "WeatherRig: WeatherSystem을 찾지 못해 날씨가 반영되지 않습니다.", this);
             }
 
             if (followTarget == null) followTarget = GameContext.MainCameraTransform;

@@ -129,7 +129,7 @@ namespace CarDrive.Common
                 {
                     if (settingLookup.ContainsKey(fallback[i].Key)) continue;
 
-                    Debug.LogWarning(ownerName + ": 설정에 " + fallback[i].DisplayName +
+                    GameLog.Warn(GameLog.Channel.Core, ownerName + ": 설정에 " + fallback[i].DisplayName +
                                      "이(가) 없어 기본값을 사용합니다.", context);
                     settings.Add(fallback[i]);
                     settingLookup[fallback[i].Key] = fallback[i];

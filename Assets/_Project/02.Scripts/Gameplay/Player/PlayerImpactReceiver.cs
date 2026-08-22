@@ -97,7 +97,7 @@ namespace CarDrive.Gameplay
             }
             if (cameraShake == null)
             {
-                Debug.LogWarning("PlayerImpactReceiver: PlayerCameraShake를 찾지 못해 시야가 흔들리지 않습니다.", this);
+                GameLog.Warn(GameLog.Channel.Player, "PlayerImpactReceiver: PlayerCameraShake를 찾지 못해 시야가 흔들리지 않습니다.", this);
             }
         }
 
@@ -145,7 +145,7 @@ namespace CarDrive.Gameplay
                 healthBar.TakeDamage(damagePerHit * intensity);
             }
 
-            Debug.Log("PlayerImpactReceiver: 플레이어가 충격을 받았습니다.");
+            GameLog.Info(GameLog.Channel.Player, "PlayerImpactReceiver: 플레이어가 충격을 받았습니다.");
             if (onImpact != null) onImpact.Invoke();
         }
     }

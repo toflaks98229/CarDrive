@@ -95,7 +95,7 @@ namespace CarDrive.Gameplay
             {
                 currentHealth = 0f;
 
-                Debug.Log(gameObject.name + ": 체력이 모두 소진되었습니다.");
+                GameLog.Info(GameLog.Channel.Player, gameObject.name + ": 체력이 모두 소진되었습니다.");
                 if (onDeath != null) onDeath.Invoke();
             }
         }

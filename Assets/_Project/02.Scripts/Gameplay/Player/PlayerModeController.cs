@@ -160,7 +160,7 @@ namespace CarDrive.Gameplay
         {
             if (target == null)
             {
-                Debug.LogWarning("PlayerModeController: 탑승할 차량이 없습니다.", this);
+                GameLog.Warn(GameLog.Channel.Player, "PlayerModeController: 탑승할 차량이 없습니다.", this);
                 return;
             }
 
@@ -189,7 +189,7 @@ namespace CarDrive.Gameplay
 
             if (vehicle == null)
             {
-                Debug.LogWarning("PlayerModeController: 탑승할 차량이 없습니다.", this);
+                GameLog.Warn(GameLog.Channel.Player, "PlayerModeController: 탑승할 차량이 없습니다.", this);
                 return;
             }
 
@@ -207,7 +207,7 @@ namespace CarDrive.Gameplay
             // 달리는 중에는 내릴 수 없습니다.
             if (!immediate && !CanExitVehicle())
             {
-                Debug.Log("PlayerModeController: 속도가 너무 빨라 내릴 수 없습니다.");
+                GameLog.Info(GameLog.Channel.Player, "PlayerModeController: 속도가 너무 빨라 내릴 수 없습니다.");
                 return;
             }
 
@@ -333,9 +333,9 @@ namespace CarDrive.Gameplay
         {
             bool ok = true;
 
-            if (mainCamera == null) { Debug.LogError("PlayerModeController: mainCamera가 없습니다.", this); ok = false; }
-            if (footRig == null) { Debug.LogError("PlayerModeController: footRig가 없습니다.", this); ok = false; }
-            if (headMount == null) { Debug.LogError("PlayerModeController: headMount가 없습니다.", this); ok = false; }
+            if (mainCamera == null) { GameLog.Error(GameLog.Channel.Player, "PlayerModeController: mainCamera가 없습니다.", this); ok = false; }
+            if (footRig == null) { GameLog.Error(GameLog.Channel.Player, "PlayerModeController: footRig가 없습니다.", this); ok = false; }
+            if (headMount == null) { GameLog.Error(GameLog.Channel.Player, "PlayerModeController: headMount가 없습니다.", this); ok = false; }
 
             // 차량은 인스펙터로 연결하지 않아도 됩니다.
             // 차량 프리팹 안에 있는 것을 씬 오브젝트가 가리키기 번거롭기 때문입니다.
@@ -347,7 +347,7 @@ namespace CarDrive.Gameplay
             }
             if (vehicle == null)
             {
-                Debug.LogWarning("PlayerModeController: 씬에서 Vehicle을 찾지 못했습니다. 탑승할 수 없습니다.", this);
+                GameLog.Warn(GameLog.Channel.Player, "PlayerModeController: 씬에서 Vehicle을 찾지 못했습니다. 탑승할 수 없습니다.", this);
             }
 
             if (!ok) enabled = false;

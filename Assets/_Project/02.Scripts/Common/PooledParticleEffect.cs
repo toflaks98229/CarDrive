@@ -74,7 +74,7 @@ namespace CarDrive.Common
             if (system == null) system = GetComponent<ParticleSystem>();
             if (system == null)
             {
-                Debug.LogWarning("PooledParticleEffect: ParticleSystem이 없어 재생할 수 없습니다.", this);
+                GameLog.Warn(GameLog.Channel.Core, "PooledParticleEffect: ParticleSystem이 없어 재생할 수 없습니다.", this);
                 PrefabPool.Release(gameObject);
                 return;
             }

@@ -19,7 +19,7 @@ namespace CarDrive.UI
     /// 밝기는 재질 색이라 위치와 겹치지 않습니다. 그래서 독립적으로 돌아도 안전합니다.
     /// </summary>
     [RequireComponent(typeof(RectTransform))]
-    public class AnkhAnimation : MonoBehaviour
+    public class AnkhAnimation : MonoBehaviour, IAnkhView
     {
         // --- Public Member Variables ---
 
@@ -226,7 +226,7 @@ namespace CarDrive.UI
 
             if (!hasColorProperty)
             {
-                Debug.LogWarning("AnkhAnimation: 재질에 '" + materialColorName + "' 속성이 없어 " +
+                GameLog.Warn(GameLog.Channel.UI, "AnkhAnimation: 재질에 '" + materialColorName + "' 속성이 없어 " +
                                  "충전 밝기를 표현하지 않습니다.", this);
                 return;
             }

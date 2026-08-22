@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
+using CarDrive.Common;
 
 namespace CarDrive.Systems
 {
@@ -152,7 +153,7 @@ namespace CarDrive.Systems
 
             if (!SystemInfo.supportsComputeShaders)
             {
-                Debug.LogWarning("GpuGrassRenderer: 이 기기가 컴퓨트 셰이더를 지원하지 않습니다. " +
+                GameLog.Warn(GameLog.Channel.World, "GpuGrassRenderer: 이 기기가 컴퓨트 셰이더를 지원하지 않습니다. " +
                                  "터레인 디테일 경로를 그대로 씁니다.");
                 return;
             }
@@ -160,7 +161,7 @@ namespace CarDrive.Systems
             cullShader = Resources.Load<ComputeShader>(CullShaderName);
             if (cullShader == null)
             {
-                Debug.LogWarning("GpuGrassRenderer: " + CullShaderName + ".compute 를 Resources 에서 찾지 못했습니다. " +
+                GameLog.Warn(GameLog.Channel.World, "GpuGrassRenderer: " + CullShaderName + ".compute 를 Resources 에서 찾지 못했습니다. " +
                                  "Assets/_Project/03.DataAssets/Resources 아래로 옮기거나 링크하세요.");
                 return;
             }
@@ -179,7 +180,7 @@ namespace CarDrive.Systems
                 int total = 0;
                 for (int i = 0; i < batches.Count; i++) total += batches[i].Count;
 
-                Debug.Log("GpuGrassRenderer: 종 " + batches.Count + "개 · 포기 " + total.ToString("N0") +
+                GameLog.Info(GameLog.Channel.World, "GpuGrassRenderer: 종 " + batches.Count + "개 · 포기 " + total.ToString("N0") +
                           "개를 GPU 버퍼에 올렸습니다. (" + (total * InstanceStride / 1024 / 1024) + "MB) " +
                           "터레인 디테일을 끄지 않으면 풀이 두 겹으로 보입니다.");
             }

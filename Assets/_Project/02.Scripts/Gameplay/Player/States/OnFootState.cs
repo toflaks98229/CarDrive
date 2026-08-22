@@ -1,4 +1,5 @@
 using UnityEngine;
+using CarDrive.Common;
 
 namespace CarDrive.Gameplay
 {
@@ -35,7 +36,7 @@ namespace CarDrive.Gameplay
                 player.lookController.SetPlayerBody(player.footRig.transform);
             }
 
-            Debug.Log("PlayerModeController: 차량에서 내렸습니다.");
+            GameLog.Info(GameLog.Channel.Player, "PlayerModeController: 차량에서 내렸습니다.");
         }
 
         /// <summary>

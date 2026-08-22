@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using CarDrive.Common;
 
 namespace CarDrive.Systems
 {
@@ -181,7 +182,7 @@ namespace CarDrive.Systems
                 Shader shader = Shader.Find(ShaderName);
                 if (shader == null)
                 {
-                    Debug.LogWarning("GrassTrampleMap: " + ShaderName + " 셰이더를 찾지 못해 자국이 남지 않습니다.");
+                    GameLog.Warn(GameLog.Channel.World, "GrassTrampleMap: " + ShaderName + " 셰이더를 찾지 못해 자국이 남지 않습니다.");
                     return false;
                 }
 

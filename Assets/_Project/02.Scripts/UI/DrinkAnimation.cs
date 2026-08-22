@@ -18,7 +18,7 @@ namespace CarDrive.UI
     /// 이 클래스는 <b>보여 주기만</b> 합니다.
     /// </summary>
     [RequireComponent(typeof(RectTransform))]
-    public class DrinkAnimation : MonoBehaviour
+    public class DrinkAnimation : MonoBehaviour, IDrinkView
     {
         // --- Public Member Variables ---
 

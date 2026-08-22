@@ -150,7 +150,7 @@ namespace CarDrive.Gameplay
             {
                 // RequireComponent가 있어 새로 붙이는 프리팹에는 반드시 있지만,
                 // 그 이전에 만들어진 프리팹을 대비해 안전망을 둡니다.
-                Debug.LogWarning(gameObject.name + ": EnemyHealth가 없어 기본값으로 붙입니다. " +
+                GameLog.Warn(GameLog.Channel.Enemy, gameObject.name + ": EnemyHealth가 없어 기본값으로 붙입니다. " +
                                  "프리팹에 EnemyHealth를 추가하고 최대 체력을 설정하세요.", this);
                 health = gameObject.AddComponent<EnemyHealth>();
             }
@@ -263,7 +263,7 @@ namespace CarDrive.Gameplay
 
             SpawnDrops();
 
-            Debug.Log(gameObject.name + "가 쓰러졌습니다.");
+            GameLog.Info(GameLog.Channel.Enemy, gameObject.name + "가 쓰러졌습니다.");
 
             Despawn();
         }
@@ -349,7 +349,7 @@ namespace CarDrive.Gameplay
 
             if (visualRenderer == null)
             {
-                Debug.LogWarning(gameObject.name + ": visualRenderer를 찾지 못해 점멸 연출이 동작하지 않습니다.", this);
+                GameLog.Warn(GameLog.Channel.Enemy, gameObject.name + ": visualRenderer를 찾지 못해 점멸 연출이 동작하지 않습니다.", this);
             }
         }
     }

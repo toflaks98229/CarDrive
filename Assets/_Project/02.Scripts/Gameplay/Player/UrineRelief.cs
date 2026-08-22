@@ -287,12 +287,12 @@ namespace CarDrive.Gameplay
 
         private void Start()
         {
-            if (_needsSystem == null) Debug.LogWarning("UrineRelief: NeedsSystem이 주입되지 않았습니다.", this);
+            if (_needsSystem == null) GameLog.Warn(GameLog.Channel.Player, "UrineRelief: NeedsSystem이 주입되지 않았습니다.", this);
 
             if (_stream == null) _stream = GetComponentInChildren<ParticleSystem>(true);
             if (!_view.Configure(_stream, _coneAngle, BuildEmissionRange()))
             {
-                Debug.LogWarning("UrineRelief: 파티클이 없어 물줄기가 보이지 않습니다.", this);
+                GameLog.Warn(GameLog.Channel.Player, "UrineRelief: 파티클이 없어 물줄기가 보이지 않습니다.", this);
                 return;
             }
 

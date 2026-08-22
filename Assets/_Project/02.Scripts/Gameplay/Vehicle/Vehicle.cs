@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using CarDrive.UI;
 using CarDrive.Common;
 
 namespace CarDrive.Gameplay
@@ -58,14 +57,6 @@ namespace CarDrive.Gameplay
 
         /// <summary>충돌할 때 차체를 흔드는 컴포넌트입니다.</summary>
         public CarImpactShake impactShake;
-
-        /// <summary>
-        /// 이 차량의 계기판 중 충돌 시 흔들 것들입니다. 비워두면 자식에서 모두 찾습니다.
-        /// 예전에는 충돌 처리가 씬 전체의 계기판을 긁어모아, 한 차가 부딪히면 다른 차 UI도 흔들렸습니다.
-        /// </summary>
-        [Tooltip("이 차량의 계기판 중 충돌 시 흔들 것들. 비워두면 자식에서 모두 찾습니다. " +
-                 "예전에는 충돌 처리가 씬 전체의 계기판을 긁어모아, 한 차가 부딪히면 다른 차 UI도 흔들렸습니다.")]
-        public List<UIElementShaker> dashboardShakers = new List<UIElementShaker>();
 
         // --- Public Properties ---
 
@@ -182,36 +173,33 @@ namespace CarDrive.Gameplay
             if (health == null) health = GetComponentInChildren<VehicleHealth>(true);
             if (impactShake == null) impactShake = GetComponentInChildren<CarImpactShake>(true);
 
-            if (dashboardShakers == null) dashboardShakers = new List<UIElementShaker>();
-            if (dashboardShakers.Count == 0)
-            {
-                GetComponentsInChildren(true, dashboardShakers);
-            }
-
             BuildShakables();
 
             if (seat == null)
             {
-                Debug.LogWarning("Vehicle: VehicleSeat을 찾지 못해 승하차 지점을 계산할 수 없습니다.", this);
+                GameLog.Warn(GameLog.Channel.Player, "Vehicle: VehicleSeat을 찾지 못해 승하차 지점을 계산할 수 없습니다.", this);
             }
         }
 
         /// <summary>
-        /// 흔들 대상을 한 목록으로 모읍니다.
+        /// 흔들 대상을 <b>자기 자식 안에서</b> 한 목록으로 모읍니다.
         ///
-        /// 인스펙터 참조(<see cref="impactShake"/>·<see cref="dashboardShakers"/>)는 그대로 둡니다.
-        /// 씬에 이미 이어 둔 배선을 잃지 않으면서, 부딪히는 쪽에는 목록 하나만 보여 주기 위해서입니다.
+        /// <b>왜 인스펙터 목록을 없앴는가.</b> 예전에는 계기판 흔들개들을
+        /// <c>List&lt;UIElementShaker&gt;</c>로 들고 있었습니다. 그 한 줄 때문에
+        /// Gameplay 가 UI 를 이름으로 알아야 했고, 계층 화살표가 거꾸로 났습니다.
+        ///
+        /// 그런데 그 목록은 원래도 <b>비어 있으면 자식에서 찾아 채우는</b> 것이었습니다.
+        /// 찾는 조건을 "UIElementShaker" 에서 "흔들 수 있는 것"(<see cref="IImpactShakable"/>)
+        /// 으로 바꾸면 목록 자체가 필요 없어집니다. 차체 흔들개까지 같은 탐색에 잡히므로
+        /// 결과도 예전과 같습니다.
+        ///
+        /// <b>범위는 여전히 이 차량의 자식입니다.</b> 예전에 씬 전체의 계기판을 긁어모아
+        /// 한 차가 부딪히면 다른 차 UI 도 흔들리던 문제가 다시 생기지 않습니다.
         /// </summary>
         private void BuildShakables()
         {
             shakables.Clear();
-
-            if (impactShake != null) shakables.Add(impactShake);
-
-            for (int i = 0; i < dashboardShakers.Count; i++)
-            {
-                if (dashboardShakers[i] != null) shakables.Add(dashboardShakers[i]);
-            }
+            GetComponentsInChildren(true, shakables);
         }
     }
 }

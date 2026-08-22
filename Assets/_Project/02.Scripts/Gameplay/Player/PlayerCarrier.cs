@@ -153,7 +153,7 @@ namespace CarDrive.Gameplay
             }
             if (playerCollider == null)
             {
-                Debug.LogWarning("PlayerCarrier: 플레이어 콜라이더를 찾지 못해 들고 있는 물건과 충돌합니다.", this);
+                GameLog.Warn(GameLog.Channel.Player, "PlayerCarrier: 플레이어 콜라이더를 찾지 못해 들고 있는 물건과 충돌합니다.", this);
             }
         }
 
@@ -233,7 +233,7 @@ namespace CarDrive.Gameplay
 
             if (target.Body.mass > maxCarryMass)
             {
-                Debug.Log("PlayerCarrier: " + target.displayName + "은(는) 너무 무겁습니다.");
+                GameLog.Info(GameLog.Channel.Player, "PlayerCarrier: " + target.displayName + "은(는) 너무 무겁습니다.");
                 return;
             }
 
@@ -246,7 +246,7 @@ namespace CarDrive.Gameplay
             target.OnPickedUp();
             IgnorePlayerCollision(target, true);
 
-            Debug.Log("PlayerCarrier: " + target.displayName + "을(를) 들었습니다.");
+            GameLog.Info(GameLog.Channel.Player, "PlayerCarrier: " + target.displayName + "을(를) 들었습니다.");
         }
 
         /// <summary>
@@ -269,7 +269,7 @@ namespace CarDrive.Gameplay
                 dropped.Body.AddForce(aim.forward * throwImpulse, ForceMode.VelocityChange);
             }
 
-            Debug.Log("PlayerCarrier: " + dropped.displayName + "을(를) 내려놓았습니다.");
+            GameLog.Info(GameLog.Channel.Player, "PlayerCarrier: " + dropped.displayName + "을(를) 내려놓았습니다.");
         }
 
         // --- Private Methods ---

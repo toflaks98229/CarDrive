@@ -33,13 +33,13 @@ namespace CarDrive.Common
 
             if (GameContext.MainCamera != null)
             {
-                Debug.LogWarning(owner.GetType().Name + ": 카메라 오브젝트에 붙어 있지 않아 " +
+                GameLog.Warn(GameLog.Channel.Core, owner.GetType().Name + ": 카메라 오브젝트에 붙어 있지 않아 " +
                                  "Camera.main을 조준 기준으로 씁니다. 의도한 것이 아니라면 이 컴포넌트를 " +
                                  "카메라로 옮기거나 조준 기준을 직접 지정하세요.", owner);
                 return GameContext.MainCameraTransform;
             }
 
-            Debug.LogWarning(owner.GetType().Name + ": 조준 기준이 될 카메라를 찾지 못해 " +
+            GameLog.Warn(GameLog.Channel.Core, owner.GetType().Name + ": 조준 기준이 될 카메라를 찾지 못해 " +
                              "이 오브젝트의 방향으로 조준합니다.", owner);
             return owner.transform;
         }

@@ -2,6 +2,7 @@ using System.Text;
 using UnityEngine;
 using TMPro;
 using CarDrive.Gameplay;
+using CarDrive.Common;
 
 namespace CarDrive.UI
 {
@@ -102,7 +103,7 @@ namespace CarDrive.UI
 
             if (source == null)
             {
-                Debug.LogWarning("TextHealthBar: 읽어올 Health를 찾지 못했습니다.", this);
+                GameLog.Warn(GameLog.Channel.UI, "TextHealthBar: 읽어올 Health를 찾지 못했습니다.", this);
             }
         }
 

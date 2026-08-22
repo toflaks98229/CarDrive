@@ -57,11 +57,11 @@ namespace CarDrive.Gameplay
             if (vehicle == null) vehicle = GetComponentInParent<Vehicle>();
             if (vehicle == null)
             {
-                Debug.LogWarning("CarCollisionHandler: 이 차량의 Vehicle을 찾지 못했습니다.", this);
+                GameLog.Warn(GameLog.Channel.Player, "CarCollisionHandler: 이 차량의 Vehicle을 찾지 못했습니다.", this);
             }
             else if (vehicle.health == null)
             {
-                Debug.LogWarning("CarCollisionHandler: VehicleHealth를 찾지 못해 내구도가 줄지 않습니다.", this);
+                GameLog.Warn(GameLog.Channel.Player, "CarCollisionHandler: VehicleHealth를 찾지 못해 내구도가 줄지 않습니다.", this);
             }
 
             if (soundController == null)

@@ -117,7 +117,7 @@ namespace CarDrive.Gameplay
             vehicle = GetComponent<Vehicle>();
             if (vehicle == null || vehicle.controller == null)
             {
-                Debug.LogError("GhostSpawner: 이 오브젝트에서 Vehicle을 찾을 수 없습니다!");
+                GameLog.Error(GameLog.Channel.Enemy, "GhostSpawner: 이 오브젝트에서 Vehicle을 찾을 수 없습니다!");
                 this.enabled = false;
                 return;
             }
@@ -125,7 +125,7 @@ namespace CarDrive.Gameplay
             carHealth = vehicle.health;
             if (carHealth == null)
             {
-                Debug.LogError("GhostSpawner: 이 차량에서 VehicleHealth를 찾을 수 없습니다!");
+                GameLog.Error(GameLog.Channel.Enemy, "GhostSpawner: 이 차량에서 VehicleHealth를 찾을 수 없습니다!");
                 this.enabled = false;
                 return;
             }
@@ -133,7 +133,7 @@ namespace CarDrive.Gameplay
             // [수정됨] 스폰 위치 앵커 확인
             if (rearSpawnAnchor == null || sideSpawnAnchor1 == null || sideSpawnAnchor2 == null)
             {
-                Debug.LogWarning("GhostSpawner: 모든 스폰 앵커(SpawnAnchor)가 설정되지 않았습니다.");
+                GameLog.Warn(GameLog.Channel.Enemy, "GhostSpawner: 모든 스폰 앵커(SpawnAnchor)가 설정되지 않았습니다.");
             }
 
             ResetSpawnTimer();
@@ -229,7 +229,7 @@ namespace CarDrive.Gameplay
         /// <param name="isRearGhost">뒤쪽 귀신이면 true, 옆쪽 귀신이면 false. 관리 목록을 나누는 데 씁니다.</param>
         private void SpawnGhost(GameObject prefab, Vector3 spawnWorldPosition, Vector3 targetLocalOffset, Transform parentAnchor, bool isRearGhost)
         {
-            Debug.Log(prefab.name + " 스폰 시도...");
+            GameLog.Info(GameLog.Channel.Enemy, prefab.name + " 스폰 시도...");
 
             // 1. 지정된 앵커의 자식으로 귀신을 꺼냅니다.
             //    풀에서 재사용하므로 Instantiate 대신 Get을 씁니다.
@@ -259,7 +259,7 @@ namespace CarDrive.Gameplay
             }
             else
             {
-                Debug.LogError(prefab.name + " 프리팹에 AttachedGhostController 스크립트가 없습니다!", prefab);
+                GameLog.Error(GameLog.Channel.Enemy, prefab.name + " 프리팹에 AttachedGhostController 스크립트가 없습니다!", prefab);
                 PrefabPool.Release(ghostObj); // 잘못된 프리팹이므로 되돌려 놓습니다.
             }
         }

@@ -130,7 +130,7 @@ namespace CarDrive.Gameplay
         /// </summary>
         void Start()
         {
-            if (needsSystem == null) Debug.LogWarning("RainDrinking: NeedsSystem이 주입되지 않았습니다.", this);
+            if (needsSystem == null) GameLog.Warn(GameLog.Channel.Player, "RainDrinking: NeedsSystem이 주입되지 않았습니다.", this);
 
             IsUnderOpenSky = true;
         }

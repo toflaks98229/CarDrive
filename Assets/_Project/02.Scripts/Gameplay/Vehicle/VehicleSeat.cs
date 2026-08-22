@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
-using CarDrive.UI;
+using CarDrive.Common;
 
 namespace CarDrive.Gameplay
 {
@@ -138,7 +138,7 @@ namespace CarDrive.Gameplay
             }
 
             // 지점을 하나도 설정하지 않았을 때의 마지막 수단입니다.
-            Debug.LogWarning("VehicleSeat: 하차 지점이 없어 차량 왼쪽으로 내립니다.", this);
+            GameLog.Warn(GameLog.Channel.Player, "VehicleSeat: 하차 지점이 없어 차량 왼쪽으로 내립니다.", this);
             return transform.position - transform.right * 2f;
         }
 
@@ -159,14 +159,21 @@ namespace CarDrive.Gameplay
         // --- Private Methods ---
 
         /// <summary>
-        /// 표시 오브젝트가 지정되지 않았으면 차량 안에서 찾아 둡니다.
+        /// 표시 오브젝트가 비어 있으면 알려 줍니다.
+        ///
+        /// <b>예전에는 여기서 <c>TextHealthBar</c>를 찾아 채웠습니다.</b> 편했지만 그 한 줄이
+        /// Gameplay 를 UI 에 묶었고, 좌석이 <b>표시 방식</b>까지 알게 만들었습니다.
+        /// 이 좌석이 소유하는 것은 켜고 끌 오브젝트이지 그것이 글자인지 게이지인지가 아닙니다.
+        ///
+        /// 지금은 인스펙터에 이어 둔 것만 씁니다. 씬에 이미 이어져 있으므로 동작은 같고,
+        /// 비어 있다면 그것은 배선 실수이지 자동으로 메울 일이 아닙니다.
         /// </summary>
         private void ResolveHealthDisplay()
         {
             if (healthDisplay != null) return;
 
-            TextHealthBar bar = GetComponentInChildren<TextHealthBar>(true);
-            if (bar != null) healthDisplay = bar.gameObject;
+            GameLog.Warn(GameLog.Channel.Player, "VehicleSeat: healthDisplay 가 비어 있어 탑승 중 내구도 표시가 나오지 않습니다. " +
+                             "인스펙터에서 표시할 오브젝트를 이어 주세요.", this);
         }
     }
 }

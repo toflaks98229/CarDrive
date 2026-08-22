@@ -96,7 +96,7 @@ namespace CarDrive.Common
                 // 같은 것을 두 번 등록하는 것은 문제가 아닙니다.
                 if (ReferenceEquals(existing, service)) return true;
 
-                Debug.LogWarning("GameContext: " + key.Name + "이(가) 씬에 두 개 이상 있습니다. " +
+                GameLog.Warn(GameLog.Channel.Core, "GameContext: " + key.Name + "이(가) 씬에 두 개 이상 있습니다. " +
                                  "나중 것은 등록되지 않습니다.", service);
                 return false;
             }
@@ -164,7 +164,7 @@ namespace CarDrive.Common
             T scanned = UnityEngine.Object.FindAnyObjectByType<T>();
             if (scanned == null) return null;
 
-            Debug.LogWarning("GameContext: " + typeof(T).Name + "이(가) 등록되지 않아 씬을 검색했습니다. " +
+            GameLog.Warn(GameLog.Channel.Core, "GameContext: " + typeof(T).Name + "이(가) 등록되지 않아 씬을 검색했습니다. " +
                              "이 타입의 Awake에서 GameContext.Register를 부르세요.", asker);
             services[typeof(T)] = scanned;
             return scanned;
@@ -181,7 +181,7 @@ namespace CarDrive.Common
             T found = Resolve<T>(asker);
             if (found == null)
             {
-                Debug.LogError("GameContext: " + typeof(T).Name + "을(를) 찾지 못했습니다. " +
+                GameLog.Error(GameLog.Channel.Core, "GameContext: " + typeof(T).Name + "을(를) 찾지 못했습니다. " +
                                "씬에 배치되어 있는지 확인하세요.", asker);
             }
             return found;

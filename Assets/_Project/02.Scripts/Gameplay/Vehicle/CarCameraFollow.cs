@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using CarDrive.Common;
 
 namespace CarDrive.Gameplay
 {
@@ -30,7 +31,7 @@ namespace CarDrive.Gameplay
             // 타겟이 할당되지 않았으면 경고를 출력하고 스크립트를 비활성화합니다.
             if (target == null)
             {
-                Debug.LogError("CarCameraFollow: Target이 할당되지 않았습니다!");
+                GameLog.Error(GameLog.Channel.Player, "CarCameraFollow: Target이 할당되지 않았습니다!");
                 this.enabled = false;
             }
         }

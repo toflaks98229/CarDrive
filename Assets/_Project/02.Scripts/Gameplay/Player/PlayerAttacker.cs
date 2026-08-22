@@ -2,7 +2,6 @@
 using UnityEngine;
 using MoreMountains.Feedbacks;
 using CarDrive.Common;
-using CarDrive.UI;
 
 namespace CarDrive.Gameplay
 {
@@ -37,8 +36,19 @@ namespace CarDrive.Gameplay
         public int maxCollidersPerHit = 16;
 
         [Header("연동 컴포넌트")]
-        [Tooltip("앙크의 충전 밝기를 담당하는 컨트롤러")]
-        public AnkhAnimation ankhAnimator;
+        /// <summary>
+        /// 앙크를 그리는 쪽입니다. 인스펙터에서 <c>AnkhAnimation</c>을 끌어다 놓습니다.
+        ///
+        /// <b>타입이 왜 MonoBehaviour 인가.</b> 이 필드가 필요한 것은 <see cref="IAnkhView"/>인데,
+        /// 유니티는 인터페이스 타입 필드를 인스펙터에 그리지 못합니다. 그렇다고 연출 클래스를
+        /// 이름으로 알면 Gameplay 가 UI 를 참조하게 되어 계층 화살표가 거꾸로 납니다.
+        ///
+        /// 그래서 <b>담는 그릇만 넓히고</b> 실제로 쓰는 것은 아래 <see cref="ankhView"/>입니다.
+        /// 잘못된 것을 끼우면 <see cref="Start"/>에서 오류로 알려 줍니다.
+        /// </summary>
+        [Tooltip("앙크의 충전 밝기를 담당하는 컨트롤러입니다. IAnkhView 를 구현해야 합니다. " +
+                 "(기본 구현은 AnkhAnimation)")]
+        public MonoBehaviour ankhAnimator;
 
         [Header("연출 대체 (Feel · 선택)")]
         [Tooltip("연결하면 AnkhAnimation.ShowAnkh 대신 이쪽이 재생됩니다. " +
@@ -73,6 +83,9 @@ namespace CarDrive.Gameplay
         // 충전이 끝나 발사 루프가 돌고 있는지. 루프를 한 번만 시작하기 위해 씁니다.
         private bool isFiring = false;
 
+        /// <summary>실제로 부리는 앙크 연출입니다. <see cref="ankhAnimator"/>를 계약으로 본 것입니다.</summary>
+        private IAnkhView ankhView;
+
         // 공격 판정용 버퍼. 미리 잡아 두고 재사용해 GC 압력을 없앱니다.
         private RaycastHit[] hitBuffer;
 
@@ -95,9 +108,16 @@ namespace CarDrive.Gameplay
             // 사운드는 있으면 쓰고 없으면 조용히 넘어갑니다.
             if (soundController == null) soundController = GetComponent<PlayerSoundController>();
 
+            ankhView = ankhAnimator as IAnkhView;
+
             if (ankhAnimator == null)
             {
-                Debug.LogWarning("PlayerAttacker: AnkhAnimator가 할당되지 않았습니다. 앙크 공격 애니메이션/효과가 작동하지 않습니다.");
+                GameLog.Warn(GameLog.Channel.Player, "PlayerAttacker: AnkhAnimator가 할당되지 않았습니다. 앙크 공격 애니메이션/효과가 작동하지 않습니다.");
+            }
+            else if (ankhView == null)
+            {
+                GameLog.Error(GameLog.Channel.Player, "PlayerAttacker: ankhAnimator 에 끼운 " + ankhAnimator.GetType().Name +
+                               " 은(는) IAnkhView 를 구현하지 않아 앙크 연출이 동작하지 않습니다.", this);
             }
         }
 
@@ -148,9 +168,9 @@ namespace CarDrive.Gameplay
                     hideFeedback?.StopFeedbacks();
                     showFeedback.PlayFeedbacks();
                 }
-                else if (ankhAnimator != null)
+                else if (ankhView != null)
                 {
-                    ankhAnimator.ShowAnkh();
+                    ankhView.ShowAnkh();
                 }
 
                 if (soundController != null) soundController.PlayAnkhCharge();
@@ -170,7 +190,7 @@ namespace CarDrive.Gameplay
             isAnkhHeld = false;
 
             // 충전 밝기는 언제나 코드가 담당합니다. (연속적인 상태라 피드백에 맞지 않습니다)
-            if (ankhAnimator != null) ankhAnimator.SetTargetChargeProgress(0f);
+            if (ankhView != null) ankhView.SetTargetChargeProgress(0f);
 
             if (hideFeedback != null)
             {
@@ -178,10 +198,10 @@ namespace CarDrive.Gameplay
                 hitFeedback?.StopFeedbacks();
                 hideFeedback.PlayFeedbacks();
             }
-            else if (ankhAnimator != null)
+            else if (ankhView != null)
             {
-                ankhAnimator.HideAnkh();
-                ankhAnimator.StopShake();
+                ankhView.HideAnkh();
+                ankhView.StopShake();
             }
 
             // 발사 중이었다면 루프를 멈춥니다.
@@ -198,19 +218,19 @@ namespace CarDrive.Gameplay
         /// </summary>
         private void HandleAnkhAttack()
         {
-            if (!isAnkhHeld || ankhAnimator == null) return;
+            if (!isAnkhHeld || ankhView == null) return;
 
             // 1. 앙크 충전
             if (ankhChargeTimer > 0)
             {
                 ankhChargeTimer -= Time.deltaTime;
                 float chargeProgress = Mathf.Clamp01(1.0f - (ankhChargeTimer / ankhChargeTime));
-                ankhAnimator.SetTargetChargeProgress(chargeProgress);
+                ankhView.SetTargetChargeProgress(chargeProgress);
                 return; // 아직 충전 중
             }
 
             // 2. 충전 완료 (공격 활성화)
-            ankhAnimator.SetTargetChargeProgress(1.0f); // 최대 충전 상태 유지
+            ankhView.SetTargetChargeProgress(1.0f); // 최대 충전 상태 유지
 
             // 충전이 막 끝난 순간에만 발사 루프를 시작합니다.
             if (!isFiring)
@@ -257,9 +277,9 @@ namespace CarDrive.Gameplay
                 {
                     if (!hitFeedback.IsPlaying) hitFeedback.PlayFeedbacks();
                 }
-                else if (ankhAnimator != null)
+                else if (ankhView != null)
                 {
-                    ankhAnimator.StartShake();
+                    ankhView.StartShake();
                 }
 
                 float damageToDeal = ankhDamagePerSecond * Time.deltaTime;
@@ -274,9 +294,9 @@ namespace CarDrive.Gameplay
                 {
                     if (hitFeedback.IsPlaying) hitFeedback.StopFeedbacks();
                 }
-                else if (ankhAnimator != null)
+                else if (ankhView != null)
                 {
-                    ankhAnimator.StopShake();
+                    ankhView.StopShake();
                 }
             }
         }

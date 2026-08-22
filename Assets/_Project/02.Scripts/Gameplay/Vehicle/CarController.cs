@@ -265,7 +265,7 @@ namespace CarDrive.Gameplay
 
             if (wantOn && _powertrain.IsFuelEmpty())
             {
-                Debug.Log("CarController: 연료가 없어 시동이 걸리지 않습니다.");
+                GameLog.Info(GameLog.Channel.Player, "CarController: 연료가 없어 시동이 걸리지 않습니다.");
                 return;
             }
 
@@ -297,7 +297,7 @@ namespace CarDrive.Gameplay
 
             if (IsEngineOn && _powertrain.IsFuelEmpty())
             {
-                Debug.Log("CarController: 연료가 떨어져 시동이 꺼졌습니다.");
+                GameLog.Info(GameLog.Channel.Player, "CarController: 연료가 떨어져 시동이 꺼졌습니다.");
                 SetEngineOn(false);
             }
         }
@@ -389,7 +389,7 @@ namespace CarDrive.Gameplay
         {
             if (_carData == null)
             {
-                Debug.LogError("CarController: CarData가 연결되지 않아 주행할 수 없습니다. " +
+                GameLog.Error(GameLog.Channel.Player, "CarController: CarData가 연결되지 않아 주행할 수 없습니다. " +
                                "인스펙터에서 carData를 지정하세요.", this);
                 enabled = false;
                 return false;

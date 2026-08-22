@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using CarDrive.Common;
 
 namespace CarDrive.Gameplay
 {
@@ -62,7 +63,7 @@ namespace CarDrive.Gameplay
             // 2. CarController를 가진 대상(차량)과 부딪힌 것이 맞다면
             if (car != null)
             {
-                Debug.Log(gameObject.name + "가 " + collision.gameObject.name + "와 충돌!");
+                GameLog.Info(GameLog.Channel.World, gameObject.name + "가 " + collision.gameObject.name + "와 충돌!");
 
                 // 3. 충돌 속도를 계산합니다. (relativeVelocity.magnitude는 두 물체의 상대 속도 크기)
                 float impactSpeed = collision.relativeVelocity.magnitude;

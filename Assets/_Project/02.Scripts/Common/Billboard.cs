@@ -43,7 +43,7 @@ namespace CarDrive.Common
             }
             else
             {
-                Debug.LogError("Billboard: 씬에서 'MainCamera' 태그를 가진 카메라를 찾을 수 없습니다!");
+                GameLog.Error(GameLog.Channel.Core, "Billboard: 씬에서 'MainCamera' 태그를 가진 카메라를 찾을 수 없습니다!");
                 this.enabled = false; // 카메라가 없으면 스크립트 비활성화
             }
         }
