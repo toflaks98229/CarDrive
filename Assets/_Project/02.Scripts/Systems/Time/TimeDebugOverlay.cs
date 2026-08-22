@@ -1,4 +1,5 @@
 using UnityEngine;
+using VContainer;
 using CarDrive.Common;
 
 namespace CarDrive.Systems
@@ -106,10 +107,24 @@ namespace CarDrive.Systems
         /// <summary>
         /// 날씨 표시에 쓸 시스템들을 씬에서 찾습니다. 없으면 날씨 영역만 빠집니다.
         /// </summary>
-        void Start()
+        /// <summary>
+        /// 보여 줄 날씨와 리그를 받습니다.
+        ///
+        /// <b>리그만 컨테이너에서 직접 꺼냅니다.</b> <see cref="WeatherRig"/>는 설치자에서
+        /// <c>OptionalRef</c>로 선언된 <b>선택 사항</b>이라 등록되지 않을 수 있습니다.
+        /// 그것을 매개변수로 요구하면 리그가 없는 씬에서 <b>컨테이너 조립 자체가 실패하고</b>,
+        /// 그 여파로 다른 컴포넌트들까지 주입을 받지 못합니다.
+        /// 없어도 되는 것은 없어도 되는 방식으로 물어야 합니다.
+        /// </summary>
+        /// <param name="weatherSystem">날씨 시스템</param>
+        /// <param name="resolver">선택적 의존을 물어볼 컨테이너</param>
+        [Inject]
+        public void Construct(WeatherSystem weatherSystem, IObjectResolver resolver)
         {
-            weather = GameContext.Resolve<WeatherSystem>(this);
-            rig = GameContext.Resolve<WeatherRig>(this);
+            weather = weatherSystem;
+
+            WeatherRig resolved;
+            rig = resolver.TryResolve(out resolved) ? resolved : null;
         }
 
         /// <summary>

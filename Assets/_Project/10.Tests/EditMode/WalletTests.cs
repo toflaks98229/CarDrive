@@ -27,7 +27,6 @@ namespace CarDrive.Tests
             wallet = go.AddComponent<Wallet>();
 
             // EditMode 에서는 Awake 가 돌지 않으므로 등록을 직접 합니다.
-            // (Wallet.Report 가 레지스트리를 거쳐 지갑을 찾습니다)
             GameContext.Register(wallet);
         }
 
@@ -143,14 +142,30 @@ namespace CarDrive.Tests
         }
 
         /// <summary>
-        /// 풀에서 나온 덩어리는 참조 없이 <see cref="Wallet.Report"/>로 넣습니다.
-        /// 등록된 지갑을 찾아가야 합니다.
+        /// 풀에서 나온 덩어리는 <see cref="ICurrencySink"/>를 주입받아 넣습니다.
+        /// 예전에는 <c>Wallet.Report</c>라는 정적 메서드가 이 역할을 했습니다.
         /// </summary>
         [Test]
-        public void 정적_보고가_등록된_지갑에_들어간다()
+        public void 계약으로_넣으면_지갑에_들어간다()
         {
-            Assert.AreEqual(3, Wallet.Report(CurrencyType.Ectoplasm, 3));
+            ICurrencySink sink = wallet;
+
+            Assert.AreEqual(3, sink.Add(CurrencyType.Ectoplasm, 3));
             Assert.AreEqual(3, wallet.Get(CurrencyType.Ectoplasm));
+        }
+
+        /// <summary>
+        /// 지갑이 없어도 줍는 쪽은 계속 돌아야 합니다.
+        ///
+        /// 예전 <c>Wallet.Report</c>는 지갑이 없으면 0을 돌려주고 지나갔습니다.
+        /// 그 성질을 <see cref="NullCurrencySink"/>가 이어받았는지 확인합니다.
+        /// </summary>
+        [Test]
+        public void 지갑이_없으면_조용히_0을_돌려준다()
+        {
+            ICurrencySink sink = NullCurrencySink.Instance;
+
+            Assert.AreEqual(0, sink.Add(CurrencyType.Ectoplasm, 3));
         }
     }
 }

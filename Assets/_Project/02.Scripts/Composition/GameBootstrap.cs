@@ -54,6 +54,11 @@ namespace CarDrive.Composition
         {
             GameLog.Info(GameLog.Channel.Core, "[GameBootstrap] 시스템을 연결합니다...");
 
+            // 순서가 중요합니다. 풀 갈고리를 가장 먼저 겁니다 — 이 뒤의 어떤 단계가
+            // 오브젝트를 스폰하더라도 그것이 이미 의존성을 갖춘 채로 나오게 하기 위해서입니다.
+            WirePoolInjector();
+            InjectSceneObjects();
+
             CaptureViewBase();
             WireNeedsDamageTarget();
             WireSpeedSource();
@@ -71,6 +76,87 @@ namespace CarDrive.Composition
         }
 
         // --- Private Methods : 연결 단계 ---
+
+        /// <summary>
+        /// 풀에서 나오는 오브젝트에 의존성을 넣어 줄 갈고리를 겁니다.
+        ///
+        /// <b>왜 이것이 필요했는가.</b> 귀신과 재화 덩어리는 씬에 미리 놓여 있지 않습니다.
+        /// 인스펙터로 배선할 수 없으니 그것들은 <c>NeedsSystem.Report()</c>·<c>Wallet.Report()</c>
+        /// 같은 정적 메서드로 협력자를 스스로 찾았습니다. <b>풀에서 나오는 오브젝트가 있는 한
+        /// 정적 접근을 없앨 수 없었던 진짜 이유가 이것입니다.</b>
+        ///
+        /// 갈고리 한 줄이 그 이유를 없앱니다. 풀은 인스턴스를 <b>처음 만들 때 한 번</b>
+        /// 이것을 부르고, 그 뒤의 재사용에서는 부르지 않습니다 — 파괴되지 않으므로
+        /// 한 번 채운 필드가 그대로 남아 있기 때문입니다.
+        /// </summary>
+        private void WirePoolInjector()
+        {
+            PrefabPool.Injector = InjectPooledInstance;
+        }
+
+        /// <summary>
+        /// 풀이 갓 만든 인스턴스에 의존성을 넣습니다.
+        /// </summary>
+        /// <param name="instance">풀이 방금 만든 인스턴스</param>
+        private void InjectPooledInstance(GameObject instance)
+        {
+            if (instance == null) return;
+            _resolver.InjectGameObject(instance);
+        }
+
+        /// <summary>
+        /// 씬에 이미 놓여 있는 컴포넌트들에 의존성을 넣습니다.
+        /// </summary>
+        /// <remarks>
+        /// <b>왜 한 번에 훑는가.</b> 주입이 필요한 타입을 여기 나열하면 새 소비자가
+        /// 생길 때마다 이 파일을 고쳐야 하고, 빠뜨리면 <b>조용히 Null 객체로 도는</b>
+        /// 가장 찾기 어려운 고장이 됩니다. 타입을 세지 않고 전부 훑으면 그 실수가 없습니다.
+        ///
+        /// <b>비용.</b> 기동 중 딱 한 번, 네이티브 탐색 한 번입니다.
+        /// <c>[Inject]</c>가 없는 타입에 대해서는 VContainer가 빈 주입기를 캐시해 두므로
+        /// 두 번째부터는 사실상 공짜입니다. 지형 타일의 나무·바위는 MonoBehaviour가 아니라
+        /// 이 탐색에 잡히지 않습니다.
+        ///
+        /// <b>꺼져 있는 것도 넣습니다.</b> 도보 리그는 차에 타고 시작하면 꺼진 채로
+        /// 있는데, 내리는 순간 이미 준비되어 있어야 합니다.
+        /// </remarks>
+        private void InjectSceneObjects()
+        {
+            // 정렬 없는 과부하를 씁니다. 넣는 순서는 결과에 영향을 주지 않습니다.
+            MonoBehaviour[] components = Object.FindObjectsByType<MonoBehaviour>(
+                FindObjectsInactive.Include);
+
+            int injected = 0;
+            int failed = 0;
+
+            for (int i = 0; i < components.Length; i++)
+            {
+                MonoBehaviour component = components[i];
+                if (component == null) continue;
+
+                // 한 건이 실패해도 나머지는 넣어야 합니다.
+                //
+                // 대개 원인은 등록되지 않은 타입을 매개변수로 요구한 Construct 입니다.
+                // 그대로 두면 예외가 이 반복을 끊어, <b>그 뒤 컴포넌트 전부가 조용히
+                // Null 객체로 도는</b> 가장 찾기 어려운 고장이 됩니다.
+                // 잡되 삼키지는 않습니다 — 무엇이 실패했는지 이름을 남깁니다.
+                try
+                {
+                    _resolver.Inject(component);
+                    injected++;
+                }
+                catch (System.Exception e)
+                {
+                    failed++;
+                    GameLog.Error(GameLog.Channel.Core,
+                        "[GameBootstrap] " + component.GetType().Name + " 에 의존성을 넣지 못했습니다. " +
+                        "Construct 가 요구하는 타입이 등록되지 않았을 수 있습니다. " + e.Message, component);
+                }
+            }
+
+            GameLog.InfoFormat(GameLog.Channel.Core,
+                "[GameBootstrap] 씬 컴포넌트 {0}개에 의존성을 넣었습니다. (실패 {1}건)", injected, failed);
+        }
 
         /// <summary>
         /// <b>씬이 적어 둔 시야 거리를 날씨가 건드리기 전에 못박습니다.</b>
@@ -167,6 +253,9 @@ namespace CarDrive.Composition
 
             if (!hasVehicle) go.AddComponent<VehicleSaveParticipant>();
             if (!hasPlayer) go.AddComponent<PlayerSaveParticipant>();
+
+            // 방금 만들었으므로 위의 씬 훑기에 잡히지 않았습니다. 여기서 따로 넣습니다.
+            _resolver.InjectGameObject(go);
 
             GameLog.Info(GameLog.Channel.Core,
                 "[GameBootstrap] 세이브 참여자(플레이어·차량)를 만들었습니다. " +

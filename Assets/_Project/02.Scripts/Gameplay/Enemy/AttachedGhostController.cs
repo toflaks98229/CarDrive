@@ -1,4 +1,5 @@
 using UnityEngine;
+using VContainer;
 using CarDrive.Common;
 using CarDrive.Systems;
 
@@ -74,6 +75,26 @@ namespace CarDrive.Gameplay
 
         /// <summary>목표 지점에 도달해 차량에 달라붙었는지 여부입니다.</summary>
         private bool hasArrived;
+
+        /// <summary>
+        /// 스트레스·더러움을 흘려보낼 곳입니다.
+        ///
+        /// <b>이것은 풀에서 나오는 오브젝트입니다.</b> 씬에 미리 놓여 있지 않아
+        /// 인스펙터로 배선할 수 없고, 그래서 예전에는 정적 <c>NeedsSystem.Report()</c>로
+        /// 니즈를 찾았습니다. 이제 <see cref="PrefabPool"/>이 인스턴스를
+        /// <b>처음 만들 때 한 번</b> 주입해 줍니다.
+        /// </summary>
+        private INeedsSink needs = NullNeedsSink.Instance;
+
+        // --- Injection ---
+
+        /// <summary>니즈를 올릴 곳을 받습니다. 풀이 인스턴스를 만들 때 한 번 불립니다.</summary>
+        /// <param name="needsSink">니즈를 받는 쪽</param>
+        [Inject]
+        public void Construct(INeedsSink needsSink)
+        {
+            if (needsSink != null) needs = needsSink;
+        }
 
         // --- Unity Event Functions ---
 
@@ -194,8 +215,8 @@ namespace CarDrive.Gameplay
             if (soundController != null) soundController.PlayAttackImpact();
 
             // 귀신에게 시달리면 스트레스와 더러움이 오릅니다.
-            NeedsSystem.Report(NeedType.Stress, stressPerAttack);
-            NeedsSystem.Report(NeedType.Hygiene, hygieneCostPerAttack);
+            needs.Add(NeedType.Stress, stressPerAttack);
+            needs.Add(NeedType.Hygiene, hygieneCostPerAttack);
 
             // 맞을 때마다 차체가 출렁입니다. (귀신은 차량의 자식으로 붙어 있습니다)
             if (carShakeScalePerAttack <= 0f) return;

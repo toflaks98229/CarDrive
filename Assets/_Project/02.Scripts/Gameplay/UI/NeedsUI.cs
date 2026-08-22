@@ -4,6 +4,7 @@ using MoreMountains.Tools;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using VContainer;
 using CarDrive.Systems;
 using CarDrive.Common;
 
@@ -106,6 +107,22 @@ namespace CarDrive.UI
         /// </summary>
         private static readonly string[] PercentLabels = CreatePercentLabels();
 
+        // --- Injection ---
+
+        /// <summary>
+        /// 표시할 니즈 시스템을 받습니다.
+        ///
+        /// UI 는 값을 <b>읽기만</b> 하지만, 게이지·경고·이름표를 모두 그리므로
+        /// 좁은 계약이 아니라 시스템 자체를 봅니다. 인스펙터에 직접 연결해 두면
+        /// 그쪽이 우선입니다.
+        /// </summary>
+        /// <param name="system">표시할 니즈 시스템</param>
+        [Inject]
+        public void Construct(NeedsSystem system)
+        {
+            if (needsSystem == null) needsSystem = system;
+        }
+
         // --- Unity Event Functions ---
 
         /// <summary>
@@ -114,11 +131,6 @@ namespace CarDrive.UI
         /// </summary>
         void Start()
         {
-            if (needsSystem == null)
-            {
-                needsSystem = GameContext.Resolve<NeedsSystem>(this);
-            }
-
             if (needsSystem == null)
             {
                 Debug.LogWarning("NeedsUI: NeedsSystem을 찾을 수 없어 게이지를 표시하지 않습니다.", this);

@@ -19,16 +19,13 @@ namespace CarDrive.Systems
     ///  - 쓰는 쪽은 <see cref="TrySpend"/>로 <b>성공 여부를 받아</b> 처리합니다.
     ///    잔액을 먼저 묻고 빼는 방식은 두 호출 사이에 값이 바뀌면 음수가 됩니다.
     ///
-    /// 런타임에 생성되는 것(풀에서 나온 엑토플라즘 등)은 인스펙터 연결이 없으므로
-    /// <see cref="Report"/>로 지갑을 찾지 않고 넣습니다.
+    /// 런타임에 생성되는 것(풀에서 나온 엑토플라즘 등)은 인스펙터 연결이 없습니다.
+    /// 그것들은 <see cref="ICurrencySink"/>를 주입받아 넣습니다 — 예전에는 <c>Report</c>라는
+    /// 정적 메서드로 지갑을 찾았지만, 그러면 줍는 물건이 <b>지갑 전체</b>를 알게 되어
+    /// 돈을 쓸 능력까지 갖게 됩니다. 계약을 "넣기"로 좁혀 두는 편이 안전합니다.
     /// </summary>
-    public class Wallet : MonoBehaviour, ISaveable
+    public class Wallet : MonoBehaviour, ISaveable, ICurrencySink
     {
-        // --- Static Access ---
-
-        /// <summary>씬의 지갑입니다. 없으면 재화 관련 호출은 조용히 무시됩니다.</summary>
-        public static Wallet Instance { get { return GameContext.Get<Wallet>(); } }
-
         // --- Public Properties : 상태 ---
 
         /// <summary>
@@ -269,19 +266,6 @@ namespace CarDrive.Systems
                 : amount.ToString(setting.numberFormat);
 
             return setting.prefix + number + setting.suffix;
-        }
-
-        /// <summary>
-        /// 런타임에 생성된 것이 인스펙터 연결 없이 재화를 넣을 때 씁니다.
-        /// 지갑이 씬에 없으면 조용히 무시합니다.
-        /// </summary>
-        /// <param name="type">넣을 재화 종류</param>
-        /// <param name="amount">넣을 양</param>
-        /// <returns>실제로 늘어난 양. 지갑이 없으면 0입니다.</returns>
-        public static int Report(CurrencyType type, int amount)
-        {
-            Wallet wallet = Instance;
-            return wallet != null ? wallet.Add(type, amount) : 0;
         }
 
         /// <summary>세이브용으로 현재 보유량을 복사해 돌려줍니다.</summary>

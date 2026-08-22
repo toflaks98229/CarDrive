@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
-using CarDrive.Systems;
+using CarDrive.Common;
 
 namespace CarDrive.Gameplay
 {
@@ -71,14 +71,16 @@ namespace CarDrive.Gameplay
         /// <summary>
         /// 지금 날씨에 맞는 접지력 배율을 구합니다.
         /// </summary>
+        /// <param name="road">노면 상태를 알려 주는 쪽. null이면 마른 노면으로 봅니다.</param>
         /// <param name="influence">날씨를 얼마나 반영할지. 0이면 무시, 1이면 그대로 적용합니다.</param>
         /// <param name="minFactor">배율의 하한. 너무 낮추면 운전이 불가능해집니다.</param>
         /// <returns><paramref name="minFactor"/>와 1 사이의 배율</returns>
-        public static float CalculateGrip(float influence, float minFactor)
+        public static float CalculateGrip(IRoadConditions road, float influence, float minFactor)
         {
             // 미끄러움은 1(평소)에서 1.9(폭우)까지 올라갑니다.
-            // WeatherSystem이 씬에 없으면 1이 돌아오므로 아무 영향이 없습니다.
-            float slipperiness = Mathf.Max(MinSlipperiness, WeatherSystem.GetRoadSlipperiness());
+            // 노면 상태가 주입되지 않았으면 1이 되어 아무 영향이 없습니다.
+            float raw = road != null ? road.Slipperiness : 1f;
+            float slipperiness = Mathf.Max(MinSlipperiness, raw);
             float effective = Mathf.Lerp(1f, slipperiness, influence);
 
             return Mathf.Clamp(1f / effective, minFactor, 1f);

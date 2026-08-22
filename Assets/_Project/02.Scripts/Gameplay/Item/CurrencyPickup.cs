@@ -1,6 +1,7 @@
 using DG.Tweening;
 using UnityEngine;
 using UnityEngine.Events;
+using VContainer;
 using CarDrive.Common;
 using CarDrive.Systems;
 
@@ -295,11 +296,31 @@ namespace CarDrive.Gameplay
             isCollected = true;
 
             KillIdleTween();
-            Wallet.Report(currency, amount);
+            wallet.Add(currency, amount);
 
             if (onCollected != null) onCollected.Invoke();
 
             PrefabPool.Release(gameObject);
+        }
+
+        // --- Injection ---
+
+        /// <summary>
+        /// 재화를 넣을 곳입니다. 주입되지 않으면 조용히 버려집니다.
+        ///
+        /// <b>이것은 풀에서 나오는 오브젝트입니다.</b> 씬에 미리 놓여 있지 않으므로
+        /// 인스펙터로 배선할 수 없고, 그래서 예전에는 <c>Wallet.Report()</c>라는
+        /// 정적 메서드로 지갑을 찾았습니다. 이제 <see cref="PrefabPool"/>이
+        /// 인스턴스를 <b>처음 만들 때 한 번</b> 주입해 주므로 그럴 필요가 없습니다.
+        /// </summary>
+        private ICurrencySink wallet = NullCurrencySink.Instance;
+
+        /// <summary>지갑을 받습니다. 풀이 인스턴스를 만들 때 한 번 불립니다.</summary>
+        /// <param name="sink">재화를 받는 쪽</param>
+        [Inject]
+        public void Construct(ICurrencySink sink)
+        {
+            if (sink != null) wallet = sink;
         }
 
         /// <summary>시간이 다 되어 사라집니다.</summary>

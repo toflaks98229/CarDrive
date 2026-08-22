@@ -1,4 +1,5 @@
 using UnityEngine;
+using VContainer;
 using CarDrive.Common;
 using CarDrive.Systems;
 
@@ -94,6 +95,15 @@ namespace CarDrive.Gameplay
         /// <summary>실제 이동을 수행하는 CharacterController입니다.</summary>
         private CharacterController controller;
 
+        /// <summary>
+        /// 달리기가 쌓는 피로·더러움을 흘려보낼 곳입니다.
+        ///
+        /// 예전에는 <c>NeedsSystem.Report()</c>를 정적으로 불렀습니다. 달리면 지친다는
+        /// 규칙이 <b>이 클래스의 시그니처 어디에도 없었습니다.</b>
+        /// 주입되지 않으면 <see cref="NullNeedsSink"/>가 들어 있어 지치지 않고 달립니다.
+        /// </summary>
+        private INeedsSink needs = NullNeedsSink.Instance;
+
         /// <summary>지금 적용 중인 수평 이동 속도입니다. 가감속으로 목표 속도를 따라갑니다.</summary>
         private Vector3 horizontalVelocity;
 
@@ -111,6 +121,16 @@ namespace CarDrive.Gameplay
         /// <summary>
         /// CharacterController와 머리 Transform을 찾아 서 있을 때의 자세(높이·중심·눈높이)를 기억해 둡니다.
         /// </summary>
+        // --- Injection ---
+
+        /// <summary>니즈를 올릴 곳을 받습니다.</summary>
+        /// <param name="needsSink">니즈를 받는 쪽</param>
+        [Inject]
+        public void Construct(INeedsSink needsSink)
+        {
+            if (needsSink != null) needs = needsSink;
+        }
+
         void Awake()
         {
             controller = GetComponent<CharacterController>();
@@ -269,9 +289,9 @@ namespace CarDrive.Gameplay
         private bool CanSprint()
         {
             if (sprintFatigueLimit > 1f) return true;
-            if (NeedsSystem.Instance == null) return true;
 
-            return NeedsSystem.Instance.GetValue(NeedType.Fatigue) < sprintFatigueLimit;
+            // 니즈가 없으면 GetValue 가 0 을 돌려주므로 언제나 달릴 수 있습니다.
+            return needs.GetValue(NeedType.Fatigue) < sprintFatigueLimit;
         }
 
         /// <summary>
@@ -303,8 +323,8 @@ namespace CarDrive.Gameplay
         {
             if (!IsSprinting) return;
 
-            NeedsSystem.Report(NeedType.Fatigue, sprintFatiguePerSecond * Time.deltaTime);
-            NeedsSystem.Report(NeedType.Hygiene, sprintHygienePerSecond * Time.deltaTime);
+            needs.Add(NeedType.Fatigue, sprintFatiguePerSecond * Time.deltaTime);
+            needs.Add(NeedType.Hygiene, sprintHygienePerSecond * Time.deltaTime);
         }
     }
 }

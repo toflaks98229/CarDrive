@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Serialization;
+using VContainer;
 using CarDrive.Common;
 using CarDrive.Systems;
 
@@ -276,10 +277,17 @@ namespace CarDrive.Gameplay
         /// <summary>
         /// 니즈 시스템과 파티클을 찾아 뷰를 준비합니다.
         /// </summary>
+        /// <summary>배뇨를 해소할 니즈 시스템을 받습니다.</summary>
+        /// <param name="needs">니즈 시스템</param>
+        [Inject]
+        public void Construct(NeedsSystem needs)
+        {
+            if (_needsSystem == null) _needsSystem = needs;
+        }
+
         private void Start()
         {
-            if (_needsSystem == null) _needsSystem = GameContext.Resolve<NeedsSystem>(this);
-            if (_needsSystem == null) Debug.LogWarning("UrineRelief: NeedsSystem을 찾지 못했습니다.", this);
+            if (_needsSystem == null) Debug.LogWarning("UrineRelief: NeedsSystem이 주입되지 않았습니다.", this);
 
             if (_stream == null) _stream = GetComponentInChildren<ParticleSystem>(true);
             if (!_view.Configure(_stream, _coneAngle, BuildEmissionRange()))

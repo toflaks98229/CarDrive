@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Events;
+using VContainer;
 using CarDrive.Systems;
 using CarDrive.Common;
 
@@ -69,6 +70,19 @@ namespace CarDrive.Gameplay
         /// <summary>마지막으로 피격이 처리된 시각입니다. hitCooldown 판정에 씁니다.</summary>
         private float lastHitTime = -99f;
 
+        /// <summary>피격 스트레스를 흘려보낼 곳입니다. 주입되지 않으면 조용히 버려집니다.</summary>
+        private INeedsSink needs = NullNeedsSink.Instance;
+
+        // --- Injection ---
+
+        /// <summary>스트레스를 올릴 곳을 받습니다.</summary>
+        /// <param name="needsSink">니즈를 받는 쪽</param>
+        [Inject]
+        public void Construct(INeedsSink needsSink)
+        {
+            if (needsSink != null) needs = needsSink;
+        }
+
         // --- Unity Event Functions ---
 
         /// <summary>
@@ -123,7 +137,7 @@ namespace CarDrive.Gameplay
 
             if (stressPerHit > 0f)
             {
-                NeedsSystem.Report(NeedType.Stress, stressPerHit * intensity);
+                needs.Add(NeedType.Stress, stressPerHit * intensity);
             }
 
             if (damagePerHit > 0f && healthBar != null)

@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Serialization;
 using CarDrive.Common;
+using VContainer;
 
 namespace CarDrive.Systems
 {
@@ -19,15 +20,9 @@ namespace CarDrive.Systems
     ///    이 "경고 후 악화" 구조가 마이 썸머 카의 니즈 처리 방식입니다.
     ///  - 게임 상태는 이 컴포넌트가 소유하며, UI는 읽기만 합니다. (NeedsUI 참고)
     /// </summary>
-    public class NeedsSystem : MonoBehaviour, ISaveable
+    public class NeedsSystem : MonoBehaviour, ISaveable, INeedsSink
     {
         // --- Static Access ---
-
-        /// <summary>
-        /// 씬에 존재하는 NeedsSystem입니다. 런타임에 생성되는 오브젝트(귀신 등)가
-        /// 인스펙터 연결 없이 스트레스를 올릴 수 있도록 열어 두었습니다.
-        /// </summary>
-        public static NeedsSystem Instance { get { return GameContext.Get<NeedsSystem>(); } }
 
         // --- Public Member Variables ---
 
@@ -56,6 +51,18 @@ namespace CarDrive.Systems
         /// 오배선은 여전히 컴파일 에러이고, 확인 시점만 인스펙터에서 설치자로 바뀌었습니다.
         /// </summary>
         private IDamageable damageTarget;
+
+        /// <summary>
+        /// 이 시스템이 보는 시계입니다.
+        ///
+        /// <b>니즈가 시간에 좌우된다는 사실이 이 한 줄로 드러납니다.</b> 예전에는
+        /// <c>TimeSystem.GetMinutesPerSecond()</c>를 <see cref="Tick"/> 본문에서 불렀기 때문에,
+        /// 파일을 열어 보기 전에는 알 수 없었습니다.
+        ///
+        /// 주입되지 않으면 <see cref="NullGameClock"/>이 들어 있고, 그 경우
+        /// 아래 <see cref="gameMinutesPerRealSecond"/>가 그대로 배율이 됩니다.
+        /// </summary>
+        private IGameClock clock = NullGameClock.Instance;
 
         [Header("기절 설정")]
         [Tooltip("피로가 한계를 넘어 기절했을 때 회복되는 피로 수치")]
@@ -146,6 +153,21 @@ namespace CarDrive.Systems
         /// 자신을 전역 인스턴스로 등록하고 니즈 설정과 초기 상태를 만듭니다.
         /// 이미 다른 인스턴스가 있으면 경고를 남기고 자신을 끕니다.
         /// </summary>
+        // --- Injection ---
+
+        /// <summary>
+        /// 시계를 받습니다. 니즈는 <b>실제 시간이 아니라 게임 시간</b>으로 차오르므로,
+        /// 수면으로 시간을 건너뛰면 여기서도 함께 건너뛰어집니다.
+        /// </summary>
+        /// <param name="gameClock">게임 시계</param>
+        [Inject]
+        public void Construct(IGameClock gameClock)
+        {
+            if (gameClock != null) clock = gameClock;
+        }
+
+        // --- Unity Event Functions ---
+
         void Awake()
         {
             // 등록이 거부되면 이미 다른 것이 있다는 뜻입니다. (경고는 GameContext가 남깁니다)
@@ -257,9 +279,9 @@ namespace CarDrive.Systems
 
             if (deltaSeconds <= 0f) return;
 
-            // 씬에 TimeSystem이 있으면 그쪽 시간 배율을 따릅니다.
-            // 그래야 니즈와 날씨가 같은 시계를 보고 움직입니다.
-            float rate = TimeSystem.GetMinutesPerSecond(gameMinutesPerRealSecond);
+            // 주입된 시계의 배율을 따릅니다. 그래야 니즈와 날씨가 같은 시계를 보고 움직입니다.
+            // 시계가 없으면 아래 자체 배율로 돕니다.
+            float rate = clock.GetMinutesPerSecond(gameMinutesPerRealSecond);
 
             TickNeeds(deltaSeconds * rate);
             ApplyConsequences(deltaSeconds);
@@ -382,17 +404,7 @@ namespace CarDrive.Systems
             TickNeeds(gameMinutes);
 
             // 수면처럼 시간을 건너뛸 때는 시계도 함께 돌려야 날이 밝습니다.
-            if (TimeSystem.Instance != null) TimeSystem.Instance.AdvanceMinutes(gameMinutes);
-        }
-
-        /// <summary>
-        /// 런타임에 생성되는 오브젝트가 인스펙터 연결 없이 니즈를 올릴 때 씁니다.
-        /// NeedsSystem이 씬에 없으면 조용히 무시합니다.
-        /// </summary>
-        public static void Report(NeedType type, float amount)
-        {
-            if (Instance == null) return;
-            Instance.Add(type, amount);
+            clock.AdvanceMinutes(gameMinutes);
         }
 
         /// <summary>

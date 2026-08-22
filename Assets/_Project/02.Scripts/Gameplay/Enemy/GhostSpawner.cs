@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using VContainer;
 using CarDrive.Common;
 using CarDrive.Systems;
 
@@ -78,6 +79,22 @@ namespace CarDrive.Gameplay
         /// <summary>귀신이 달라붙을 차량입니다. 같은 GameObject에서 가져옵니다.</summary>
         private Vehicle vehicle;
 
+        /// <summary>
+        /// 귀신이 얼마나 활발한지 알려 주는 쪽입니다.
+        /// 주입되지 않으면 <see cref="NullWeather"/>가 1을 돌려주어 평소 간격으로 나타납니다.
+        /// </summary>
+        private IGhostActivity activity = NullWeather.Instance;
+
+        // --- Injection ---
+
+        /// <summary>귀신 활동량을 알려 주는 쪽을 받습니다.</summary>
+        /// <param name="ghostActivity">날씨·시간대가 반영된 활동량</param>
+        [Inject]
+        public void Construct(IGhostActivity ghostActivity)
+        {
+            if (ghostActivity != null) activity = ghostActivity;
+        }
+
         /// <summary>귀신이 깎을 차량 내구도입니다. 스폰한 귀신에게 넘겨 줍니다.</summary>
         private VehicleHealth carHealth;
 
@@ -152,11 +169,11 @@ namespace CarDrive.Gameplay
             float interval = Random.Range(minSpawnInterval, maxSpawnInterval);
 
             // 활동량이 높을수록 간격이 짧아집니다.
-            // WeatherSystem이 씬에 없으면 1이 돌아오므로 아무 영향이 없습니다.
+            // 주입되지 않았으면 1이 돌아오므로 아무 영향이 없습니다.
             if (useWeatherActivity)
             {
-                float activity = Mathf.Clamp(WeatherSystem.GetGhostActivity(), 0.1f, maxActivityMultiplier);
-                interval /= activity;
+                float multiplier = Mathf.Clamp(activity.Activity, 0.1f, maxActivityMultiplier);
+                interval /= multiplier;
             }
 
             spawnTimer = interval;

@@ -29,14 +29,9 @@ namespace CarDrive.Systems
     /// 여기 한 곳에서 읽어 가도록 하는 것이 목적입니다.
     /// (그래야 수면으로 시간을 건너뛸 때 모든 시스템이 같이 움직입니다)
     /// </summary>
-    public class TimeSystem : MonoBehaviour, ISaveable
+    public class TimeSystem : MonoBehaviour, ISaveable, IGameClock, ISunSource
     {
         public const float MinutesPerDay = 1440f;
-
-        // --- Static Access ---
-
-        /// <summary>씬의 시간 시스템입니다. 없으면 각 시스템이 자체 배율로 돌아갑니다.</summary>
-        public static TimeSystem Instance { get { return GameContext.Get<TimeSystem>(); } }
 
         // --- Public Member Variables ---
 
@@ -267,25 +262,40 @@ namespace CarDrive.Systems
             }
         }
 
+        // --- IGameClock ---
+        //
+        // 예전에는 이 자리에 GetMinutesPerSecond / IsNightNow / GetDaylight 정적 메서드가
+        // 있었습니다. 참조 없이 부를 수 있어 편했지만, 그 편의가 호출부에서 시간 의존을
+        // 지워 버렸습니다. 이제 같은 값들을 계약으로 내주고, 쓰는 쪽이 주입받습니다.
+
+        /// <summary>이것은 진짜 시계입니다. 소비자는 자기 방식으로 시간을 셀 필요가 없습니다.</summary>
+        public bool IsRunning { get { return true; } }
+
+        /// <summary>낮 밝기입니다. <see cref="DaylightFactor"/>를 계약 이름으로 내줍니다.</summary>
+        public float Daylight { get { return DaylightFactor; } }
+
         /// <summary>
-        /// 시간 시스템이 없어도 동작하도록, 참조 없이 배율을 읽는 편의 메서드입니다.
+        /// 실제 1초에 흐르는 게임 시간(분)입니다.
+        ///
+        /// <b>일시정지는 반영하지 않습니다.</b> 예전 정적 접근자도 그랬고, 니즈와 날씨는
+        /// 그 값을 그대로 써 왔습니다. 여기서 <c>paused</c>를 반영하면 시간을 멈출 때
+        /// 니즈까지 함께 멈추는 <b>동작 변경</b>이 되므로, 리팩토링에서는 손대지 않습니다.
+        /// 바꾸고 싶다면 별도의 결정으로 하십시오.
         /// </summary>
-        public static float GetMinutesPerSecond(float fallback)
+        /// <param name="fallback">쓰이지 않습니다. 시계가 있으므로 자기 배율을 돌려줍니다.</param>
+        /// <returns>인스펙터에 설정된 배율</returns>
+        public float GetMinutesPerSecond(float fallback)
         {
-            return Instance != null ? Instance.gameMinutesPerRealSecond : fallback;
+            return gameMinutesPerRealSecond;
         }
 
-        /// <summary>참조 없이 밤인지 확인합니다. 시스템이 없으면 false입니다.</summary>
-        public static bool IsNightNow()
-        {
-            return Instance != null && Instance.IsNight;
-        }
+        // --- ISunSource ---
 
-        /// <summary>참조 없이 낮 밝기를 읽습니다. 시스템이 없으면 1(대낮)입니다.</summary>
-        public static float GetDaylight()
-        {
-            return Instance != null ? Instance.DaylightFactor : 1f;
-        }
+        /// <summary>씬에서 해 역할을 하는 방향광입니다.</summary>
+        public Light Sun { get { return sunLight; } }
+
+        /// <summary>한낮에 해가 낼 수 있는 최대 밝기입니다.</summary>
+        public float SunMaxIntensity { get { return sunMaxIntensity; } }
 
         // --- Private Methods ---
 

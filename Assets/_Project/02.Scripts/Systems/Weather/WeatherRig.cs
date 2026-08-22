@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using VContainer;
 using CarDrive.Common;
 
 namespace CarDrive.Systems
@@ -183,9 +184,22 @@ namespace CarDrive.Systems
         /// 날씨 시스템과 따라갈 대상을 찾고, 파티클마다 원래 방출량·속도·크기를 기억해 둡니다.
         /// playOnAwake로 이미 비가 내리고 있을 수 있으므로 마지막에 비를 멈춰 정리합니다.
         /// </summary>
+        /// <summary>
+        /// 표현할 날씨를 받습니다.
+        ///
+        /// <b>여기는 계약이 아니라 구체 타입입니다.</b> 이 리그는 값 하나를 묻는 소비자가
+        /// 아니라 날씨의 <b>표현 담당</b>이라, 비·안개·주변광·시야까지 거의 전부를 봅니다.
+        /// 그만큼을 계약으로 잘라 내면 계약이 곧 WeatherSystem 이 됩니다.
+        /// </summary>
+        /// <param name="system">표현할 날씨 시스템</param>
+        [Inject]
+        public void Construct(WeatherSystem system)
+        {
+            if (weatherSystem == null) weatherSystem = system;
+        }
+
         void Start()
         {
-            if (weatherSystem == null) weatherSystem = GameContext.Resolve<WeatherSystem>(this);
             if (weatherSystem == null)
             {
                 Debug.LogWarning("WeatherRig: WeatherSystem을 찾지 못해 날씨가 반영되지 않습니다.", this);

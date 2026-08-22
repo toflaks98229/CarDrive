@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
-using CarDrive.Systems;
+using CarDrive.Common;
 
 namespace CarDrive.Gameplay
 {
@@ -49,15 +49,29 @@ namespace CarDrive.Gameplay
         /// </summary>
         private float referenceRatio = 1f;
 
+        /// <summary>
+        /// 노면·바람 상태입니다. 연료 소모 배율을 여기서 읽습니다.
+        ///
+        /// <b>이 한 줄이 이번 리팩토링의 핵심입니다.</b> 예전에는 연료 계산 본문에서
+        /// <c>WeatherSystem.GetFuelConsumption()</c>을 정적으로 불렀습니다. 그래서
+        /// 이 클래스의 어떤 시그니처에도 날씨가 없는데 연료는 날씨에 좌우되었고,
+        /// 순수 산술인 동력계를 <b>씬 없이 검증할 수 없었습니다.</b>
+        /// 이제 <see cref="Initialize"/>로 받으므로, 테스트가 가짜 노면을 끼워
+        /// 폭우와 맑은 날의 연료 소모를 각각 확인할 수 있습니다.
+        /// </summary>
+        private IRoadConditions road = NullWeather.Instance;
+
         // --- Public Methods ---
 
         /// <summary>
         /// CarController가 Start()에서 호출하여 CarData를 주입하고 초기화합니다.
         /// </summary>
         /// <param name="data">토크·기어비·연료 설정을 담은 차량 데이터</param>
-        public void Initialize(CarData data)
+        /// <param name="conditions">노면 상태. null이면 날씨의 영향을 받지 않습니다.</param>
+        public void Initialize(CarData data, IRoadConditions conditions)
         {
             carData = data;
+            road = conditions != null ? conditions : NullWeather.Instance;
 
             if (carData == null)
             {
@@ -116,7 +130,7 @@ namespace CarDrive.Gameplay
 
                 // 맞바람·젖은 노면에서는 연료를 더 먹습니다.
                 // WeatherSystem이 씬에 없으면 1이 돌아오므로 아무 영향이 없습니다.
-                consumption *= WeatherSystem.GetFuelConsumption();
+                consumption *= road.FuelConsumptionMultiplier;
 
                 CurrentFuel -= consumption * Time.fixedDeltaTime;
             }

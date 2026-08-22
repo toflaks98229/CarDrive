@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
+using VContainer;
 using CarDrive.Common;
 
 namespace CarDrive.Systems
@@ -85,10 +86,40 @@ namespace CarDrive.Systems
             return promptLabel;
         }
 
+        // --- Injection ---
+
+        /// <summary>
+        /// 니즈 시스템과 날씨를 받습니다.
+        ///
+        /// <b>여기만 니즈를 좁은 계약이 아니라 통째로 받습니다.</b> 이 컴포넌트는 수치를
+        /// 올리는 것이 아니라 <c>AdvanceGameMinutes</c>로 시간을 건너뛰고 효과 목록을
+        /// 통째로 적용합니다 — <see cref="INeedsSink"/>가 다루는 범위 밖입니다.
+        /// 게다가 <c>NeedSatisfier</c>는 니즈 하위 시스템 자신의 일부라, 여기서만은
+        /// 구체 타입을 아는 것이 맞습니다.
+        /// </summary>
+        /// <param name="needsSystem">효과를 적용할 니즈 시스템</param>
+        /// <param name="exposure">잠자리의 질을 정할 날씨</param>
+        [Inject]
+        public void Construct(NeedsSystem needsSystem, IExposureConditions exposure)
+        {
+            if (needsSystem != null) needs = needsSystem;
+            if (exposure != null) weather = exposure;
+        }
+
+        // --- Private Member Variables ---
+
+        /// <summary>효과를 적용할 니즈 시스템입니다. 주입되지 않으면 사용이 실패합니다.</summary>
+        private NeedsSystem needs;
+
+        /// <summary>잠자리의 질을 정할 날씨입니다. 주입되지 않으면 평소 품질로 봅니다.</summary>
+        private IExposureConditions weather = NullWeather.Instance;
+
+        // --- Public Methods ---
+
         /// <summary>조준한 상태에서 상호작용 키를 눌렀을 때 실행됩니다.</summary>
         public void Interact()
         {
-            TryUse(NeedsSystem.Instance);
+            TryUse(needs);
         }
 
         /// <summary>
@@ -122,7 +153,7 @@ namespace CarDrive.Systems
 
             // 잠자리의 질은 '잠들기 시작하는 시점'의 날씨로 정해집니다.
             // 시간을 먼저 흘려보내면 날씨가 바뀌어 버리므로 여기서 미리 읽어 둡니다.
-            float reliefScale = affectedBySleepQuality ? WeatherSystem.GetSleepQuality() : 1f;
+            float reliefScale = affectedBySleepQuality ? weather.SleepQuality : 1f;
 
             if (advanceTimeBeforeEffects)
             {

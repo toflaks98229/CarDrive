@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Events;
+using VContainer;
 using CarDrive.Common;
 using CarDrive.Systems;
 
@@ -108,18 +109,33 @@ namespace CarDrive.Gameplay
             LastHygieneChange = 0f;
         }
 
+        // --- Injection ---
+
+        /// <summary>날씨가 몸에 주는 영향을 흘려보낼 곳입니다.</summary>
+        private INeedsSink needs = NullNeedsSink.Instance;
+
+        /// <summary>밖에 서 있을 때 받는 영향을 알려 주는 쪽입니다.</summary>
+        private IExposureConditions weather = NullWeather.Instance;
+
+        /// <summary>니즈와 날씨를 받습니다.</summary>
+        /// <param name="needsSink">니즈를 받는 쪽</param>
+        /// <param name="exposure">노출 영향을 알려 주는 쪽</param>
+        [Inject]
+        public void Construct(INeedsSink needsSink, IExposureConditions exposure)
+        {
+            if (needsSink != null) needs = needsSink;
+            if (exposure != null) weather = exposure;
+        }
+
         void Update()
         {
-            NeedsSystem needs = NeedsSystem.Instance;
-            if (needs == null) return;
-
             UpdateExposure();
 
             LastHygieneChange = 0f;
             if (!IsExposed) return;
 
             float hygieneChange, stress, thirstRelief, stressRelief;
-            WeatherSystem.GetExposureRates(out hygieneChange, out stress, out thirstRelief, out stressRelief);
+            weather.GetExposureRates(out hygieneChange, out stress, out thirstRelief, out stressRelief);
 
             float dt = Time.deltaTime;
 

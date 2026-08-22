@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Events;
+using VContainer;
 using CarDrive.Common;
 using CarDrive.Systems;
 
@@ -107,15 +108,29 @@ namespace CarDrive.Gameplay
         /// <summary>직전 프레임에 빗물을 받고 있었는지 여부입니다. 시작·정지 순간을 잡아내는 데 씁니다.</summary>
         private bool wasDrinking;
 
+        // --- Injection ---
+
+        /// <summary>비의 세기를 알려 주는 쪽입니다. 주입되지 않으면 비가 오지 않습니다.</summary>
+        private IExposureConditions weather = NullWeather.Instance;
+
+        /// <summary>날씨와 니즈를 받습니다.</summary>
+        /// <param name="exposure">비의 세기를 알려 주는 쪽</param>
+        /// <param name="needs">갈증을 해소할 니즈 시스템</param>
+        [Inject]
+        public void Construct(IExposureConditions exposure, NeedsSystem needs)
+        {
+            if (exposure != null) weather = exposure;
+            if (needsSystem == null) needsSystem = needs;
+        }
+
         // --- Unity Event Functions ---
 
         /// <summary>
-        /// 니즈 시스템 참조를 채우고, 첫 검사 전까지는 하늘이 뚫려 있는 것으로 둡니다.
+        /// 첫 검사 전까지는 하늘이 뚫려 있는 것으로 둡니다.
         /// </summary>
         void Start()
         {
-            if (needsSystem == null) needsSystem = GameContext.Resolve<NeedsSystem>(this);
-            if (needsSystem == null) Debug.LogWarning("RainDrinking: NeedsSystem을 찾지 못했습니다.", this);
+            if (needsSystem == null) Debug.LogWarning("RainDrinking: NeedsSystem이 주입되지 않았습니다.", this);
 
             IsUnderOpenSky = true;
         }
@@ -162,7 +177,7 @@ namespace CarDrive.Gameplay
         /// <returns>빗물을 받는 정도(0~1)</returns>
         private float CalculateAmount()
         {
-            float rain = WeatherSystem.GetRainIntensity();
+            float rain = weather.RainIntensity;
             if (rain < minRainIntensity) return 0f;
 
             float rain01 = rainForFullEffect > 0.0001f ? Mathf.Clamp01(rain / rainForFullEffect) : 1f;

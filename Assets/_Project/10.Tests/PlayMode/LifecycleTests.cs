@@ -42,7 +42,7 @@ namespace CarDrive.Tests
 
         /// <summary>
         /// 지갑은 Awake 에서 스스로 등록해야 합니다.
-        /// 이것이 되어야 풀에서 나온 엑토플라즘이 <see cref="Wallet.Report"/> 로 찾아갑니다.
+        /// 이것이 되어야 설치자가 인스펙터 칸이 비어 있을 때 씬에서 찾아 등록할 수 있습니다.
         /// </summary>
         [UnityTest]
         public IEnumerator 지갑은_Awake에서_스스로_등록한다()
@@ -54,7 +54,10 @@ namespace CarDrive.Tests
             yield return null;
 
             Assert.AreSame(wallet, GameContext.Get<Wallet>(), "Awake 에서 등록되지 않았습니다.");
-            Assert.AreEqual(3, Wallet.Report(CurrencyType.Ectoplasm, 3));
+
+            // 풀에서 나온 덩어리는 이 계약으로 넣습니다.
+            ICurrencySink sink = wallet;
+            Assert.AreEqual(3, sink.Add(CurrencyType.Ectoplasm, 3));
             Assert.AreEqual(3, wallet.Get(CurrencyType.Ectoplasm));
         }
 

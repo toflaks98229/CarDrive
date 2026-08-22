@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.Serialization;
-using CarDrive.Systems;
+using VContainer;
+using CarDrive.Common;
 
 namespace CarDrive.Gameplay
 {
@@ -138,6 +139,25 @@ namespace CarDrive.Gameplay
         /// <summary>지금 바퀴에 적용 중인 조향 각도(도)입니다.</summary>
         private float _currentSteerAngle;
 
+        /// <summary>
+        /// 노면 상태입니다. 접지력과 연료 소모가 여기에 좌우됩니다.
+        ///
+        /// <b>차량의 조립은 이 컴포넌트가 합니다.</b> 부품들(<see cref="Powertrain"/>,
+        /// <see cref="WheelGripTuner"/>)이 각자 날씨를 찾아가지 않고 여기서 받아 넘깁니다.
+        /// 그래야 한 차량의 모든 부품이 <b>같은 프레임의 같은 날씨</b>를 봅니다.
+        /// </summary>
+        private IRoadConditions _road = NullWeather.Instance;
+
+        // --- Injection ---
+
+        /// <summary>노면 상태를 받습니다.</summary>
+        /// <param name="road">노면 미끄러움·연료 배율을 알려 주는 쪽</param>
+        [Inject]
+        public void Construct(IRoadConditions road)
+        {
+            if (road != null) _road = road;
+        }
+
         // --- Public Properties ---
 
         /// <summary>차량의 성능 설정입니다.</summary>
@@ -191,7 +211,7 @@ namespace CarDrive.Gameplay
             if (!TryResolveDependencies()) return;
 
             _body.centerOfMass = _centerOfMass;
-            _powertrain.Initialize(_carData);
+            _powertrain.Initialize(_carData, _road);
             _visuals.Initialize(_carData.maxSteerAngle);
 
             _driveline.Configure(
@@ -301,7 +321,7 @@ namespace CarDrive.Gameplay
         private void ApplyRoadGrip()
         {
             float grip = _useWeatherGrip
-                ? WheelGripTuner.CalculateGrip(_weatherGripInfluence, _minGripFactor)
+                ? WheelGripTuner.CalculateGrip(_road, _weatherGripInfluence, _minGripFactor)
                 : 1f;
 
             _gripTuner.Apply(grip);

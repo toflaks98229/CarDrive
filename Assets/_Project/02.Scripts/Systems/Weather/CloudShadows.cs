@@ -1,4 +1,5 @@
 using UnityEngine;
+using VContainer;
 using CarDrive.Common;
 
 namespace CarDrive.Systems
@@ -66,6 +67,13 @@ namespace CarDrive.Systems
         /// <summary>지금까지 흘러온 거리입니다. 매 프레임 누적합니다.</summary>
         private Vector2 scroll;
 
+        /// <summary>
+        /// 구름과 바람을 묻는 쪽입니다. 주입되지 않으면 <see cref="NullWeather"/>가 들어 있어,
+        /// 아래 <see cref="fallbackCloudCover"/>로 그림자를 계속 흘려보냅니다.
+        /// 날씨 시스템 없이 지형만 띄워 놓고 그림자 무늬를 확인할 때 쓰던 경로입니다.
+        /// </summary>
+        private ISkyConditions sky = NullWeather.Instance;
+
         // --- Shader Property IDs ---
         // 이름으로 매번 찾으면 문자열 해시가 프레임마다 돕니다. 한 번만 구해 둡니다.
 
@@ -78,6 +86,18 @@ namespace CarDrive.Systems
         /// <summary>
         /// 자신을 등록합니다. 다른 곳에서 구름을 잠시 끄고 싶을 때 찾을 수 있게 합니다.
         /// </summary>
+        // --- Injection ---
+
+        /// <summary>하늘 상태를 받습니다. 이 컴포넌트의 유일한 외부 의존입니다.</summary>
+        /// <param name="skyConditions">구름·바람을 알려 주는 쪽</param>
+        [Inject]
+        public void Construct(ISkyConditions skyConditions)
+        {
+            if (skyConditions != null) sky = skyConditions;
+        }
+
+        // --- Unity Event Functions ---
+
         void Awake()
         {
             if (!GameContext.Register(this))
@@ -114,13 +134,9 @@ namespace CarDrive.Systems
                 return;
             }
 
-            float cover = WeatherSystem.Instance != null
-                ? WeatherSystem.Instance.CloudCover
-                : fallbackCloudCover;
-
-            float wind = WeatherSystem.Instance != null
-                ? WeatherSystem.Instance.WindStrength
-                : 0f;
+            // 날씨가 없으면 GetCloudCover 가 넘긴 기본값을 그대로 돌려줍니다.
+            float cover = sky.GetCloudCover(fallbackCloudCover);
+            float wind = sky.WindStrength;
 
             // 구름이 없으면 그림자도 없습니다. 맑은 날 하늘이 텅 빈 느낌이 여기서 나옵니다.
             float strength = maxStrength * Mathf.Clamp01(cover);

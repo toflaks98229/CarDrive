@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Serialization;
 using CarDrive.Common;
+using VContainer;
 
 namespace CarDrive.Systems
 {
@@ -29,7 +30,8 @@ namespace CarDrive.Systems
     /// <b>설정값은 여기 남습니다.</b> 다른 클래스로 옮기면 직렬화 경로가 바뀌어 씬에 맞춰 둔
     /// 값이 전부 초기화됩니다. 계산에 필요한 값은 호출할 때 넘깁니다.
     /// </summary>
-    public class WeatherSystem : MonoBehaviour, ISaveable
+    public class WeatherSystem : MonoBehaviour, ISaveable,
+                                 IRoadConditions, IGhostActivity, IExposureConditions, ISkyConditions
     {
         // --- Serialized Fields ---
 
@@ -131,11 +133,6 @@ namespace CarDrive.Systems
         /// <summary>지금 수치가 얼마인지 계산합니다.</summary>
         private readonly WeatherValueBlender _blender = new WeatherValueBlender();
 
-        // --- Public Properties : 접근 ---
-
-        /// <summary>씬의 날씨 시스템입니다. 없으면 정적 접근자들이 "영향 없음" 값을 돌려줍니다.</summary>
-        public static WeatherSystem Instance { get { return GameContext.Get<WeatherSystem>(); } }
-
         // --- Public Properties : 상태 ---
 
         /// <summary>지금 날씨입니다.</summary>
@@ -207,6 +204,30 @@ namespace CarDrive.Systems
         /// <summary>초당 줄어드는 스트레스입니다.</summary>
         public float StressReliefPerSecond { get { return _blender.StressReliefPerSecond; } }
 
+        // --- Private Member Variables : 주입 ---
+
+        /// <summary>
+        /// 이 시스템이 보는 시계입니다.
+        ///
+        /// <b>주입되지 않아도 동작합니다.</b> 그 경우 <see cref="NullGameClock"/>이 들어 있고,
+        /// <see cref="NowMinutes"/>가 <c>Time.time</c>으로 대신 셉니다. 예전에
+        /// <c>TimeSystem.Instance</c>가 null일 때 하던 것과 같습니다.
+        /// </summary>
+        private IGameClock _clock = NullGameClock.Instance;
+
+        // --- Injection ---
+
+        /// <summary>
+        /// 시계를 받습니다. 날씨는 <b>실제 시간이 아니라 게임 시간</b>으로 흐르므로,
+        /// 이것이 이 시스템의 유일한 외부 의존입니다.
+        /// </summary>
+        /// <param name="clock">게임 시계</param>
+        [Inject]
+        public void Construct(IGameClock clock)
+        {
+            if (clock != null) _clock = clock;
+        }
+
         // --- Unity Event Functions ---
 
         /// <summary>
@@ -243,7 +264,7 @@ namespace CarDrive.Systems
         /// </summary>
         private void Update()
         {
-            float gameMinutes = Time.deltaTime * TimeSystem.GetMinutesPerSecond(_fallbackMinutesPerSecond);
+            float gameMinutes = Time.deltaTime * _clock.GetMinutesPerSecond(_fallbackMinutesPerSecond);
 
             if (_transition.IsTransitioning) AdvanceTransition(gameMinutes);
             else if (_autoChange) AdvanceHold(gameMinutes);
@@ -349,7 +370,7 @@ namespace CarDrive.Systems
         /// <returns>낮에 맑으면 1, 밤에 폭우면 그보다 훨씬 작습니다.</returns>
         public float GetEffectiveVisibility()
         {
-            float night = Mathf.Lerp(0.5f, 1f, TimeSystem.GetDaylight());
+            float night = Mathf.Lerp(0.5f, 1f, _clock.Daylight);
             return VisibilityMultiplier * night;
         }
 
@@ -357,55 +378,57 @@ namespace CarDrive.Systems
         /// <returns>밤이면 1.5배가 곱해집니다.</returns>
         public float GetEffectiveGhostActivity()
         {
-            float night = TimeSystem.IsNightNow() ? 1.5f : 1f;
+            float night = _clock.IsNight ? 1.5f : 1f;
             return GhostActivity * night;
         }
 
-        // --- Public Methods : 정적 편의 접근자 ---
+        // --- 계약 구현 (IRoadConditions · IGhostActivity · IExposureConditions · ISkyConditions) ---
         //
-        // 참조 없이 읽고 싶을 때 씁니다. 시스템이 씬에 없으면 "아무 영향 없음"에 해당하는
-        // 값을 돌려주므로, 호출부는 WeatherSystem의 존재 여부를 신경 쓰지 않아도 됩니다.
+        // 예전에는 이 자리에 GetRainIntensity / GetGhostActivity / GetRoadSlipperiness /
+        // GetFuelConsumption / GetVisibility / GetSleepQuality / GetExposureRates 라는
+        // 정적 접근자 일곱 개가 있었습니다. 참조 없이 부를 수 있어 편했지만, 그 편의가
+        // 호출부에서 날씨 의존을 통째로 지웠습니다 — Powertrain 의 어떤 시그니처에도
+        // 날씨가 없는데 연료는 날씨에 좌우되고 있었습니다.
+        //
+        // 이제 소비자는 자기가 필요한 만큼만 좁은 계약으로 주입받습니다.
+        // 아래 대부분은 명시적 구현입니다. 이 클래스의 공개 표면을 늘리지 않으면서
+        // 계약이 요구하는 이름만 따로 내주기 위해서입니다.
+        // (GetVisibility 는 호출부가 하나도 없어 그냥 사라졌습니다.
+        //  화면에 쓰이는 것은 인스턴스 메서드 GetEffectiveVisibility 쪽입니다)
 
-        /// <summary>지금 비의 세기입니다. 시스템이 없으면 0입니다.</summary>
-        public static float GetRainIntensity() { return Instance != null ? Instance.RainIntensity : 0f; }
+        /// <summary>노면 미끄러움입니다. <see cref="RoadSlipperiness"/>를 계약 이름으로 내줍니다.</summary>
+        float IRoadConditions.Slipperiness { get { return RoadSlipperiness; } }
 
-        /// <summary>지금 귀신 활동량입니다. 시스템이 없으면 1입니다.</summary>
-        public static float GetGhostActivity() { return Instance != null ? Instance.GetEffectiveGhostActivity() : 1f; }
+        /// <summary>귀신 활동량입니다. 밤 배율까지 곱한 값을 내줍니다.</summary>
+        float IGhostActivity.Activity { get { return GetEffectiveGhostActivity(); } }
 
-        /// <summary>지금 노면 미끄러움입니다. 시스템이 없으면 1입니다.</summary>
-        public static float GetRoadSlipperiness() { return Instance != null ? Instance.RoadSlipperiness : 1f; }
-
-        /// <summary>지금 연료 소모 배율입니다. 시스템이 없으면 1입니다.</summary>
-        public static float GetFuelConsumption() { return Instance != null ? Instance.FuelConsumptionMultiplier : 1f; }
-
-        /// <summary>지금 시야 배율입니다. 시스템이 없으면 1입니다.</summary>
-        public static float GetVisibility() { return Instance != null ? Instance.GetEffectiveVisibility() : 1f; }
-
-        /// <summary>지금 수면 회복 배율입니다. 시스템이 없으면 1입니다.</summary>
-        public static float GetSleepQuality() { return Instance != null ? Instance.SleepQualityMultiplier : 1f; }
+        /// <summary>수면 회복 배율입니다. <see cref="SleepQualityMultiplier"/>를 계약 이름으로 내줍니다.</summary>
+        float IExposureConditions.SleepQuality { get { return SleepQualityMultiplier; } }
 
         /// <summary>
         /// 밖에 서 있을 때 초당 받는 영향들을 한 번에 돌려줍니다.
-        /// 시스템이 없으면 전부 0입니다.
         /// </summary>
         /// <param name="hygieneChange">초당 더러움 변화. 음수면 씻깁니다.</param>
         /// <param name="stress">초당 오르는 스트레스</param>
         /// <param name="thirstRelief">초당 줄어드는 갈증</param>
         /// <param name="stressRelief">초당 줄어드는 스트레스</param>
-        public static void GetExposureRates(out float hygieneChange, out float stress,
-                                            out float thirstRelief, out float stressRelief)
+        public void GetExposureRates(out float hygieneChange, out float stress,
+                                     out float thirstRelief, out float stressRelief)
         {
-            WeatherSystem instance = Instance;
-            if (instance == null)
-            {
-                hygieneChange = 0f; stress = 0f; thirstRelief = 0f; stressRelief = 0f;
-                return;
-            }
+            hygieneChange = HygieneChangePerSecond;
+            stress = StressPerSecond;
+            thirstRelief = ThirstReliefPerSecond;
+            stressRelief = StressReliefPerSecond;
+        }
 
-            hygieneChange = instance.HygieneChangePerSecond;
-            stress = instance.StressPerSecond;
-            thirstRelief = instance.ThirstReliefPerSecond;
-            stressRelief = instance.StressReliefPerSecond;
+        /// <summary>
+        /// 구름이 하늘을 덮은 정도입니다. 날씨가 있으므로 기본값은 쓰이지 않습니다.
+        /// </summary>
+        /// <param name="fallback">쓰이지 않습니다.</param>
+        /// <returns>실제 구름량</returns>
+        public float GetCloudCover(float fallback)
+        {
+            return CloudCover;
         }
 
         // --- Private Methods ---
@@ -427,7 +450,7 @@ namespace CarDrive.Systems
             }
 
             WeatherType next = _picker.PickNext(
-                _transition.Current, NowMinutes(), _severeThreshold, TimeSystem.IsNightNow());
+                _transition.Current, NowMinutes(), _severeThreshold, _clock.IsNight);
 
             SetWeather(next, false);
         }
@@ -506,7 +529,7 @@ namespace CarDrive.Systems
         /// <returns>시계가 있으면 그 총 시간, 없으면 실행 시간에 배율을 곱한 값</returns>
         private float NowMinutes()
         {
-            if (TimeSystem.Instance != null) return TimeSystem.Instance.TotalMinutes;
+            if (_clock.IsRunning) return _clock.TotalMinutes;
             return Time.time * _fallbackMinutesPerSecond;
         }
     }

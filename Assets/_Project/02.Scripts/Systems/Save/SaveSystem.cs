@@ -62,9 +62,6 @@ namespace CarDrive.Systems
 
         // --- Public Properties ---
 
-        /// <summary>씬의 세이브 시스템입니다. 둘 이상이면 나중 것이 스스로 비활성화됩니다.</summary>
-        public static SaveSystem Instance { get { return GameContext.Get<SaveSystem>(); } }
-
         /// <summary>저장 파일의 전체 경로입니다.</summary>
         public string FilePath { get { return Path.Combine(Application.persistentDataPath, fileName); } }
 

@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using MoreMountains.Feedbacks;
+using VContainer;
 using CarDrive.Common;
 using CarDrive.Systems;
 using CarDrive.UI;
@@ -138,6 +139,14 @@ namespace CarDrive.Gameplay
             GameContext.Unregister(this);
         }
 
+        /// <summary>갈증·배뇨를 옮길 니즈 시스템을 받습니다.</summary>
+        /// <param name="system">니즈 시스템</param>
+        [Inject]
+        public void Construct(NeedsSystem system)
+        {
+            if (needsSystem == null) needsSystem = system;
+        }
+
         /// <summary>
         /// 비어 있는 참조를 채웁니다.
         /// </summary>
@@ -146,7 +155,6 @@ namespace CarDrive.Gameplay
             aim = PlayerAim.Resolve(footThrowOrigin, this);
 
             if (playerHealth == null) playerHealth = GameContext.Resolve<PlayerHealth>(this);
-            if (needsSystem == null) needsSystem = GameContext.Resolve<NeedsSystem>(this);
             if (drinkAnimator == null) drinkAnimator = GameContext.Resolve<DrinkAnimation>(this);
             if (modeController == null) modeController = GameContext.Resolve<PlayerModeController>(this);
             if (soundController == null) soundController = GetComponent<PlayerSoundController>();

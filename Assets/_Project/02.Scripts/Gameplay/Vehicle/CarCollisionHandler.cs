@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using VContainer;
 using CarDrive.Systems;
 using CarDrive.Common;
 
@@ -38,6 +39,19 @@ namespace CarDrive.Gameplay
         /// 스크립트가 처음 활성화될 때 연동 컴포넌트들을 찾습니다.
         /// (인스펙터에서 직접 할당하는 것을 권장합니다)
         /// </summary>
+        // --- Injection ---
+
+        /// <summary>충돌 스트레스를 흘려보낼 곳입니다. 주입되지 않으면 조용히 버려집니다.</summary>
+        private INeedsSink _needs = NullNeedsSink.Instance;
+
+        /// <summary>스트레스를 올릴 곳을 받습니다.</summary>
+        /// <param name="needs">니즈를 받는 쪽</param>
+        [Inject]
+        public void Construct(INeedsSink needs)
+        {
+            if (needs != null) _needs = needs;
+        }
+
         void Start()
         {
             if (vehicle == null) vehicle = GetComponentInParent<Vehicle>();
@@ -97,7 +111,7 @@ namespace CarDrive.Gameplay
                 }
 
                 // 3. 스트레스 상승
-                NeedsSystem.Report(NeedType.Stress, stressOnEnemyCollision);
+                _needs.Add(NeedType.Stress, stressOnEnemyCollision);
 
                 // 4. 충돌음. 세게 부딪힐수록 크게 납니다.
                 if (soundController != null)

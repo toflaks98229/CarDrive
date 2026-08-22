@@ -68,11 +68,44 @@ namespace CarDrive.Composition
             DIValidation.OptionalRef(this, weatherRig, nameof(weatherRig),
                 "비·안개 표현이 없습니다. 날씨 수치는 계속 계산됩니다.");
 
-            if (timeSystem != null) builder.RegisterComponent(timeSystem);
-            if (weatherSystem != null) builder.RegisterComponent(weatherSystem);
+            // 구체 타입과 <b>계약</b>을 함께 등록합니다.
+            //
+            // 예전에는 구체 타입만 등록하고, 값을 읽고 싶은 쪽은 WeatherSystem.GetFuelConsumption()
+            // 같은 정적 접근자를 불렀습니다. 그래서 소비자의 시그니처에 날씨가 나타나지 않았고,
+            // 그 하나 때문에 순수 산술인 Powertrain 을 씬 없이 검증할 수 없었습니다.
+            //
+            // 이제 <b>무엇이 무엇을 답하는지가 여기 한 곳에 적혀 있습니다.</b> 소비자는 자기가
+            // 필요한 만큼만 좁은 계약으로 받고, 그 계약을 누가 구현하는지는 알지 못합니다.
+            // 나중에 날씨가 둘로 갈라지거나 시계가 다른 것으로 바뀌어도 바뀌는 곳은 이 줄들뿐입니다.
+            if (timeSystem != null)
+            {
+                builder.RegisterComponent(timeSystem)
+                       .As<IGameClock>()
+                       .As<ISunSource>();
+            }
+
+            if (weatherSystem != null)
+            {
+                builder.RegisterComponent(weatherSystem)
+                       .As<IRoadConditions>()
+                       .As<IGhostActivity>()
+                       .As<IExposureConditions>()
+                       .As<ISkyConditions>();
+            }
+
+            if (needsSystem != null)
+            {
+                builder.RegisterComponent(needsSystem)
+                       .As<INeedsSink>();
+            }
+
+            if (wallet != null)
+            {
+                builder.RegisterComponent(wallet)
+                       .As<ICurrencySink>();
+            }
+
             if (weatherRig != null) builder.RegisterComponent(weatherRig);
-            if (needsSystem != null) builder.RegisterComponent(needsSystem);
-            if (wallet != null) builder.RegisterComponent(wallet);
             if (saveSystem != null) builder.RegisterComponent(saveSystem);
         }
 

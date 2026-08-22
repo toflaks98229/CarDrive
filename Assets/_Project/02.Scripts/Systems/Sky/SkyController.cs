@@ -1,4 +1,6 @@
 using UnityEngine;
+using VContainer;
+using CarDrive.Common;
 
 namespace CarDrive.Systems
 {
@@ -111,6 +113,22 @@ namespace CarDrive.Systems
         /// <summary>지금 조작 중인 하늘 머티리얼입니다.</summary>
         private Material activeSky;
 
+        /// <summary>
+        /// 시각을 묻는 시계입니다. 주입되지 않으면 대낮으로 봅니다.
+        ///
+        /// <b>이 컴포넌트는 <c>[ExecuteAlways]</c>라 편집 중에도 돕니다.</b> 그때는 컨테이너가
+        /// 없으므로 <see cref="NullGameClock"/>이 들어 있고, 인스펙터에서 하늘 값을 만질 때
+        /// 한낮 기준으로 보입니다. 예전에 <c>TimeSystem.Instance</c>가 편집 중 null이라
+        /// <c>GetDaylight()</c>가 1을 돌려주던 것과 같은 결과입니다.
+        /// </summary>
+        private IGameClock clock = NullGameClock.Instance;
+
+        /// <summary>해가 누구이고 얼마나 밝을 수 있는지 알려 주는 쪽입니다.</summary>
+        private ISunSource sunSource;
+
+        /// <summary>구름과 어둡기를 묻는 쪽입니다. 주입되지 않으면 맑은 하늘로 봅니다.</summary>
+        private ISkyConditions skyConditions = NullWeather.Instance;
+
         // 셰이더 프로퍼티 이름은 문자열로 매번 찾으면 낭비라 한 번만 해석해 둡니다.
         private static readonly int DayFactorId = Shader.PropertyToID("_DayFactor");
         private static readonly int SunDirectionId = Shader.PropertyToID("_SunDirection");
@@ -120,6 +138,30 @@ namespace CarDrive.Systems
         // 그런 하늘은 낮 사진 한 장이라 그냥 두면 <b>한밤중에도 파랗게</b> 빛납니다.
         private static readonly int ExposureId = Shader.PropertyToID("_Exposure");
         private static readonly int TintId = Shader.PropertyToID("_Tint");
+
+        // --- Injection ---
+
+        /// <summary>
+        /// 시계·해·하늘 상태를 받습니다.
+        ///
+        /// <b>셋을 따로 받는 이유가 있습니다.</b> 이 컴포넌트는 "몇 시인가", "어느 라이트가
+        /// 해인가", "구름이 얼마나 꼈나" 세 가지를 묻는데, 앞의 둘은 시간 시스템이,
+        /// 마지막은 날씨 시스템이 답합니다. 구현이 어디에 있든 이쪽 코드는 바뀌지 않습니다.
+        /// </summary>
+        /// <param name="gameClock">게임 시계</param>
+        /// <param name="sun">해를 알려 주는 쪽</param>
+        /// <param name="conditions">구름·어둡기를 알려 주는 쪽</param>
+        [Inject]
+        public void Construct(IGameClock gameClock, ISunSource sun, ISkyConditions conditions)
+        {
+            if (gameClock != null) clock = gameClock;
+            if (sun != null) sunSource = sun;
+            if (conditions != null) skyConditions = conditions;
+
+            // 주입이 OnEnable 뒤에 올 수 있습니다. 그러면 이미 해를 찾아 둔 뒤이므로
+            // 여기서 한 번 더 확인해야 시간 시스템이 지정한 해가 반영됩니다.
+            ResolveReferences();
+        }
 
         // --- Unity Event Functions ---
 
@@ -139,7 +181,7 @@ namespace CarDrive.Systems
         {
             if (activeSky == null) ResolveReferences();
 
-            float daylight = TimeSystem.GetDaylight();
+            float daylight = clock.Daylight;
 
             ApplySky(daylight);
             ApplySun(daylight);
@@ -156,7 +198,7 @@ namespace CarDrive.Systems
         {
             activeSky = skyMaterial != null ? skyMaterial : RenderSettings.skybox;
 
-            if (sun == null && TimeSystem.Instance != null) sun = TimeSystem.Instance.sunLight;
+            if (sun == null && sunSource != null) sun = sunSource.Sun;
             if (sun == null) sun = RenderSettings.sun;
         }
 
@@ -183,11 +225,8 @@ namespace CarDrive.Systems
             if (!activeSky.HasProperty(StarFadeId)) return;
 
             // 구름이 짙을수록 별을 가립니다. 날씨 시스템이 없으면 0이라 아무 일도 없습니다.
-            float clouds = 0f;
-            if (cloudsHideStars && WeatherSystem.Instance != null)
-            {
-                clouds = Mathf.Clamp01(WeatherSystem.Instance.CloudCover);
-            }
+            // 날씨가 없으면 GetCloudCover 가 넘긴 기본값 0 을 그대로 돌려주므로 별이 가려지지 않습니다.
+            float clouds = cloudsHideStars ? Mathf.Clamp01(skyConditions.GetCloudCover(0f)) : 0f;
             activeSky.SetFloat(StarFadeId, clouds);
         }
 
@@ -235,16 +274,12 @@ namespace CarDrive.Systems
             //
             // 주변광만 낮추면 그늘만 어두워지고 볕은 그대로라, 흐린 날인데도
             // 지면에 쨍한 볕이 남아 이상해 보입니다. 해에도 같은 어둡기를 먹입니다.
-            float weather = 1f;
-            if (WeatherSystem.Instance != null)
-            {
-                float darkness = Mathf.Clamp01(WeatherSystem.Instance.Darkness);
-                weather = Mathf.Lerp(1f, weatherSunFloor, darkness);
-            }
+            // 날씨가 없으면 Darkness 가 0 이라 weather 는 1 로 남습니다.
+            float weather = Mathf.Lerp(1f, weatherSunFloor, Mathf.Clamp01(skyConditions.Darkness));
 
             // 밤에 완전히 꺼 버리면 헤드라이트 밖이 아무것도 보이지 않습니다.
             // 방향은 그대로 두고 약한 달빛만 남깁니다.
-            float max = TimeSystem.Instance != null ? TimeSystem.Instance.sunMaxIntensity : 1f;
+            float max = sunSource != null ? sunSource.SunMaxIntensity : 1f;
             sun.intensity = Mathf.Max(max * daylight * weather, moonIntensity);
             sun.enabled = true;
         }
@@ -283,11 +318,8 @@ namespace CarDrive.Systems
             // 있지만(controlAmbient), 둘 다 켜면 매 프레임 서로의 값을 덮어써서 실행 순서에 따라
             // 결과가 달라집니다. 그래서 <b>주변광의 주인은 이 컴포넌트 하나</b>로 정하고
             // WeatherRig의 controlAmbient는 꺼 둡니다.
-            if (WeatherSystem.Instance != null)
-            {
-                float darkness = Mathf.Clamp01(WeatherSystem.Instance.Darkness);
-                sky *= Mathf.Lerp(1f, weatherDarkFloor, darkness);
-            }
+            // 날씨가 없으면 Darkness 가 0 이라 배율이 1 이 되어 아무 일도 하지 않습니다.
+            sky *= Mathf.Lerp(1f, weatherDarkFloor, Mathf.Clamp01(skyConditions.Darkness));
 
             RenderSettings.ambientSkyColor = sky;
             RenderSettings.ambientEquatorColor = sky * 0.7f;

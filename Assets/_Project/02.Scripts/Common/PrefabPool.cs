@@ -33,6 +33,27 @@ namespace CarDrive.Common
         /// <summary>쉬고 있는 인스턴스를 모아 두는 곳입니다. 하이어라키가 어지러워지지 않게 묶어 둡니다.</summary>
         private static Transform parking;
 
+        // --- Public Properties ---
+
+        /// <summary>
+        /// 새로 만든 인스턴스에 의존성을 넣어 주는 갈고리입니다.
+        ///
+        /// <b>왜 필요한가.</b> 풀에서 나오는 것들 — 귀신, 재화 덩어리 — 은 씬에 미리
+        /// 놓여 있지 않습니다. 인스펙터로 배선할 수 없으니, 예전에는 그것들이
+        /// <c>NeedsSystem.Report()</c>·<c>Wallet.Report()</c> 같은 <b>정적 메서드로
+        /// 협력자를 직접 찾았습니다.</b> 풀에서 나오는 오브젝트가 있는 한 정적 접근을
+        /// 없앨 수 없었던 진짜 이유가 이것입니다.
+        ///
+        /// 여기에 조립 루트가 갈고리를 하나 걸면 그 이유가 사라집니다.
+        /// <see cref="Create"/>가 인스턴스를 <b>처음 만들 때 한 번</b> 부르고,
+        /// 이후 재사용에서는 부르지 않습니다 — 풀은 인스턴스를 파괴하지 않으므로
+        /// 한 번 채운 필드가 그대로 남아 있기 때문입니다.
+        ///
+        /// 걸지 않으면 아무 일도 하지 않습니다. 풀은 이 갈고리 없이도 동작하고,
+        /// 주입받지 못한 쪽은 각자 준비해 둔 Null 객체로 계속 돕니다.
+        /// </summary>
+        public static System.Action<GameObject> Injector { get; set; }
+
         // --- Public Methods ---
 
         /// <summary>
@@ -110,6 +131,10 @@ namespace CarDrive.Common
         {
             pools.Clear();
             parking = null;
+
+            // 갈고리는 지난 실행의 컨테이너를 붙들고 있습니다. 도메인 리로드를 꺼 두면
+            // 그 컨테이너가 이미 버려진 뒤에도 남아, 새 인스턴스에 죽은 참조를 넣습니다.
+            Injector = null;
         }
 
         /// <summary>
@@ -157,6 +182,10 @@ namespace CarDrive.Common
             // 반납할 때 어느 풀로 돌아가야 하는지 알기 위한 표식입니다.
             PooledObject tag = instance.AddComponent<PooledObject>();
             tag.SourcePrefab = prefab;
+
+            // 의존성은 여기서 딱 한 번 들어갑니다. 아직 꺼져 있어 Awake도 돌지 않았으므로,
+            // 이 인스턴스는 <b>처음 켜지기 전에 이미 필요한 것을 다 갖춘 상태</b>가 됩니다.
+            if (Injector != null) Injector(instance);
 
             return instance;
         }

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using VContainer;
 using CarDrive.Common;
 using CarDrive.Systems;
 
@@ -67,9 +68,16 @@ namespace CarDrive.UI
         /// 지갑을 찾고 이름 라벨을 한 번만 채웁니다.
         /// 지갑이 없으면 경고를 남기고 이 컴포넌트를 끕니다.
         /// </summary>
+        /// <summary>표시할 지갑을 받습니다. UI 는 읽기만 하므로 구체 타입이면 충분합니다.</summary>
+        /// <param name="playerWallet">표시할 지갑</param>
+        [Inject]
+        public void Construct(Wallet playerWallet)
+        {
+            if (wallet == null) wallet = playerWallet;
+        }
+
         void Start()
         {
-            if (wallet == null) wallet = GameContext.Resolve<Wallet>(this);
 
             if (wallet == null)
             {
