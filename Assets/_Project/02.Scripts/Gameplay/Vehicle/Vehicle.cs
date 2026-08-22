@@ -32,7 +32,18 @@ namespace CarDrive.Gameplay
         /// <summary>씬에 존재하는 모든 차량입니다.</summary>
         public static IReadOnlyList<Vehicle> All { get { return all; } }
 
-        /// <summary>플레이어가 지금 타고 있는 차량입니다. 걸어 다니는 중이면 null입니다.</summary>
+        /// <summary>
+        /// 플레이어가 지금 타고 있는 차량입니다. 걸어 다니는 중이면 null입니다.
+        ///
+        /// <b>이것은 차량의 속성이 아니라 플레이어 상태의 사본입니다.</b> 진짜 주인은
+        /// <c>PlayerModeController</c>이고, 그 상태 기계(<c>DrivingState</c>/<c>OnFootState</c>)만
+        /// 이 값을 씁니다. 여기 두는 이유는 읽는 쪽이 많고(계기판·흔들개·속도원·적의 추적)
+        /// 그들 대부분이 플레이어를 알 이유가 없기 때문입니다.
+        ///
+        /// 쓰기는 <see cref="SetCurrent"/> 하나로 모여 있고 어셈블리 밖으로 열려 있지 않습니다.
+        /// <b>새로 쓰고 싶어졌다면 그것은 대개 신호입니다</b> — 견인이나 차량 상점처럼
+        /// "지금 차"의 뜻이 갈라지는 기능이라면, 여기에 덧쓰지 말고 그 개념에 이름을 따로 주세요.
+        /// </summary>
         public static Vehicle Current { get; private set; }
 
         // --- Public Member Variables ---
@@ -114,14 +125,41 @@ namespace CarDrive.Gameplay
             if (Current == this) Current = null;
         }
 
+        // --- Private Methods : 정적 상태 초기화 ---
+
+        /// <summary>
+        /// 플레이 모드에 들어갈 때 등록부와 탑승 상태를 비웁니다.
+        ///
+        /// <b>왜 필요한가.</b> 이 둘은 정적이라 <c>Enter Play Mode Options</c>로
+        /// 도메인 리로드를 꺼 두면 <b>지난 실행의 값이 그대로 남습니다.</b>
+        /// 그러면 등록부에 파괴된 차량이 유령으로 남고, 걸어서 시작했는데도
+        /// 지난 판에 몰던 차가 <see cref="Current"/>에 들어 있게 됩니다.
+        ///
+        /// 이 프로젝트의 다른 정적 보유자(<c>GameContext</c>·<c>SaveRegistry</c>·
+        /// <c>PrefabPool</c>·<c>ViewDistances</c>·<c>WorldProfiler</c> 등)는 모두 이것을
+        /// 갖추고 있었는데 여기만 빠져 있었습니다.
+        /// </summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics()
+        {
+            all.Clear();
+            Current = null;
+        }
+
         // --- Public Methods ---
 
         /// <summary>
-        /// 지금 조종 중인 차량을 지정합니다. PlayerModeController가 탑승·하차할 때 호출합니다.
+        /// 지금 조종 중인 차량을 지정합니다. 플레이어 상태 기계가 탑승·하차할 때 부릅니다.
         /// null을 넘기면 "아무 차도 타고 있지 않음"이 됩니다.
+        ///
+        /// <b>왜 internal 인가.</b> 예전에는 <c>public</c>이었습니다. 바로 위 <see cref="Current"/>를
+        /// <c>private set</c>으로 막아 두고도 그 옆에 공개 설정자를 두어, 보호가 사실상 없었습니다.
+        /// 실제 호출자는 <c>DrivingState</c>와 <c>OnFootState</c> 둘뿐이고 둘 다 이 어셈블리 안에
+        /// 있으므로, 밖에서는 부를 수 없게 좁혔습니다. 이제 <b>탑승 상태를 바꾸는 길은
+        /// 상태 기계 하나</b>입니다.
         /// </summary>
         /// <param name="vehicle">지금 조종 중인 차량. 하차했다면 null을 넘깁니다.</param>
-        public static void SetCurrent(Vehicle vehicle)
+        internal static void SetCurrent(Vehicle vehicle)
         {
             Current = vehicle;
         }
