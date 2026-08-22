@@ -83,6 +83,19 @@ namespace CarDrive.Gameplay
         public Carryable Target { get; private set; }
 
         /// <summary>
+        /// 직전 프레임에 조준점이 맞힌 콜라이더입니다.
+        ///
+        /// <b>왜 들고 있는가.</b> <c>GetComponentInParent&lt;Carryable&gt;</c> 는 콜라이더에서 부모 체인을 끝까지
+        /// 거슬러 올라가며 타입을 확인합니다. 그런데 조준점은 대개 여러 프레임 동안
+        /// <b>같은 것을 보고 있습니다</b> — 문을 바라보는 1초 동안 같은 탐색을 60번 합니다.
+        /// 맞힌 콜라이더가 직전과 같으면 결과도 같으므로 그 탐색을 건너뜁니다.
+        ///
+        /// 콜라이더가 파괴되면 레이캐스트가 더 이상 맞히지 못하므로 자연히 무효가 됩니다.
+        /// (한 콜라이더의 대상 컴포넌트를 실행 중에 갈아 끼우는 경우는 가정하지 않습니다)
+        /// </summary>
+        private Collider lastHitCollider;
+
+        /// <summary>
         /// 좌클릭이 들기/내려놓기에 쓰이는 상황인지 여부입니다.
         /// PlayerAttacker가 이 값을 보고 앙크를 꺼낼지 판단합니다.
         /// </summary>
@@ -296,7 +309,15 @@ namespace CarDrive.Gameplay
         /// </summary>
         private void UpdateTarget()
         {
-            if (IsCarrying) { Target = null; return; }
+            // 들고 있는 동안에는 새 대상을 찾지 않습니다.
+            // 캐시도 함께 비웁니다. 그러지 않으면 내려놓은 뒤 같은 것을 계속 보고 있을 때
+            // "직전과 같다"는 이유로 건너뛰어, 대상이 영영 잡히지 않습니다.
+            if (IsCarrying)
+            {
+                lastHitCollider = null;
+                Target = null;
+                return;
+            }
 
             // 원근 카메라에서 카메라 정면 = 화면 중앙이므로 이 레이가 곧 조준점입니다.
             RaycastHit hit;
@@ -309,7 +330,18 @@ namespace CarDrive.Gameplay
                 QueryTriggerInteraction.Ignore
             );
 
-            Target = didHit ? hit.collider.GetComponentInParent<Carryable>() : null;
+            if (!didHit)
+            {
+                lastHitCollider = null;
+                Target = null;
+                return;
+            }
+
+            // 직전 프레임과 같은 것을 보고 있으면 이미 찾아 둔 결과가 그대로 유효합니다.
+            if (hit.collider == lastHitCollider) return;
+
+            lastHitCollider = hit.collider;
+            Target = hit.collider.GetComponentInParent<Carryable>();
         }
 
         /// <summary>

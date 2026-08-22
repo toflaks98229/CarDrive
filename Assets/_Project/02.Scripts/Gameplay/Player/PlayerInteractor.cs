@@ -42,6 +42,19 @@ namespace CarDrive.Gameplay
         /// <summary>지금 조준점에 걸린 상호작용 대상입니다. (문·운전대·음료·침대 등)</summary>
         private IInteractable currentInteractable;
 
+        /// <summary>
+        /// 직전 프레임에 조준점이 맞힌 콜라이더입니다.
+        ///
+        /// <b>왜 들고 있는가.</b> <c>GetComponentInParent&lt;IInteractable&gt;</c> 는 콜라이더에서 부모 체인을 끝까지
+        /// 거슬러 올라가며 타입을 확인합니다. 그런데 조준점은 대개 여러 프레임 동안
+        /// <b>같은 것을 보고 있습니다</b> — 문을 바라보는 1초 동안 같은 탐색을 60번 합니다.
+        /// 맞힌 콜라이더가 직전과 같으면 결과도 같으므로 그 탐색을 건너뜁니다.
+        ///
+        /// 콜라이더가 파괴되면 레이캐스트가 더 이상 맞히지 못하므로 자연히 무효가 됩니다.
+        /// (한 콜라이더의 대상 컴포넌트를 실행 중에 갈아 끼우는 경우는 가정하지 않습니다)
+        /// </summary>
+        private Collider lastHitCollider;
+
         /// <summary>조준 광선을 쏠 기준 Transform입니다. 보통 메인 카메라입니다.</summary>
         private Transform cameraTransform;
 
@@ -145,13 +158,18 @@ namespace CarDrive.Gameplay
 
             if (!didHit)
             {
+                lastHitCollider = null;
                 currentInteractable = null;
                 return;
             }
 
+            // 직전 프레임과 같은 것을 보고 있으면 이미 찾아 둔 결과가 그대로 유효합니다.
+            if (hit.collider == lastHitCollider) return;
+
             // 콜라이더가 자식에 있을 수 있으므로 부모까지 올라가며 찾습니다.
             // 음료와 음료 상자도 IInteractable이라 여기서 함께 잡힙니다.
             // (차 안에 있는 것은 각자 CanInteract에서 탑승 여부를 확인합니다)
+            lastHitCollider = hit.collider;
             currentInteractable = hit.collider.GetComponentInParent<IInteractable>();
         }
 
