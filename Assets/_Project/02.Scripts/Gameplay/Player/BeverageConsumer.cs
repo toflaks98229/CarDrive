@@ -126,7 +126,7 @@ namespace CarDrive.Gameplay
         private Transform aim;
 
         /// <summary>지금 마시는 중인 병입니다. 중간에 끊겼을 때 마무리하는 데 씁니다.</summary>
-        private Beverage pending;
+        private ConsumableItem pending;
 
         /// <summary>마시기 시작할 때 타고 있던 차량입니다.</summary>
         private Vehicle pendingVehicle;
@@ -212,9 +212,22 @@ namespace CarDrive.Gameplay
         /// <returns>마시기 시작했으면 true를 반환합니다.</returns>
         public bool Drink(Beverage bottle)
         {
-            if (IsBusy || bottle == null || !isActiveAndEnabled) return false;
+            return Consume(bottle);
+        }
 
-            StartCoroutine(DrinkRoutine(bottle));
+        /// <summary>
+        /// 물건 하나를 소비합니다. 음료든 음식이든 같은 길을 지납니다.
+        ///
+        /// <b>무엇이 얼마나 바뀌는지는 물건이 정합니다.</b> 여기서는 절차만 밟습니다 —
+        /// 감추고, 효과를 먹이고, 연출을 돌리고, 다 쓴 껍데기를 던집니다.
+        /// </summary>
+        /// <param name="item">소비할 물건</param>
+        /// <returns>소비를 시작했으면 true. 이미 무언가를 소비 중이면 false</returns>
+        public bool Consume(ConsumableItem item)
+        {
+            if (IsBusy || item == null || !isActiveAndEnabled) return false;
+
+            StartCoroutine(ConsumeRoutine(item));
             return true;
         }
 
@@ -224,10 +237,10 @@ namespace CarDrive.Gameplay
         /// 마시고, 연출이 끝나면 빈 병을 던지는 한 사이클입니다.
         /// </summary>
         /// <param name="bottle">마실 음료</param>
-        private IEnumerator DrinkRoutine(Beverage bottle)
+        private IEnumerator ConsumeRoutine(ConsumableItem item)
         {
             IsBusy = true;
-            pending = bottle;
+            pending = item;
 
             // 어느 차에 타고 던질지는 마시기 <b>시작</b> 시점으로 정합니다.
             // 마시는 도중에 내리면 던질 곳이 사라지기 때문입니다.
@@ -237,37 +250,54 @@ namespace CarDrive.Gameplay
             pendingVehicle = vehicle;
 
             // 1. 병을 즉시 감춥니다. 상자에 들어 있었다면 목록에서도 뺍니다.
-            bottle.LeaveBox();
-            bottle.transform.SetParent(null, true);
-            bottle.gameObject.SetActive(false);
+            item.OnConsumeStarted();
+            item.transform.SetParent(null, true);
+            item.gameObject.SetActive(false);
 
             // 2. 효과와 연출.
-            if (playerHealth != null) playerHealth.Heal(healAmount);
+            //
+            // 물건이 자기 효과를 갖고 있으면 그것을 씁니다. 갖고 있지 않다면 이 컴포넌트의
+            // 값을 씁니다 — 이 필드들이 있던 시절에 배선된 병이 그대로 돌아가게 하기 위해서입니다.
             if (needsSystem != null)
             {
-                needsSystem.Satisfy(NeedType.Thirst, thirstRelief);
-                needsSystem.Add(NeedType.Urine, urineGain);
+                if (item.HasOwnEffects)
+                {
+                    needsSystem.ApplyEffects(item.effects);
+                }
+                else
+                {
+                    needsSystem.Satisfy(NeedType.Thirst, thirstRelief);
+                    needsSystem.Add(NeedType.Urine, urineGain);
+                }
             }
 
-            if (soundController != null) soundController.PlayDrinkSound();
+            float heal = item.HasOwnEffects ? item.healAmount : healAmount;
+            if (playerHealth != null && heal != 0f) playerHealth.Heal(heal);
 
-            float wait = fallbackDrinkSeconds;
-            // Feel 을 연결했으면 그쪽이, 아니면 내장 애니메이션이 재생합니다.
-            if (drinkFeedback != null)
+            float wait = item.consumeSeconds > 0f ? item.consumeSeconds : fallbackDrinkSeconds;
+
+            // 마시는 연출과 소리는 음료에만 붙입니다. 빵을 먹는데 병이 올라오면 곤란합니다.
+            if (item.IsDrink)
             {
-                drinkFeedback.PlayFeedbacks();
-                wait = drinkFeedback.TotalDuration;
-            }
-            else if (drinkView != null)
-            {
-                drinkView.PlayDrinkAnimation();
-                wait = drinkView.TotalDuration;
+                if (soundController != null) soundController.PlayDrinkSound();
+
+                // Feel 을 연결했으면 그쪽이, 아니면 내장 애니메이션이 재생합니다.
+                if (drinkFeedback != null)
+                {
+                    drinkFeedback.PlayFeedbacks();
+                    wait = drinkFeedback.TotalDuration;
+                }
+                else if (drinkView != null)
+                {
+                    drinkView.PlayDrinkAnimation();
+                    wait = drinkView.TotalDuration;
+                }
             }
 
             yield return new WaitForSeconds(wait);
 
             // 3. 다 마셨으니 빈 병으로 바꿔 던집니다.
-            ThrowEmpty(bottle, vehicle);
+            ThrowEmpty(item, vehicle);
 
             pending = null;
             pendingVehicle = null;
@@ -282,14 +312,14 @@ namespace CarDrive.Gameplay
         /// </summary>
         /// <param name="bottle">비워진 병</param>
         /// <param name="vehicle">주행 중이었다면 그 차량. 도보였다면 null입니다.</param>
-        private void ThrowEmpty(Beverage bottle, Vehicle vehicle)
+        private void ThrowEmpty(ConsumableItem item, Vehicle vehicle)
         {
-            if (bottle == null) return;
+            if (item == null) return;
 
-            GameObject go = bottle.gameObject;
+            GameObject go = item.gameObject;
 
             // 마실 수 있는 표식을 떼어 냅니다. 이 순간부터 빈 병입니다.
-            Destroy(bottle);
+            Destroy(item);
 
             Vector3 origin;
             Vector3 velocity;

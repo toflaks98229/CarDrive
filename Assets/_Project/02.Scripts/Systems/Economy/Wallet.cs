@@ -257,7 +257,21 @@ namespace CarDrive.Systems
         /// <returns>접두·접미가 붙은 문자열. 예) "₩1,250"</returns>
         public string Format(CurrencyType type)
         {
-            int amount = Get(type);
+            return Format(type, Get(type));
+        }
+
+        /// <summary>
+        /// 설정의 표기 규칙에 맞춰 <b>임의의 값</b>을 글자로 만듭니다.
+        ///
+        /// 보유량이 아니라 값을 적어야 하는 곳이 있어 열어 둡니다 — 상점의 가격표와
+        /// 계산 문구가 그렇습니다. 그것들이 각자 접두·접미를 흉내 내면 표기가 갈라지므로,
+        /// 규칙은 여기 하나에 둡니다.
+        /// </summary>
+        /// <param name="type">표기 규칙을 가져올 재화 종류</param>
+        /// <param name="amount">표기할 값</param>
+        /// <returns>접두·접미가 붙은 문자열. 예) "₩1,250"</returns>
+        public string Format(CurrencyType type, int amount)
+        {
             CurrencySetting setting = GetSetting(type);
             if (setting == null) return amount.ToString();
 
