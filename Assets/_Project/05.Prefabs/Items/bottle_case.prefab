@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4000013558628948}
   - component: {fileID: 7170246701184232484}
+  - component: {fileID: 8363934839484854559}
   m_Layer: 0
   m_Name: bottle_case
   m_TagString: Untagged
@@ -61,7 +62,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8fb41dd0fb43724bb1568910b5517ca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  vehicle: {fileID: 0}
+  escapeDistance: 1.2
+  escapeCheckInterval: 0.4
   foundBeverages: []
+--- !u!114 &8363934839484854559
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000012711949794}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e752e6b1e5452274790ac7488659ad25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Gameplay::CarDrive.Gameplay.SaveableItem
+  itemId: beer_crate
 --- !u!1 &1277392193844132763
 GameObject:
   m_ObjectHideFlags: 0
@@ -390,6 +407,11 @@ MeshRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 2
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -411,9 +433,11 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!1001 &409263057271099579
 PrefabInstance:
@@ -531,6 +555,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5dfdab9f649b8a64d8dd44aacff7bf09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  promptLabel: 
+  effects: []
+  healAmount: 0
+  consumeSeconds: 0
 --- !u!1001 &671695911320157714
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -647,6 +675,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5dfdab9f649b8a64d8dd44aacff7bf09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  promptLabel: 
+  effects: []
+  healAmount: 0
+  consumeSeconds: 0
 --- !u!1001 &1043485307939172244
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -763,6 +795,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5dfdab9f649b8a64d8dd44aacff7bf09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  promptLabel: 
+  effects: []
+  healAmount: 0
+  consumeSeconds: 0
 --- !u!1001 &1182783281514127579
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -879,6 +915,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5dfdab9f649b8a64d8dd44aacff7bf09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  promptLabel: 
+  effects: []
+  healAmount: 0
+  consumeSeconds: 0
 --- !u!1001 &1385475798254680453
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -995,6 +1035,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5dfdab9f649b8a64d8dd44aacff7bf09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  promptLabel: 
+  effects: []
+  healAmount: 0
+  consumeSeconds: 0
 --- !u!1001 &1902940795047485037
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1111,6 +1155,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5dfdab9f649b8a64d8dd44aacff7bf09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  promptLabel: 
+  effects: []
+  healAmount: 0
+  consumeSeconds: 0
 --- !u!1001 &2707249780206004334
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1227,6 +1275,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5dfdab9f649b8a64d8dd44aacff7bf09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  promptLabel: 
+  effects: []
+  healAmount: 0
+  consumeSeconds: 0
 --- !u!1001 &3420195792227570800
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1343,6 +1395,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5dfdab9f649b8a64d8dd44aacff7bf09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  promptLabel: 
+  effects: []
+  healAmount: 0
+  consumeSeconds: 0
 --- !u!1001 &3849994654977979363
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1459,6 +1515,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5dfdab9f649b8a64d8dd44aacff7bf09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  promptLabel: 
+  effects: []
+  healAmount: 0
+  consumeSeconds: 0
 --- !u!1001 &4294081381058426514
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1575,6 +1635,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5dfdab9f649b8a64d8dd44aacff7bf09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  promptLabel: 
+  effects: []
+  healAmount: 0
+  consumeSeconds: 0
 --- !u!1001 &6337363745782107925
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1685,6 +1749,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5dfdab9f649b8a64d8dd44aacff7bf09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  promptLabel: 
+  effects: []
+  healAmount: 0
+  consumeSeconds: 0
 --- !u!4 &7494324349804705688 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4608280787469695117, guid: 7548dd8db543494498a9b8f0aaef5fd8,
@@ -1801,6 +1869,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5dfdab9f649b8a64d8dd44aacff7bf09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  promptLabel: 
+  effects: []
+  healAmount: 0
+  consumeSeconds: 0
 --- !u!4 &7254759020992351883 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4608280787469695117, guid: 7548dd8db543494498a9b8f0aaef5fd8,
@@ -1917,6 +1989,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5dfdab9f649b8a64d8dd44aacff7bf09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  promptLabel: 
+  effects: []
+  healAmount: 0
+  consumeSeconds: 0
 --- !u!4 &7101269264598417913 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4608280787469695117, guid: 7548dd8db543494498a9b8f0aaef5fd8,
@@ -2033,6 +2109,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5dfdab9f649b8a64d8dd44aacff7bf09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  promptLabel: 
+  effects: []
+  healAmount: 0
+  consumeSeconds: 0
 --- !u!4 &6735950367129278361 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4608280787469695117, guid: 7548dd8db543494498a9b8f0aaef5fd8,
@@ -2149,6 +2229,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5dfdab9f649b8a64d8dd44aacff7bf09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  promptLabel: 
+  effects: []
+  healAmount: 0
+  consumeSeconds: 0
 --- !u!4 &5748208424319028926 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4608280787469695117, guid: 7548dd8db543494498a9b8f0aaef5fd8,
@@ -2265,6 +2349,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5dfdab9f649b8a64d8dd44aacff7bf09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  promptLabel: 
+  effects: []
+  healAmount: 0
+  consumeSeconds: 0
 --- !u!4 &4854754447059892731 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4608280787469695117, guid: 7548dd8db543494498a9b8f0aaef5fd8,

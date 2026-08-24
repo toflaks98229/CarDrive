@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 583585298586070322}
   - component: {fileID: 6688338640752655657}
   - component: {fileID: 8156687738084664865}
+  - component: {fileID: 6427445356106610783}
   m_Layer: 6
   m_Name: "\uC0DD\uC218"
   m_TagString: Untagged
@@ -188,3 +189,16 @@ MonoBehaviour:
   onDropped:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &6427445356106610783
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2499939155111259813}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e752e6b1e5452274790ac7488659ad25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Gameplay::CarDrive.Gameplay.SaveableItem
+  itemId: water

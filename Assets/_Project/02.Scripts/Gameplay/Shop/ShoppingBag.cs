@@ -65,6 +65,15 @@ namespace CarDrive.Gameplay
             get { return contents.Count > 0 ? contents[contents.Count - 1] : null; }
         }
 
+        /// <summary>
+        /// 지금 담긴 것들입니다. <b>담은 차례 그대로</b>입니다. 세이브가 읽어 갑니다.
+        ///
+        /// 읽기 전용으로 내주는 이유는 <see cref="Fill"/> 이 유일한 쓰기 경로여야 하기
+        /// 때문입니다. 밖에서 목록을 직접 고치면 <see cref="Interact"/> 의 "끝에서부터
+        /// 꺼낸다"는 규칙이 조용히 깨집니다.
+        /// </summary>
+        public IReadOnlyList<ShopItem> Contents { get { return contents; } }
+
         // --- Private Member Variables ---
 
         /// <summary>

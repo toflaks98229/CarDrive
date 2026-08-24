@@ -83,10 +83,11 @@ namespace CarDrive.Gameplay
             }
         }
 
+        /// <summary>지금 누군가 이 물건을 들고 있는지 여부입니다.</summary>
         public bool IsHeld { get; private set; }
 
         /// <summary>이 물건의 Rigidbody입니다.</summary>
-        public Rigidbody Body { get { return body; } }
+        public Rigidbody Body { get { EnsureBody(); return body; } }
 
         // --- Private Member Variables ---
 
@@ -94,11 +95,26 @@ namespace CarDrive.Gameplay
         private Rigidbody body;
 
         // 들기 전 물리 설정을 기억해 두었다가 내려놓을 때 되돌립니다.
+
+        /// <summary>들기 전의 중력 사용 여부입니다.</summary>
         private bool cachedUseGravity;
+
+        /// <summary>들기 전의 선형 감쇠 계수입니다.</summary>
         private float cachedLinearDamping;
+
+        /// <summary>들기 전의 각 감쇠 계수입니다.</summary>
         private float cachedAngularDamping;
+
+        /// <summary>들기 전의 보간 방식입니다.</summary>
         private RigidbodyInterpolation cachedInterpolation;
+
+        /// <summary>들기 전의 충돌 감지 방식입니다.</summary>
         private CollisionDetectionMode cachedCollisionMode;
+
+        /// <summary>
+        /// 물리 설정을 이미 기억해 두었는지 여부입니다.
+        /// 들었다 놓기를 반복해도 원본이 덮이지 않도록 한 번만 기억합니다.
+        /// </summary>
         private bool cached;
 
         // --- Unity Event Functions ---
@@ -108,7 +124,7 @@ namespace CarDrive.Gameplay
         /// </summary>
         void Awake()
         {
-            body = GetComponent<Rigidbody>();
+            EnsureBody();
         }
 
         // --- Public Methods ---
@@ -120,6 +136,8 @@ namespace CarDrive.Gameplay
         {
             if (IsHeld) return;
             IsHeld = true;
+
+            EnsureBody();
 
             if (!cached)
             {
@@ -150,6 +168,8 @@ namespace CarDrive.Gameplay
             if (!IsHeld) return;
             IsHeld = false;
 
+            EnsureBody();
+
             if (cached)
             {
                 body.useGravity = cachedUseGravity;
@@ -160,6 +180,19 @@ namespace CarDrive.Gameplay
             }
 
             if (onDropped != null) onDropped.Invoke();
+        }
+
+        /// <summary>
+        /// Rigidbody 참조가 없으면 찾습니다.
+        ///
+        /// <b><c>Awake</c> 에만 맡기지 않는 이유가 있습니다.</b> 에디터 테스트에서는
+        /// <c>Awake</c> 가 아예 돌지 않아, 그대로 두면 첫 <see cref="OnPickedUp"/> 에서
+        /// 널 참조가 납니다. (<c>NeedsSystem.EnsureInitialized</c> 와 같은 사정입니다)
+        /// 두 번 불려도 안전합니다.
+        /// </summary>
+        private void EnsureBody()
+        {
+            if (body == null) body = GetComponent<Rigidbody>();
         }
 
         /// <summary>

@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 8515395985446445171}
   - component: {fileID: 8629401981445376874}
   - component: {fileID: 2358248357471470398}
+  - component: {fileID: 3706620560422427233}
   m_Layer: 6
   m_Name: "\uBE75"
   m_TagString: Untagged
@@ -186,3 +187,16 @@ MonoBehaviour:
   onDropped:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &3706620560422427233
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1082626040042865825}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e752e6b1e5452274790ac7488659ad25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Gameplay::CarDrive.Gameplay.SaveableItem
+  itemId: bread

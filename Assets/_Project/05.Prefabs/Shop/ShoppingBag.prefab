@@ -46,6 +46,7 @@ GameObject:
   - component: {fileID: 3511963012930892303}
   - component: {fileID: 8013424559803381627}
   - component: {fileID: 8569521520018883763}
+  - component: {fileID: 1281154034539235892}
   m_Layer: 6
   m_Name: ShoppingBag
   m_TagString: Untagged
@@ -221,3 +222,16 @@ MonoBehaviour:
   onDropped:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &1281154034539235892
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8562828973413679507}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e752e6b1e5452274790ac7488659ad25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Gameplay::CarDrive.Gameplay.SaveableItem
+  itemId: shopping_bag

@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 7148440146899018457}
   - component: {fileID: 964630050053717032}
   - component: {fileID: 7890885122695200117}
+  - component: {fileID: 1931203418601521379}
   m_Layer: 6
   m_Name: Beer
   m_TagString: Untagged
@@ -108,6 +109,19 @@ MonoBehaviour:
   onDropped:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &1931203418601521379
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5873442064502812781}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e752e6b1e5452274790ac7488659ad25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Gameplay::CarDrive.Gameplay.SaveableItem
+  itemId: beer
 --- !u!1 &7903984394910316614
 GameObject:
   m_ObjectHideFlags: 0

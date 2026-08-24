@@ -245,20 +245,27 @@ namespace CarDrive.Composition
         {
             bool hasVehicle = Object.FindAnyObjectByType<VehicleSaveParticipant>(FindObjectsInactive.Include) != null;
             bool hasPlayer = Object.FindAnyObjectByType<PlayerSaveParticipant>(FindObjectsInactive.Include) != null;
+            bool hasItems = Object.FindAnyObjectByType<ItemSaveParticipant>(FindObjectsInactive.Include) != null;
 
-            if (hasVehicle && hasPlayer) return;
+            // 물건 수명은 세이브 참여자가 아니지만 같은 사정입니다 —
+            // 없으면 물건이 영원히 쌓이고, 그것을 알아챌 방법이 없습니다.
+            bool hasDecay = Object.FindAnyObjectByType<ItemDecay>(FindObjectsInactive.Include) != null;
+
+            if (hasVehicle && hasPlayer && hasItems && hasDecay) return;
 
             GameObject go = new GameObject("[Save Participants]");
             Object.DontDestroyOnLoad(go);
 
             if (!hasVehicle) go.AddComponent<VehicleSaveParticipant>();
             if (!hasPlayer) go.AddComponent<PlayerSaveParticipant>();
+            if (!hasItems) go.AddComponent<ItemSaveParticipant>();
+            if (!hasDecay) go.AddComponent<ItemDecay>();
 
             // 방금 만들었으므로 위의 씬 훑기에 잡히지 않았습니다. 여기서 따로 넣습니다.
             _resolver.InjectGameObject(go);
 
             GameLog.Info(GameLog.Channel.Core,
-                "[GameBootstrap] 세이브 참여자(플레이어·차량)를 만들었습니다. " +
+                "[GameBootstrap] 세이브 참여자(플레이어·차량·물건)와 물건 수명을 만들었습니다. " +
                 "씬에 직접 배치해 두면 이 오브젝트는 생기지 않습니다.");
         }
     }

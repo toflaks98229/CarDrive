@@ -64,6 +64,15 @@ namespace CarDrive.Systems
         public const int Vehicles = 50;
 
         /// <summary>
+        /// 월드·손·차에 있던 물건입니다. <b>차량보다 뒤, 플레이어보다 앞</b>입니다.
+        ///
+        /// 차가 제자리에 놓인 뒤여야 그 차에 실린 물건을 옳은 자리에 붙일 수 있고,
+        /// 플레이어보다 앞서야 <b>손에 들려 있던 물건이 이미 존재하는 상태로</b>
+        /// 플레이어 복원이 시작됩니다.
+        /// </summary>
+        public const int Items = 55;
+
+        /// <summary>
         /// 플레이어의 위치·체력·탑승 상태입니다. 차량이 제자리에 놓인 뒤에 옵니다.
         /// </summary>
         public const int Player = 60;

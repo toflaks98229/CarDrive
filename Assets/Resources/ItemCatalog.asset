@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a10d4a9f1dea1e942b09256df74faf0c, type: 3}
+  m_Name: ItemCatalog
+  m_EditorClassIdentifier: CarDrive.Gameplay::CarDrive.Gameplay.ItemCatalog
+  entries:
+  - id: beer
+    prefab: {fileID: 5873442064502812781, guid: 7548dd8db543494498a9b8f0aaef5fd8,
+      type: 3}
+    shopItem: {fileID: 0}
+  - id: shopping_bag
+    prefab: {fileID: 8562828973413679507, guid: ce10689c80159714babe8be6d23363c7,
+      type: 3}
+    shopItem: {fileID: 0}
+  - id: bread
+    prefab: {fileID: 1082626040042865825, guid: a242aec2ed211f5459083439a1746bd3,
+      type: 3}
+    shopItem: {fileID: 11400000, guid: 1058694a6f21070409db7150b310b9e5, type: 2}
+  - id: water
+    prefab: {fileID: 2499939155111259813, guid: f85ba1dd7fafa6841b1a4c17bbdd6b7e,
+      type: 3}
+    shopItem: {fileID: 11400000, guid: 9b51984d93b0a8d4492460c5e306d8b5, type: 2}
+  - id: chocolate_bar
+    prefab: {fileID: 8548599327304963046, guid: a8fa16f7e0785ae4db058433e3e7aafa,
+      type: 3}
+    shopItem: {fileID: 11400000, guid: 88ad5b769ac4c284db0fb815e8bf2ffe, type: 2}
+  - id: canned_food
+    prefab: {fileID: 1071580166607245073, guid: 19b0613b820abd5469c0467de81b49a7,
+      type: 3}
+    shopItem: {fileID: 11400000, guid: 0d977373063a2a74a95ad6f14c82817b, type: 2}
+  - id: beer_crate
+    prefab: {fileID: 1000012711949794, guid: 91aa3923ad3211f48884dce901952186, type: 3}
+    shopItem: {fileID: 11400000, guid: a2e4da4c112158d46b5bf46ed8a3c540, type: 2}

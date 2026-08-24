@@ -51,6 +51,25 @@ namespace CarDrive.Gameplay
         /// </summary>
         void Awake()
         {
+            Rebuild();
+
+            // 이 상자가 차량 안에 실려 있는지 확인해 둡니다. 밖에 놓인 상자라면 null입니다.
+            if (vehicle == null) vehicle = GetComponentInParent<Vehicle>(true);
+        }
+
+        // --- Public Methods : 재고 ---
+
+        /// <summary>
+        /// 직계 자식을 다시 훑어 목록을 짓고, 꺼져 있던 병을 되살립니다.
+        ///
+        /// <b>왜 다시 지을 수 있어야 하는가.</b> 상자는 풀에서 재사용될 수 있는데,
+        /// 그때는 <c>Awake</c> 가 다시 돌지 않습니다. 지난번에 <see cref="TrimTo"/> 로
+        /// 줄여 둔 상태가 그대로 남아 <b>다음에 꺼낸 상자가 이미 비어 있게</b> 됩니다.
+        /// 마신 병은 이미 <c>Beverage</c> 를 잃고 상자를 떠났으므로 여기에 잡히지 않습니다.
+        /// </summary>
+        /// <returns>다시 찾은 병의 수</returns>
+        public int Rebuild()
+        {
             foundBeverages = new List<Beverage>();
 
             foreach (Transform child in transform)
@@ -58,12 +77,43 @@ namespace CarDrive.Gameplay
                 Beverage beverage = child.GetComponent<Beverage>();
                 if (beverage == null) continue;
 
+                // 줄여 두느라 꺼 둔 것을 되살립니다.
+                if (!beverage.gameObject.activeSelf) beverage.gameObject.SetActive(true);
+
                 beverage.SetBox(this);
                 foundBeverages.Add(beverage);
             }
 
-            // 이 상자가 차량 안에 실려 있는지 확인해 둡니다. 밖에 놓인 상자라면 null입니다.
-            if (vehicle == null) vehicle = GetComponentInParent<Vehicle>(true);
+            return foundBeverages.Count;
+        }
+
+        /// <summary>
+        /// 남은 병을 지정한 수까지 줄입니다. 세이브를 되돌릴 때 씁니다.
+        ///
+        /// <b>없애지 않고 끕니다.</b> 없애 버리면 상자가 풀에서 재사용될 때 되살릴 수 없어
+        /// 다음에 산 상자가 처음부터 비어 있게 됩니다. 꺼 두면 <see cref="Rebuild"/> 가
+        /// 언제든 원래대로 돌립니다.
+        /// </summary>
+        /// <param name="count">남길 병의 수</param>
+        /// <returns>줄인 병의 수</returns>
+        public int TrimTo(int count)
+        {
+            Rebuild();
+
+            int target = Mathf.Max(0, count);
+            int removed = 0;
+
+            while (foundBeverages.Count > target)
+            {
+                int last = foundBeverages.Count - 1;
+                Beverage beverage = foundBeverages[last];
+                foundBeverages.RemoveAt(last);
+
+                if (beverage != null) beverage.gameObject.SetActive(false);
+                removed++;
+            }
+
+            return removed;
         }
 
         /// <summary>
