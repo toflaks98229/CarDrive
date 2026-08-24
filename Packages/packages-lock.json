@@ -6,6 +6,42 @@
       "source": "embedded",
       "dependencies": {}
     },
+    "com.toflaks.console-display": {
+      "version": "file:E:/GamePJ/unity-console-display",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {}
+    },
+    "com.toflaks.vendor.bottles": {
+      "version": "file:com.toflaks.vendor.bottles",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.toflaks.vendor.cartoon-fx-remaster": {
+      "version": "file:com.toflaks.vendor.cartoon-fx-remaster",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.toflaks.vendor.crate-barrels": {
+      "version": "file:com.toflaks.vendor.crate-barrels",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.toflaks.vendor.lowpoly-retro-cars": {
+      "version": "file:com.toflaks.vendor.lowpoly-retro-cars",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.toflaks.vendor.tree-pack": {
+      "version": "file:com.toflaks.vendor.tree-pack",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.unity.2d.sprite": {
       "version": "1.0.0",
       "depth": 0,

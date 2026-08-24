@@ -1,0 +1,10 @@
+{
+  "name": "com.toflaks.vendor.bottles",
+  "version": "1.0.0",
+  "displayName": "Bottles",
+  "description": "에셋 스토어에서 받은 병 모델입니다. 프로젝트 안에 두려고 로컬 패키지로 감쌌습니다.\n\n이 패키지는 재배포용이 아닙니다. 구매한 에셋을 이 프로젝트 안에서만 쓰려고 Assets 폴더 밖으로 옮겨 담은 것이며, 원래 에셋의 라이선스가 그대로 적용됩니다.",
+  "unity": "2022.3",
+  "author": {
+    "name": "toflaks98229"
+  }
+}
