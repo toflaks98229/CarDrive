@@ -83,3 +83,6 @@ crashlytics-build.properties
 # 유료 에셋 스토어 패키지 (429MB). 저장소에 넣지 않고 에셋 스토어에서 다시 받습니다.
 /[Aa]ssets/Feel/
 /[Aa]ssets/Feel.meta
+
+# 진단용 개발 빌드 (배포물 아님)
+/BUILD_DEV/

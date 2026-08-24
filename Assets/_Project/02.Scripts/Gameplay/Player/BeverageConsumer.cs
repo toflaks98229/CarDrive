@@ -216,7 +216,7 @@ namespace CarDrive.Gameplay
 
             StopAllCoroutines();
 
-            if (pending != null) ThrowEmpty(pending, pendingVehicle);
+            if (pending != null) FinishConsume(pending, pendingVehicle);
 
             pending = null;
             pendingVehicle = null;
@@ -316,12 +316,37 @@ namespace CarDrive.Gameplay
 
             yield return new WaitForSeconds(wait);
 
-            // 3. 다 마셨으니 빈 병으로 바꿔 던집니다.
-            ThrowEmpty(item, vehicle);
+            // 3. 다 썼습니다. 껍데기가 남는 것이면 던지고, 아니면 그대로 사라집니다.
+            FinishConsume(item, vehicle);
 
             pending = null;
             pendingVehicle = null;
             IsBusy = false;
+        }
+
+        /// <summary>
+        /// 다 쓴 물건을 마무리합니다.
+        ///
+        /// <b>껍데기가 남는 것만 던집니다.</b> 병과 캔은 다 써도 물건이 남지만
+        /// 빵과 초코바는 남는 것이 없습니다. 그런데도 던지면 먹은 빵이 창밖으로
+        /// 날아갑니다. 무엇이 남는지는 물건이 정합니다.
+        /// (<see cref="ConsumableItem.leavesEmpty"/>)
+        /// </summary>
+        /// <param name="item">다 쓴 물건</param>
+        /// <param name="vehicle">주행 중이었다면 그 차량. 도보였다면 null입니다.</param>
+        private void FinishConsume(ConsumableItem item, Vehicle vehicle)
+        {
+            if (item == null) return;
+
+            if (item.leavesEmpty)
+            {
+                ThrowEmpty(item, vehicle);
+                return;
+            }
+
+            // 남는 것이 없으므로 오브젝트째로 사라집니다.
+            // 감춰 둔 채로 두면 손에 보이지 않는 물건이 계속 남습니다.
+            Destroy(item.gameObject);
         }
 
         /// <summary>

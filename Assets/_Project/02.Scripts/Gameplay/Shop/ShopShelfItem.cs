@@ -79,10 +79,10 @@ namespace CarDrive.Gameplay
         // --- Public Properties ---
 
         /// <summary>아직 진열대에 남아 있는 수입니다.</summary>
-        public int RemainingCount { get { return Mathf.Max(0, displays.Count - taken); } }
+        public int RemainingCount { get { return Mathf.Max(0, displays.Count - taken.Count); } }
 
         /// <summary>이 칸에서 지금까지 담은 수입니다.</summary>
-        public int TakenCount { get { return taken; } }
+        public int TakenCount { get { return taken.Count; } }
 
         // --- Private Member Variables ---
 
@@ -90,12 +90,13 @@ namespace CarDrive.Gameplay
         private Wallet wallet;
 
         /// <summary>
-        /// 지금까지 담아 간 수입니다. <c>displays</c> 의 앞쪽 이만큼이 꺼져 있습니다.
+        /// 담아 간 물건들입니다. <b>담은 차례 그대로</b>라 되돌릴 때는 끝에서부터 꺼냅니다.
         ///
-        /// 수를 세는 것으로 충분합니다 — 어느 것이 꺼져 있는지는 <b>언제나 앞에서부터</b>이므로
-        /// 따로 기억할 것이 없습니다. 되돌릴 때도 이 수를 하나 줄이고 그 자리를 켜면 됩니다.
+        /// <b>수만 세지 않는 이유가 있습니다.</b> 손님이 조준한 물건이 담기므로
+        /// 반드시 앞에서부터 사라지지 않습니다. 세 번째 것을 먼저 집을 수 있고,
+        /// 그러면 "앞에서 몇 개" 라는 셈으로는 어느 것이 꺼져 있는지 알 수 없습니다.
         /// </summary>
-        private int taken;
+        private readonly List<GameObject> taken = new List<GameObject>();
 
         // --- Injection ---
 
@@ -180,21 +181,41 @@ namespace CarDrive.Gameplay
             return line;
         }
 
-        /// <summary>앞에 있는 것을 하나 담습니다.</summary>
+        /// <summary>
+        /// 앞에 있는 것을 하나 담습니다. 칸 자체를 조준했을 때의 경로입니다.
+        /// 물건 하나하나는 <see cref="ShopDisplayItem"/> 이 <see cref="Take"/> 로 지목합니다.
+        /// </summary>
         public void Interact()
         {
-            if (!CanInteract()) return;
-            if (!counter.IsOpen) return;
+            Take(FirstAvailable());
+        }
+
+        // --- Public Methods ---
+
+        /// <summary>
+        /// <b>지목한 물건</b>을 담습니다. 조준한 것이 담기도록 <see cref="ShopDisplayItem"/> 이 부릅니다.
+        /// </summary>
+        /// <param name="display">담을 실물. 이 칸의 것이 아니거나 이미 담겼으면 아무 일도 하지 않습니다.</param>
+        /// <returns>담았으면 true</returns>
+        public bool Take(GameObject display)
+        {
+            if (!CanInteract()) return false;
+            if (!counter.IsOpen) return false;
+
+            if (display == null || !displays.Contains(display)) return false;
+            if (taken.Contains(display)) return false;
 
             // 진열에서 먼저 치우고, 그것이 성공했을 때만 장바구니에 올립니다.
             // 순서를 뒤집으면 진열은 그대로인데 값만 오르는 상태가 생길 수 있습니다.
-            if (!HideFront()) return;
+            display.SetActive(false);
+            taken.Add(display);
 
             counter.Add(this);
 
             if (onPicked != null) onPicked.Invoke();
 
             if (RemainingCount == 0 && onEmptied != null) onEmptied.Invoke();
+            return true;
         }
 
         // --- Public Methods ---
@@ -208,7 +229,7 @@ namespace CarDrive.Gameplay
         /// <returns>다시 채워진 수</returns>
         public int Restock()
         {
-            taken = 0;
+            taken.Clear();
 
             for (int i = 0; i < displays.Count; i++)
             {
@@ -224,11 +245,13 @@ namespace CarDrive.Gameplay
         /// <returns>되돌렸으면 true. 담아 간 것이 없으면 false</returns>
         public bool ReturnOne()
         {
-            if (taken <= 0) return false;
+            if (taken.Count == 0) return false;
 
-            taken--;
+            // 마지막에 담은 것부터 돌아갑니다. 방금 한 일을 무르는 것이 가장 자연스럽습니다.
+            int last = taken.Count - 1;
+            GameObject display = taken[last];
+            taken.RemoveAt(last);
 
-            GameObject display = DisplayAt(taken);
             if (display != null) display.SetActive(true);
 
             if (onReturned != null) onReturned.Invoke();
@@ -238,29 +261,22 @@ namespace CarDrive.Gameplay
         // --- Private Methods ---
 
         /// <summary>
-        /// 앞에 있는 실물을 하나 감춥니다.
+        /// 아직 담기지 않은 것 중 <b>맨 앞</b>의 실물을 돌려줍니다.
+        /// 칸 자체를 조준했을 때 무엇을 담을지 정하는 데 씁니다.
         /// </summary>
-        /// <returns>감췄으면 true. 남은 것이 없으면 false</returns>
-        private bool HideFront()
+        /// <returns>담을 수 있는 첫 실물. 남은 것이 없으면 null</returns>
+        private GameObject FirstAvailable()
         {
-            if (RemainingCount <= 0) return false;
+            for (int i = 0; i < displays.Count; i++)
+            {
+                GameObject display = displays[i];
+                if (display == null) continue;
+                if (taken.Contains(display)) continue;
 
-            GameObject display = DisplayAt(taken);
-            if (display != null) display.SetActive(false);
+                return display;
+            }
 
-            taken++;
-            return true;
-        }
-
-        /// <summary>
-        /// 진열 목록의 한 자리를 돌려줍니다. 빈 자리는 null 입니다.
-        /// </summary>
-        /// <param name="index">찾을 자리</param>
-        /// <returns>그 자리의 실물. 범위를 벗어나면 null</returns>
-        private GameObject DisplayAt(int index)
-        {
-            if (index < 0 || index >= displays.Count) return null;
-            return displays[index];
+            return null;
         }
 
         /// <summary>

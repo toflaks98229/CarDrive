@@ -163,6 +163,7 @@ MonoBehaviour:
     relief: -0.1
   healAmount: 5
   consumeSeconds: 2.4
+  leavesEmpty: 0
 --- !u!114 &2358248357471470398
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -169,6 +169,60 @@ namespace CarDrive.Tests
             Assert.AreEqual(2, counter.SelectedCount, "장바구니가 늘어나면 안 됩니다.");
         }
 
+        /// <summary>
+        /// <b>조준한 그것</b>이 담겨야 합니다. 앞엣것이 아니라.
+        ///
+        /// 예전에는 칸 전체가 조준 대상이라 어디를 겨누든 맨 앞의 것만 담겼습니다.
+        /// 물건이 여섯 개 놓여 있어도 담는 자리는 하나로 고정되어 있었습니다.
+        /// </summary>
+        [Test]
+        public void 조준한_물건이_담긴다()
+        {
+            ShopShelfItem bread = BuildShelfItem("빵", 1200, stock: 3);
+            List<GameObject> shown = bread.displays;
+
+            // 가운데 것을 지목합니다.
+            Assert.IsTrue(bread.Take(shown[1]), "지목한 것이 담겨야 합니다.");
+
+            Assert.IsFalse(shown[1].activeSelf, "지목한 것이 사라져야 합니다.");
+            Assert.IsTrue(shown[0].activeSelf, "앞엣것은 그대로 있어야 합니다.");
+            Assert.IsTrue(shown[2].activeSelf, "뒤엣것도 그대로 있어야 합니다.");
+            Assert.AreEqual(1, counter.SelectedCount);
+        }
+
+        /// <summary>같은 것을 두 번 지목해도 한 번만 담겨야 합니다.</summary>
+        [Test]
+        public void 같은_물건은_두_번_담기지_않는다()
+        {
+            ShopShelfItem bread = BuildShelfItem("빵", 1200, stock: 2);
+            List<GameObject> shown = bread.displays;
+
+            Assert.IsTrue(bread.Take(shown[0]));
+            Assert.IsFalse(bread.Take(shown[0]), "이미 담긴 것은 다시 담기면 안 됩니다.");
+
+            Assert.AreEqual(1, counter.SelectedCount, "값이 두 번 오르면 안 됩니다.");
+            Assert.AreEqual(1, bread.RemainingCount);
+        }
+
+        /// <summary>
+        /// 순서 없이 담아도 무르기는 <b>담은 차례의 역순</b>이어야 합니다.
+        /// 수만 세는 방식으로는 어느 것이 꺼져 있는지 알 수 없어 여기서 어긋납니다.
+        /// </summary>
+        [Test]
+        public void 순서_없이_담아도_담은_차례의_역순으로_돌아온다()
+        {
+            ShopShelfItem bread = BuildShelfItem("빵", 1200, stock: 3);
+            List<GameObject> shown = bread.displays;
+
+            bread.Take(shown[2]);
+            bread.Take(shown[0]);
+
+            counter.ReturnLast();
+
+            Assert.IsTrue(shown[0].activeSelf, "마지막에 담은 0번이 먼저 돌아와야 합니다.");
+            Assert.IsFalse(shown[2].activeSelf, "먼저 담은 2번은 아직 담겨 있어야 합니다.");
+        }
+
         /// <summary>무르면 실물이 진열대로 돌아와야 합니다.</summary>
         [Test]
         public void 무르면_실물이_진열대로_돌아온다()

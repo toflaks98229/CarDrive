@@ -140,6 +140,52 @@ namespace CarDrive.Tests
             Assert.IsFalse(consumer.IsBusy, "다 먹고 나면 손이 비어야 합니다.");
         }
 
+        /// <summary>
+        /// <b>껍데기가 남지 않는 물건은 던져지지 않아야 합니다.</b>
+        ///
+        /// 병과 캔은 다 써도 물건이 남아 던질 것이 있지만, 빵은 남는 것이 없습니다.
+        /// 그런데도 던지면 <b>먹은 빵이 창밖으로 날아갑니다.</b>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator 껍데기가_없는_물건은_던져지지_않는다()
+        {
+            yield return BuildPlayer();
+
+            Food bread = BuildItem<Food>("빵");
+            bread.leavesEmpty = false;
+            bread.consumeSeconds = 0.05f;
+
+            GameObject go = bread.gameObject;
+
+            Assert.IsTrue(consumer.Consume(bread));
+            yield return new WaitForSeconds(0.3f);
+
+            Assert.IsTrue(go == null, "먹고 나면 오브젝트째로 사라져야 합니다.");
+        }
+
+        /// <summary>
+        /// 껍데기가 남는 물건은 예전처럼 빈 껍데기로 바뀌어 던져져야 합니다.
+        /// 위의 수정이 병까지 사라지게 만들면 안 됩니다.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator 껍데기가_남는_물건은_던져진다()
+        {
+            yield return BuildPlayer();
+
+            Beverage bottle = BuildItem<Beverage>("생수");
+            bottle.leavesEmpty = true;
+            bottle.consumeSeconds = 0.05f;
+
+            GameObject go = bottle.gameObject;
+
+            Assert.IsTrue(consumer.Consume(bottle));
+            yield return new WaitForSeconds(0.3f);
+
+            Assert.IsTrue(go != null, "빈 병은 남아야 합니다.");
+            Assert.IsTrue(go.activeSelf, "던져진 빈 병은 보여야 합니다.");
+            Assert.IsNull(go.GetComponent<Beverage>(), "더 이상 마실 수 없어야 합니다.");
+        }
+
         // --- Helpers ---
 
         /// <summary>니즈와 소비 담당을 갖춘 플레이어를 세웁니다.</summary>
