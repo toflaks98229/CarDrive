@@ -19,36 +19,57 @@ namespace CarDrive.Gameplay
     {
         // --- Public Member Variables ---
 
+        /// <summary>
+        /// 이 계기판이 속한 차량입니다.
+        /// 비워두면 <see cref="Awake"/>에서 부모 계층을 뒤져 찾고, 그래도 없으면
+        /// 차량 밖 HUD로 보고 <see cref="Vehicle.Current"/>를 따릅니다.
+        /// </summary>
         [Header("핵심 컴포넌트 연결")]
         [Tooltip("이 계기판이 속한 차량. 비워두면 부모에서 찾고, 그래도 없으면 지금 타고 있는 차를 따릅니다.")]
         public Vehicle vehicle;
 
+        /// <summary>
+        /// 예전 배선입니다. <see cref="vehicle"/>이 비어 있을 때 여기서 차량을 거슬러 찾습니다.
+        /// 새로 연결할 때는 <see cref="vehicle"/>을 쓰세요.
+        /// </summary>
         [Tooltip("예전 배선입니다. vehicle이 비어 있을 때 여기서 차량을 거슬러 찾습니다. " +
                  "새로 연결할 때는 위의 vehicle을 쓰세요.")]
         public CarController carController;
 
+        /// <summary>속도계 바늘의 Transform입니다. 비워두면 속도 표시를 건너뜁니다.</summary>
         [Header("계기판 바늘 (Transform)")]
         [Tooltip("속도계 바늘의 Transform")]
         public Transform speedometerNeedle;
 
+        /// <summary>RPM 게이지 바늘의 Transform입니다. 비워두면 RPM 표시를 건너뜁니다.</summary>
         [Tooltip("RPM 게이지 바늘의 Transform")]
         public Transform rpmNeedle;
 
+        /// <summary>연료 게이지 바늘의 Transform입니다. 비워두면 연료 표시를 건너뜁니다.</summary>
         [Tooltip("연료 게이지 바늘의 Transform")]
         public Transform fuelNeedle;
 
+        /// <summary>
+        /// 속도계 눈금의 최대 속도(km/h)입니다. 이 값을 넘어도 바늘은 <see cref="maxAngle"/>에 머무릅니다.
+        /// </summary>
         [Header("계기판 최대값 설정")]
         [Tooltip("속도계에 표시될 최대 속도(km/h). 이 값을 넘어도 바늘은 최대 각도에 머무릅니다.")]
         public float maxSpeed = 240f;
 
+        /// <summary>
+        /// RPM 게이지 눈금의 최대 RPM입니다. 이 값을 넘어도 바늘은 <see cref="maxAngle"/>에 머무릅니다.
+        /// 연료계의 최대값만은 여기가 아니라 그 차량의 <c>CarController.MaxFuel</c>을 씁니다.
+        /// </summary>
         [Tooltip("RPM 게이지에 표시될 최대 RPM. 이 값을 넘어도 바늘은 최대 각도에 머무릅니다.")]
         public float maxRpm = 6000f;
         // (연료는 CarController의 maxFuel 값을 최대값으로 사용합니다)
 
+        /// <summary>값이 0일 때 바늘이 가리킬 Z축 로컬 회전 각도입니다.</summary>
         [Header("바늘 회전 각도 설정")]
         [Tooltip("값이 0일 때의 바늘 Z축 로컬 회전 각도")]
         public float zeroAngle = 0f;
 
+        /// <summary>값이 최대일 때 바늘이 가리킬 Z축 로컬 회전 각도입니다.</summary>
         [Tooltip("값이 최대일 때의 바늘 Z축 로컬 회전 각도")]
         public float maxAngle = -100f; // 예: 시계 반대 방향으로 100도 회전
 

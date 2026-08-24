@@ -15,59 +15,89 @@ namespace CarDrive.Gameplay
     {
         // --- Public Member Variables ---
 
+        /// <summary>물건이 따라올 손 위치입니다. 비워두면 카메라 앞에 자동으로 만듭니다.</summary>
         [Header("연동")]
         [Tooltip("물건이 따라올 손 위치. 비워두면 카메라 앞에 자동으로 만듭니다.")]
         public Transform holdPoint;
 
+        /// <summary>
+        /// 들고 있는 물건과 충돌을 무시할 플레이어 콜라이더입니다. 비워두면 자동으로 찾습니다.
+        /// 이것이 없으면 들어 올린 물건이 자기 몸에 부딪혀 플레이어를 밀어냅니다.
+        /// </summary>
         [Tooltip("들고 있는 물건과 충돌을 무시할 플레이어 콜라이더. 비워두면 자동으로 찾습니다.")]
         public Collider playerCollider;
 
         // 들기 / 내려놓기 버튼은 GameInput이 소유합니다. (GameAction.Carry)
         // 앙크 공격과 같은 좌클릭을 나눠 쓰므로, 두 곳이 같은 바인딩을 보게 하는 편이 안전합니다.
 
+        /// <summary>
+        /// 조준 광선을 쏠 기준입니다.
+        /// 비워두면 <see cref="PlayerAim.Resolve"/>가 이 오브젝트의 카메라나 메인 카메라를 찾아 줍니다.
+        /// </summary>
         [Header("조준")]
         [Tooltip("조준 광선을 쏠 기준. 비워두면 이 오브젝트가 카메라인지 확인하고, 아니면 Camera.main을 씁니다.")]
         public Transform aimSource;
 
+        /// <summary>이 거리(m) 안에서 화면 중앙에 걸린 물건만 집을 수 있습니다.</summary>
         [Tooltip("이 거리 안에서 화면 중앙에 걸린 물건만 집을 수 있습니다.")]
         public float pickupDistance = 2.5f;
 
+        /// <summary>
+        /// 집을 물건을 찾을 레이어입니다.
+        /// 물건이 물리로 굴러다녀야 하므로 상호작용 레이어와 따로 둡니다.
+        /// </summary>
         [Tooltip("집을 물건을 찾을 레이어. 물건이 물리로 굴러다녀야 하므로 상호작용 레이어와 따로 둡니다.")]
         public LayerMask carryableLayers = ~0;
 
+        /// <summary><see cref="holdPoint"/>를 자동 생성할 때 카메라로부터 떨어뜨릴 거리(m)입니다.</summary>
         [Header("손 위치")]
         [Tooltip("holdPoint를 자동 생성할 때 카메라로부터의 거리")]
         public float holdDistance = 1.1f;
 
+        /// <summary><see cref="holdPoint"/>를 자동 생성할 때 적용할 높이 오프셋(m)입니다.</summary>
         [Tooltip("holdPoint를 자동 생성할 때의 높이 오프셋")]
         public float holdHeightOffset = -0.15f;
 
+        /// <summary>물건이 손 위치로 끌려오는 속도입니다. 클수록 손에 딱딱 붙습니다.</summary>
         [Header("따라오는 방식")]
         [Tooltip("손 위치로 끌려오는 속도. 클수록 딱딱 붙습니다.")]
         public float followSpeed = 12f;
 
+        /// <summary>따라오는 속도의 상한(m/s)입니다. 너무 크면 물건이 벽을 뚫을 수 있습니다.</summary>
         [Tooltip("따라오는 최대 속도. 너무 크면 벽을 뚫을 수 있습니다.")]
         public float maxFollowSpeed = 8f;
 
+        /// <summary>집어 든 순간의 각도를 유지하도록 회전을 맞추는 속도입니다.</summary>
         [Tooltip("회전을 맞추는 속도")]
         public float rotationSpeed = 12f;
 
+        /// <summary>
+        /// 손에서 이 거리(m)보다 멀어지면 자동으로 놓습니다.
+        /// 물건이 벽이나 문틀에 끼어 따라오지 못할 때를 대비한 안전장치입니다.
+        /// </summary>
         [Header("놓치는 조건")]
         [Tooltip("손에서 이 거리보다 멀어지면 자동으로 놓습니다. (벽에 끼었을 때 대비)")]
         public float breakDistance = 2.2f;
 
+        /// <summary>이 질량보다 무거우면 들 수 없습니다.</summary>
         [Tooltip("이 질량보다 무거우면 들 수 없습니다.")]
         public float maxCarryMass = 40f;
 
+        /// <summary>내려놓을 때 앞으로 밀어내는 힘입니다. 0이면 그 자리에 놓습니다.</summary>
         [Header("던지기")]
         [Tooltip("내려놓을 때 앞으로 밀어내는 힘. 0이면 그 자리에 놓습니다.")]
         public float throwImpulse = 2.5f;
 
+        /// <summary>
+        /// 집을 수 있는 물건을 조준했을 때의 안내 문구 서식입니다. <c>{0}</c>에 물건 이름이 들어갑니다.
+        /// 기본값은 이름만 보여 줍니다. 키 안내를 붙이려면 "좌클릭: {0} 들기"처럼 씁니다.
+        /// </summary>
         [Header("문구 (다국어 대응)")]
         [Tooltip("집을 수 있는 물건을 조준했을 때의 문구. {0}에는 물건 이름이 들어갑니다. " +
                  "지금은 이름만 보여 줍니다. 키 안내를 붙이려면 \"좌클릭: {0} 들기\" 처럼 쓰세요.")]
         public string pickupFormat = "{0}";
 
+        /// <summary>들고 있을 때 표시할 안내 문구입니다.</summary>
         [Tooltip("들고 있을 때 표시할 문구")]
         public string dropLabel = "내려놓기";
 
@@ -83,6 +113,14 @@ namespace CarDrive.Gameplay
         public Carryable Target { get; private set; }
 
         /// <summary>
+        /// 좌클릭이 들기/내려놓기에 쓰이는 상황인지 여부입니다.
+        /// <see cref="PlayerAttacker"/>가 이 값을 보고 앙크를 꺼낼지 판단합니다.
+        /// </summary>
+        public bool UsesLeftClick { get { return IsCarrying || Target != null; } }
+
+        // --- Private Member Variables ---
+
+        /// <summary>
         /// 직전 프레임에 조준점이 맞힌 콜라이더입니다.
         ///
         /// <b>왜 들고 있는가.</b> <c>GetComponentInParent&lt;Carryable&gt;</c> 는 콜라이더에서 부모 체인을 끝까지
@@ -94,22 +132,6 @@ namespace CarDrive.Gameplay
         /// (한 콜라이더의 대상 컴포넌트를 실행 중에 갈아 끼우는 경우는 가정하지 않습니다)
         /// </summary>
         private Collider lastHitCollider;
-
-        /// <summary>
-        /// 좌클릭이 들기/내려놓기에 쓰이는 상황인지 여부입니다.
-        /// PlayerAttacker가 이 값을 보고 앙크를 꺼낼지 판단합니다.
-        /// </summary>
-        public bool UsesLeftClick { get { return IsCarrying || Target != null; } }
-
-        /// <summary>화면에 표시할 안내 문구입니다. 없으면 빈 문자열입니다.</summary>
-        public string GetPrompt()
-        {
-            if (IsCarrying) return dropLabel;
-            if (Target != null) return string.Format(pickupFormat, Target.DisplayName);
-            return "";
-        }
-
-        // --- Private Member Variables ---
 
         /// <summary>
         /// 들고 있는 동안 플레이어와의 충돌을 꺼 둔 콜라이더들입니다.
@@ -237,8 +259,24 @@ namespace CarDrive.Gameplay
         // --- Public Methods ---
 
         /// <summary>
-        /// 물건을 듭니다.
+        /// 화면에 표시할 안내 문구를 만들어 돌려줍니다.
         /// </summary>
+        /// <returns>
+        /// 들고 있으면 <see cref="dropLabel"/>, 집을 수 있는 물건을 조준 중이면
+        /// <see cref="pickupFormat"/>에 이름을 채운 문구. 둘 다 아니면 빈 문자열입니다.
+        /// </returns>
+        public string GetPrompt()
+        {
+            if (IsCarrying) return dropLabel;
+            if (Target != null) return string.Format(pickupFormat, Target.DisplayName);
+            return "";
+        }
+
+        /// <summary>
+        /// 물건을 집어 듭니다.
+        /// 이미 누가 들고 있거나, 리지드바디가 없거나, <see cref="maxCarryMass"/>보다 무거우면 아무 일도 하지 않습니다.
+        /// </summary>
+        /// <param name="target">집어 들 대상</param>
         public void PickUp(Carryable target)
         {
             if (target == null || target.IsHeld) return;

@@ -11,12 +11,18 @@ namespace CarDrive.Systems
     /// </summary>
     public enum NeedType
     {
-        Hunger,     // 허기
-        Thirst,     // 갈증
-        Fatigue,    // 피로
-        Stress,     // 스트레스
-        Urine,      // 배뇨
-        Hygiene     // 청결(= 더러움 누적치)
+        /// <summary>허기입니다. 음식을 먹어 해소합니다.</summary>
+        Hunger,
+        /// <summary>갈증입니다. 음료를 마시거나 빗물을 받아 해소합니다.</summary>
+        Thirst,
+        /// <summary>피로입니다. 잠을 자서 해소하며, 한계를 넘으면 기절합니다.</summary>
+        Fatigue,
+        /// <summary>스트레스입니다. 다른 니즈가 나빠지면 함께 오릅니다.</summary>
+        Stress,
+        /// <summary>배뇨입니다. 주로 음료를 마셨을 때 오릅니다.</summary>
+        Urine,
+        /// <summary>청결입니다. 값이 클수록 더러운 상태이며, 표시만 반전됩니다.</summary>
+        Hygiene
     }
 
     /// <summary>
@@ -33,43 +39,66 @@ namespace CarDrive.Systems
     }
 
     /// <summary>
-    /// 니즈 한 종류의 설정값입니다.
+    /// 니즈 한 종류의 설정값입니다. 얼마나 빨리 차오르고, 언제 경고하며,
+    /// 한계를 넘었을 때 무슨 일이 벌어지는지를 담습니다.
     /// </summary>
     [System.Serializable]
     public class NeedSetting : IDefinition<NeedType>
     {
+        // --- Public Member Variables ---
+
+        /// <summary>어떤 니즈에 대한 설정인지 나타냅니다.</summary>
         [Tooltip("어떤 니즈에 대한 설정인지")]
         public NeedType type;
+
+        /// <summary>UI에 표시할 이름입니다.</summary>
+        [Tooltip("UI에 표시할 이름")]
+        public string displayName = "";
+
+        /// <summary>게임 시간 1분마다 차오르는 양입니다. 1.0이 게이지 전체입니다.</summary>
+        [Tooltip("게임 시간 1분마다 차오르는 양 (1.0 = 가득 참)")]
+        public float fillPerGameMinute = 0.001f;
+
+        /// <summary>
+        /// 가득 찬(1.0) 뒤에도 견딜 수 있는 배수입니다. 이 값을 넘으면 <see cref="consequence"/>가 발동합니다.
+        /// 마이 썸머 카와 동일하게 1.5를 기본값으로 씁니다.
+        /// </summary>
+        [Tooltip("가득 찬(1.0) 뒤에도 견딜 수 있는 배수. 마이 썸머 카와 동일하게 1.5를 기본값으로 씁니다.")]
+        public float overflowLimit = 1.5f;
+
+        /// <summary>이 값을 넘으면 경고 상태가 됩니다.</summary>
+        [Tooltip("이 값을 넘으면 경고 상태가 됩니다.")]
+        public float warnThreshold = 0.75f;
+
+        /// <summary><see cref="overflowLimit"/>를 넘었을 때 벌어지는 일입니다.</summary>
+        [Tooltip("한계를 넘었을 때 벌어지는 일")]
+        public NeedConsequence consequence = NeedConsequence.Lethal;
+
+        /// <summary>
+        /// <see cref="NeedConsequence.Lethal"/>일 때, 한계 초과 상태에서 초당 깎이는 체력입니다.
+        /// 다른 결과 종류에서는 쓰이지 않습니다.
+        /// </summary>
+        [Tooltip("Lethal일 때, 한계 초과 상태에서 초당 깎이는 체력")]
+        public float criticalHealthDrainPerSecond = 2f;
+
+        /// <summary>
+        /// 켜면 UI 게이지를 반대로 표시합니다.
+        /// 청결처럼 값이 0일 때가 좋은 상태인 니즈에 씁니다.
+        /// </summary>
+        [Tooltip("체크하면 UI에서 반대로 표시합니다. (청결: 값이 0일 때 게이지가 가득)")]
+        public bool invertDisplay = false;
+
+        /// <summary>UI 게이지에 쓸 색상입니다.</summary>
+        [Tooltip("UI 게이지 색상")]
+        public Color barColor = Color.white;
+
+        // --- Public Properties ---
 
         /// <summary>표가 이 설정을 찾는 열쇠입니다.</summary>
         public NeedType Key { get { return type; } }
 
         /// <summary>빠진 항목을 메웠다고 알릴 때 쓸 이름입니다.</summary>
         public string DisplayName { get { return displayName; } }
-
-        [Tooltip("UI에 표시할 이름")]
-        public string displayName = "";
-
-        [Tooltip("게임 시간 1분마다 차오르는 양 (1.0 = 가득 참)")]
-        public float fillPerGameMinute = 0.001f;
-
-        [Tooltip("가득 찬(1.0) 뒤에도 견딜 수 있는 배수. 마이 썸머 카와 동일하게 1.5를 기본값으로 씁니다.")]
-        public float overflowLimit = 1.5f;
-
-        [Tooltip("이 값을 넘으면 경고 상태가 됩니다.")]
-        public float warnThreshold = 0.75f;
-
-        [Tooltip("한계를 넘었을 때 벌어지는 일")]
-        public NeedConsequence consequence = NeedConsequence.Lethal;
-
-        [Tooltip("Lethal일 때, 한계 초과 상태에서 초당 깎이는 체력")]
-        public float criticalHealthDrainPerSecond = 2f;
-
-        [Tooltip("체크하면 UI에서 반대로 표시합니다. (청결: 값이 0일 때 게이지가 가득)")]
-        public bool invertDisplay = false;
-
-        [Tooltip("UI 게이지 색상")]
-        public Color barColor = Color.white;
     }
 
     /// <summary>
@@ -79,15 +108,23 @@ namespace CarDrive.Systems
     [System.Serializable]
     public class NeedCoupling
     {
+        // --- Public Member Variables ---
+
+        /// <summary>원인이 되는 니즈입니다.</summary>
         [Tooltip("원인이 되는 니즈")]
         public NeedType source;
 
+        /// <summary><see cref="source"/>가 이 값을 넘어야 규칙이 발동합니다.</summary>
         [Tooltip("원인 니즈가 이 값을 넘어야 발동합니다.")]
         public float sourceThreshold = 0.6f;
 
+        /// <summary>영향을 받는 니즈입니다.</summary>
         [Tooltip("영향을 받는 니즈")]
         public NeedType target;
 
+        /// <summary>
+        /// 발동했을 때 <see cref="target"/>의 기본 증가량에 더해지는 게임 시간 1분당 증가량입니다.
+        /// </summary>
         [Tooltip("발동 시 대상 니즈에 추가로 더해지는 게임 시간 1분당 증가량")]
         public float extraFillPerGameMinute = 0.001f;
     }
@@ -98,9 +135,16 @@ namespace CarDrive.Systems
     [System.Serializable]
     public class NeedEffect
     {
+        // --- Public Member Variables ---
+
+        /// <summary>영향을 줄 니즈입니다.</summary>
         [Tooltip("영향을 줄 니즈")]
         public NeedType type;
 
+        /// <summary>
+        /// 변화량입니다. 양수면 해소(감소), 음수면 악화(증가)를 뜻하며 1.0이 게이지 전체입니다.
+        /// 짠 음식이 허기를 덜면서 갈증을 올리는 것처럼, 한 상호작용이 양쪽을 함께 담을 수 있습니다.
+        /// </summary>
         [Tooltip("변화량. 양수면 해소(감소), 음수면 악화(증가)입니다. 1.0 = 게이지 전체")]
         public float relief = 0.5f;
     }
@@ -111,19 +155,29 @@ namespace CarDrive.Systems
     [System.Serializable]
     public class NeedState : IDefinitionState<NeedType, NeedState>
     {
+        // --- Public Member Variables ---
+
+        /// <summary>어떤 니즈의 상태인지 나타냅니다.</summary>
         public NeedType type;
 
+        /// <summary>현재 수치입니다. 0에서 해당 설정의 <c>overflowLimit</c>까지의 범위를 갖습니다.</summary>
         [Tooltip("현재 수치. 0 ~ overflowLimit 범위입니다.")]
         public float value;
 
+        /// <summary>경고 임계를 넘은 상태인지 여부입니다. 같은 이벤트를 매 프레임 다시 쏘지 않으려고 들고 있습니다.</summary>
         [Tooltip("경고 임계를 넘은 상태인지 (이벤트 중복 발생 방지용)")]
         public bool isWarning;
 
+        /// <summary>한계를 넘은 상태인지 여부입니다. 같은 이벤트를 매 프레임 다시 쏘지 않으려고 들고 있습니다.</summary>
         [Tooltip("한계를 넘은 상태인지 (이벤트 중복 발생 방지용)")]
         public bool isCritical;
 
+        // --- Public Properties ---
+
         /// <summary>표가 이 상태를 찾는 열쇠입니다.</summary>
         public NeedType Key { get { return type; } }
+
+        // --- Public Methods ---
 
         /// <summary>세이브에 담을 사본을 만듭니다.</summary>
         /// <returns>값이 같은 새 인스턴스</returns>
@@ -158,10 +212,13 @@ namespace CarDrive.Systems
     /// </summary>
     public static class NeedDefaults
     {
+        // --- Public Methods ---
+
         /// <summary>
         /// 6종 니즈의 기본 설정을 생성합니다.
         /// 증가 속도는 "게임 시간 몇 시간 만에 가득 차는가"를 기준으로 잡았습니다.
         /// </summary>
+        /// <returns>6종 니즈의 기본 <see cref="NeedSetting"/> 목록</returns>
         public static List<NeedSetting> CreateSettings()
         {
             return new List<NeedSetting>
@@ -213,9 +270,10 @@ namespace CarDrive.Systems
         }
 
         /// <summary>
-        /// 니즈 간 연쇄 규칙의 기본값입니다.
+        /// 니즈 간 연쇄 규칙의 기본값을 생성합니다.
         /// 하나가 나빠지면 다른 것도 나빠지는 악순환을 만드는 것이 목적입니다.
         /// </summary>
+        /// <returns>기본 <see cref="NeedCoupling"/> 목록</returns>
         public static List<NeedCoupling> CreateCouplings()
         {
             return new List<NeedCoupling>

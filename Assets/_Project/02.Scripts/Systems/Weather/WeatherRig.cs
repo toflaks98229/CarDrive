@@ -18,118 +18,188 @@ namespace CarDrive.Systems
     {
         // --- Public Member Variables ---
 
+        /// <summary>날씨 수치를 읽어올 시스템입니다. 비워두면 씬에서 자동으로 찾습니다.</summary>
         [Header("연동")]
         [Tooltip("날씨 수치를 읽어올 시스템. 비워두면 씬에서 자동으로 찾습니다.")]
         public WeatherSystem weatherSystem;
 
+        /// <summary>
+        /// 리그가 따라다닐 대상입니다. 비워두면 메인 카메라를 씁니다.
+        /// 카메라는 탑승·하차에 따라 옮겨가므로 어느 상태에서도 주변에 날씨가 유지됩니다.
+        /// </summary>
         [Header("따라다니기")]
         [Tooltip("이 대상을 따라다닙니다. 비워두면 메인 카메라를 씁니다. " +
                  "카메라는 탑승/하차에 따라 옮겨가므로 어느 상태에서도 주변에 날씨가 유지됩니다.")]
         public Transform followTarget;
 
+        /// <summary>대상 기준 위치 오프셋입니다. 보통 머리 위에 둡니다.</summary>
         [Tooltip("대상 기준 위치 오프셋. 보통 머리 위에 둡니다.")]
         public Vector3 followOffset = new Vector3(0f, 6f, 0f);
 
+        /// <summary>켜면 대상의 Y축 회전도 따라갑니다. 보통은 끕니다.</summary>
         [Tooltip("체크하면 대상의 Y축 회전도 따라갑니다. 보통은 끕니다.")]
         public bool followYaw = false;
 
+        /// <summary>따라가는 부드러움입니다. 0이면 대상에 즉시 붙습니다.</summary>
         [Tooltip("따라가는 부드러움. 0이면 즉시 붙습니다.")]
         public float followSmooth = 0f;
 
+        /// <summary>비 파티클들입니다. 방출량이 날씨의 비 세기에 비례합니다.</summary>
         [Header("비")]
         [Tooltip("비 파티클들. 방출량이 RainIntensity에 비례합니다.")]
         public List<ParticleSystem> rainParticles = new List<ParticleSystem>();
 
+        /// <summary>비 세기가 1일 때의 초당 방출량입니다.</summary>
         [Tooltip("RainIntensity가 1일 때의 초당 방출량")]
         public float maxRainRate = 600f;
 
+        /// <summary>보이는 비 세기가 이 값 아래로 내려가면 파티클을 아예 멈춥니다.</summary>
         [Tooltip("이 값 아래면 비를 아예 멈춥니다.")]
         [Range(0f, 0.2f)]
         public float rainStopThreshold = 0.02f;
 
+        /// <summary>
+        /// 보이는 비 세기가 목표치에 도달하기까지 걸리는 시간(초)입니다.
+        /// 목표 크기에 비례해 속도를 잡기 때문에 이슬비든 폭우든 걸리는 시간이 비슷합니다.
+        /// 0이면 즉시 반영합니다.
+        /// </summary>
         [Header("비 - 점진적 변화")]
         [Tooltip("보이는 비 세기가 목표치까지 도달하는 데 걸리는 시간(초). " +
                  "목표 크기에 비례해 속도를 잡기 때문에 이슬비든 폭우든 걸리는 시간이 비슷합니다. " +
                  "0이면 즉시 반영합니다.")]
         public float rainRampSeconds = 3f;
 
+        /// <summary>가늘게 내릴 때의 빗방울 낙하 속도 배율입니다.</summary>
         [Header("비 - 세기에 따라 함께 변하는 것")]
         [Tooltip("가늘게 내릴 때의 낙하 속도 배율")]
         public float speedMultiplierAtMin = 0.55f;
 
+        /// <summary>굵게 내릴 때의 빗방울 낙하 속도 배율입니다.</summary>
         [Tooltip("굵게 내릴 때의 낙하 속도 배율")]
         public float speedMultiplierAtFull = 1f;
 
+        /// <summary>가늘게 내릴 때의 빗방울 크기 배율입니다.</summary>
         [Tooltip("가늘게 내릴 때의 빗방울 크기 배율")]
         public float sizeMultiplierAtMin = 0.6f;
 
+        /// <summary>굵게 내릴 때의 빗방울 크기 배율입니다.</summary>
         [Tooltip("굵게 내릴 때의 빗방울 크기 배율")]
         public float sizeMultiplierAtFull = 1f;
 
+        /// <summary>
+        /// 세기가 1을 넘는 폭우에서 빗방울이 더 굵어지는 정도입니다.
+        /// 0이면 최대에서 멈추므로, 비와 폭우를 눈으로 구분하려면 0보다 커야 합니다.
+        /// </summary>
         [Tooltip("세기가 1을 넘을 때(폭우) 빗방울이 더 굵어지는 정도. " +
                  "0이면 최대에서 멈춥니다. 비(0.7)와 폭우(4.0)를 눈으로 구분하려면 0보다 커야 합니다.")]
         public float sizeGrowthAboveFull = 0.2f;
 
+        /// <summary>빗방울 크기 배율의 상한입니다. 너무 키우면 빗줄기가 판때기처럼 보입니다.</summary>
         [Tooltip("빗방울 크기 배율의 상한. 너무 키우면 빗줄기가 판때기처럼 보입니다.")]
         [Range(1f, 3f)]
         public float maxSizeMultiplier = 1.5f;
 
+        /// <summary>
+        /// 켜면 세기가 1을 넘을 때 파티클 최대 개수도 함께 올립니다.
+        /// 끄면 폭우가 파티클 상한에 걸려 아무리 세기를 올려도 더 굵어지지 않습니다.
+        /// </summary>
         [Header("비 - 상한")]
         [Tooltip("세기가 1을 넘으면 파티클 최대 개수도 함께 올립니다. " +
                  "이걸 끄면 폭우가 파티클 상한에 걸려 아무리 세기를 올려도 더 굵어지지 않습니다.")]
         public bool scaleMaxParticles = true;
 
+        /// <summary>파티클 최대 개수를 올릴 수 있는 배율 한계입니다. 성능이 걱정되면 낮춥니다.</summary>
         [Tooltip("파티클 최대 개수를 올릴 수 있는 배율 한계. 성능이 걱정되면 낮추세요.")]
         [Range(1f, 10f)]
         public float maxParticleScale = 5f;
 
+        /// <summary>
+        /// 켜면 날씨의 안개 짙기를 시야 사다리(<see cref="ViewDistances"/>)에 요청합니다.
+        /// <c>RenderSettings</c>에 실제로 쓰는 것은 <c>ViewRangeScaler</c> 한 곳입니다.
+        /// 끄면 안개는 시야 거리를 덮는 최소 짙기만 유지되어 날씨와 무관해집니다.
+        /// </summary>
         [Header("안개")]
         [Tooltip("체크하면 날씨의 안개 짙기를 시야 사다리(ViewDistances)에 요청합니다. " +
                  "RenderSettings 에 실제로 쓰는 것은 ViewRangeScaler 한 곳입니다. " +
                  "끄면 안개는 시야 거리를 덮는 최소 짙기만 유지되어 날씨와 무관해집니다.")]
         public bool controlRenderFog = false;
 
+        /// <summary>날씨의 안개 짙기가 1일 때 요청할 안개 밀도입니다.</summary>
         [Tooltip("FogDensity가 1일 때의 안개 밀도")]
         public float maxFogDensity = 0.05f;
 
         // 안개 색 필드는 없앴습니다. SkyController가 시간대에 맞춰 정합니다.
 
+        /// <summary>켜면 날씨의 어두움에 맞춰 환경광을 낮춥니다. 흐린 날이 눈에 보이게 됩니다.</summary>
         [Header("어두워짐")]
         [Tooltip("체크하면 Darkness에 맞춰 환경광을 낮춥니다. 흐린 날이 눈에 보이게 됩니다.")]
         public bool controlAmbient = false;
 
+        /// <summary>어두움이 1일 때 남길 환경광 비율입니다. 완전히 캄캄해지지 않도록 하는 하한입니다.</summary>
         [Tooltip("Darkness가 1일 때 남는 환경광 비율")]
         [Range(0f, 1f)]
         public float minAmbientFactor = 0.35f;
 
+        /// <summary>
+        /// 켜면 날씨의 시야 배율을 시야 사다리(<see cref="ViewDistances"/>)에 요청해
+        /// 안개나 폭우에서 멀리 못 보게 합니다.
+        /// 카메라 파클립은 <c>ViewRangeScaler</c>가 사다리를 보고 쓰므로 여기서 직접 건드리지 않습니다.
+        /// </summary>
         [Header("시야")]
         [Tooltip("체크하면 날씨의 시야 배율을 시야 사다리(ViewDistances)에 요청합니다. " +
                  "안개(0.35)나 폭우(0.45)에서 멀리 못 보게 됩니다. " +
                  "카메라 파클립은 ViewRangeScaler 가 사다리를 보고 씁니다 — 여기서 직접 쓰지 않습니다.")]
         public bool controlVisibility = false;
 
+        /// <summary>시야가 최악일 때 남길 비율의 하한입니다. 너무 낮추면 지형이 눈앞에서 잘려 보입니다.</summary>
         [Tooltip("시야가 최악일 때 남는 비율의 하한. 너무 낮추면 지형이 눈앞에서 잘려 보입니다.")]
         [Range(0.1f, 1f)]
         public float minVisibilityFactor = 0.35f;
 
+        /// <summary>시야 배율에 맞춰 조사 거리를 함께 줄일 헤드라이트들입니다. 비어 있으면 조명은 건드리지 않습니다.</summary>
         [Tooltip("범위를 함께 줄일 헤드라이트들. 비어 있으면 조명은 건드리지 않습니다.")]
         public List<Light> headlights = new List<Light>();
 
+        // --- Public Properties ---
+
+        /// <summary>
+        /// 지금 실제로 파티클에 적용 중인 비 세기입니다.
+        /// <c>WeatherSystem.RainIntensity</c>가 목표치라면 이 값은 화면에 보이는 값이며,
+        /// 둘을 비교하면 동기화가 잘 따라오고 있는지 확인할 수 있습니다.
+        /// </summary>
+        public float DisplayedRain { get { return displayedRain; } }
+
+        /// <summary>지금 비가 실제로 뿜어져 나오고 있는지 여부입니다.</summary>
+        public bool IsRaining { get; private set; }
+
         // --- Private Member Variables ---
 
-        // 파티클마다 원래 값을 기억해 두고 거기에 배율을 곱합니다.
-        //
-        // 크기·속도는 startSizeMultiplier 대신 MinMaxCurve 전체를 복사해 둡니다.
-        // Multiplier는 내부적으로 m_Scalar 하나만 가리키는데, 랜덤 범위(TwoConstants) 모드에서
-        // m_Scalar는 "배율"이 아니라 그냥 최대값입니다. 그래서 Multiplier만 건드리면
-        // 하한이 고정된 채 편차만 벌어지고 정작 크기는 거의 변하지 않습니다.
-        // (실제로 CFXR 빗줄기가 이 상태라 이슬비와 폭우의 굵기 차이가 14%뿐이었습니다)
+        /// <summary>
+        /// 파티클별 원래 방출량입니다. 여기에 세기 배율을 곱해 적용합니다.
+        /// </summary>
+        /// <remarks>
+        /// 크기·속도는 <c>startSizeMultiplier</c> 대신 <c>MinMaxCurve</c> 전체를 복사해 둡니다.
+        /// Multiplier는 내부적으로 <c>m_Scalar</c> 하나만 가리키는데, 랜덤 범위(TwoConstants) 모드에서
+        /// <c>m_Scalar</c>는 "배율"이 아니라 그냥 최대값입니다. 그래서 Multiplier만 건드리면
+        /// 하한이 고정된 채 편차만 벌어지고 정작 크기는 거의 변하지 않습니다.
+        /// (실제로 CFXR 빗줄기가 이 상태라 이슬비와 폭우의 굵기 차이가 14%뿐이었습니다)
+        /// </remarks>
         private readonly List<float> baseRates = new List<float>();
+
+        /// <summary>파티클별 원래 시작 속도 곡선입니다. 배율을 곱하기 전의 원본입니다.</summary>
         private readonly List<ParticleSystem.MinMaxCurve> baseStartSpeeds = new List<ParticleSystem.MinMaxCurve>();
+
+        /// <summary>파티클별 원래 시작 크기 곡선입니다. 배율을 곱하기 전의 원본입니다.</summary>
         private readonly List<ParticleSystem.MinMaxCurve> baseStartSizes = new List<ParticleSystem.MinMaxCurve>();
+
+        /// <summary>파티클별 원래 최대 개수입니다. 폭우에서 이 값에 배율을 곱해 상한을 올립니다.</summary>
         private readonly List<int> baseMaxParticles = new List<int>();
 
-        private float displayedRain;   // 실제로 파티클에 적용 중인 세기
+        /// <summary>
+        /// 실제로 파티클에 적용 중인 비 세기입니다.
+        /// 날씨가 요청한 목표치를 향해 <see cref="rainRampSeconds"/>에 걸쳐 따라갑니다.
+        /// </summary>
+        private float displayedRain;
 
         /// <summary>어두워지기 전의 원래 환경광 세기입니다. 여기에 배율을 곱해 적용합니다.</summary>
         private float baseAmbientIntensity;
@@ -432,25 +502,10 @@ namespace CarDrive.Systems
             IsRaining = false;
         }
 
-        // --- Public Properties ---
-
-        /// <summary>
-        /// 지금 실제로 파티클에 적용 중인 비 세기입니다.
-        /// WeatherSystem.RainIntensity가 목표치라면 이 값은 화면에 보이는 값이며,
-        /// 둘을 비교하면 동기화가 잘 따라오고 있는지 확인할 수 있습니다.
-        /// </summary>
-        public float DisplayedRain { get { return displayedRain; } }
-
-        /// <summary>지금 비가 실제로 뿜어져 나오고 있는지 여부입니다.</summary>
-        public bool IsRaining { get; private set; }
-
-        /// <summary>
-        /// 렌더 설정의 안개를 조절합니다.
-        /// URP에서는 Volume으로 하는 편이 낫지만, 준비 단계에서는 내장 안개로 감을 잡습니다.
-        /// </summary>
         /// <summary>
         /// 흐릴수록 환경광을 낮춥니다. 기준값은 처음 한 번만 기억해 둡니다.
         /// </summary>
+        /// <param name="darkness">날씨가 정한 어두움(0~1). 1에 가까울수록 환경광이 <see cref="minAmbientFactor"/>까지 내려갑니다.</param>
         private void UpdateAmbient(float darkness)
         {
             if (!ambientCached)

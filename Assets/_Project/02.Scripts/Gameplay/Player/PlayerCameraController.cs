@@ -4,52 +4,75 @@ using CarDrive.Common;
 namespace CarDrive.Gameplay
 {
     /// <summary>
-    /// [리팩토링됨]
-    /// 오직 마우스 입력을 받아 플레이어 카메라(상하)와 몸체(좌우)의
-    /// 회전을 처리하는 역할만 전담하는 클래스입니다.
-    /// 상호작용과 공격 로직은 PlayerInteractor와 PlayerAttacker로 분리되었습니다.
+    /// 마우스 입력을 받아 카메라의 상하 시선과 플레이어 몸체의 좌우 방향을 돌립니다.
+    ///
+    /// 이 클래스는 <b>시점만</b> 다룹니다. 조준점에 걸린 대상을 다루는 일은
+    /// <see cref="PlayerInteractor"/>가, 앙크 공격은 <see cref="PlayerAttacker"/>가 맡습니다.
+    ///
+    /// 시작 직후에는 잠시 마우스를 받지 않습니다. 로딩이 끝나는 프레임에 밀려 있던
+    /// 마우스 이동이 한꺼번에 들어오면 시점이 홱 돌아가기 때문입니다.
     /// </summary>
     public class PlayerCameraController : MonoBehaviour
     {
         // --- Public Member Variables ---
 
+        /// <summary>마우스 감도입니다.</summary>
         [Header("회전 설정")]
         [Tooltip("마우스 감도")]
         public float mouseSensitivity = 100f;
 
+        /// <summary>좌우 회전을 적용할 플레이어 몸체 Transform입니다. 상하 회전은 이 컴포넌트가 직접 받습니다.</summary>
         [Tooltip("플레이어 몸체 Transform. 좌우 회전에 사용됩니다.")]
         public Transform playerBody;
 
+        /// <summary>카메라가 아래로 내려갈 수 있는 최소 상하 각도입니다.</summary>
         [Header("상하 회전 제한")]
         [Tooltip("카메라의 최소 상하 회전 각도 (아래쪽)")]
         public float minVerticalAngle = -90f;
 
+        /// <summary>카메라가 위로 올라갈 수 있는 최대 상하 각도입니다.</summary>
         [Tooltip("카메라의 최대 상하 회전 각도 (위쪽)")]
         public float maxVerticalAngle = 90f;
 
+        /// <summary>켜면 좌우 회전에도 제한을 겁니다. 끄면 몸이 제자리에서 무한히 돕니다.</summary>
         [Header("좌우 회전 제한")]
         [Tooltip("좌우 회전 제한 사용 여부")]
         public bool useHorizontalRotationLimit = false;
 
+        /// <summary>좌우 회전의 최소 각도입니다. <see cref="useHorizontalRotationLimit"/>가 켜져 있을 때만 쓰입니다.</summary>
         [Tooltip("플레이어의 최소 좌우 회전 각도")]
         public float minHorizontalAngle = -90f;
 
+        /// <summary>좌우 회전의 최대 각도입니다. <see cref="useHorizontalRotationLimit"/>가 켜져 있을 때만 쓰입니다.</summary>
         [Tooltip("플레이어의 최대 좌우 회전 각도")]
         public float maxHorizontalAngle = 90f;
 
 
+        /// <summary>
+        /// 시작 직후 마우스 입력을 무시할 시간(초)입니다.
+        /// 로딩이 끝나는 프레임에 쌓여 있던 마우스 이동이 한꺼번에 들어와 시점이 홱 돌아가는 것을 막습니다.
+        /// </summary>
         [Header("시작 처리")]
         [Tooltip("시작 직후 이 시간(초) 동안 마우스 입력을 무시합니다. " +
                  "로딩이 끝나는 프레임에 쌓여 있던 마우스 이동이 한꺼번에 들어와 시점이 홱 돌아가는 것을 막습니다.")]
         public float startupIgnoreSeconds = 0.4f;
 
+        /// <summary>
+        /// 시간과 별개로 더 무시할 프레임 수입니다.
+        /// 로딩 직후 첫 몇 프레임은 deltaTime이 비정상적으로 커서 시간만으로는 충분하지 않습니다.
+        /// </summary>
         [Tooltip("시간과 별개로 이 프레임 수만큼 더 무시합니다. " +
                  "로딩 직후 첫 몇 프레임은 deltaTime이 비정상적으로 큽니다.")]
         public int startupIgnoreFrames = 5;
 
+        /// <summary>켜면 시작할 때 시점을 위아래로 기울지 않은 수평 정면으로 맞춥니다.</summary>
         [Tooltip("체크하면 시작할 때 시점을 수평 정면으로 맞춥니다.")]
         public bool faceForwardOnStart = true;
 
+        /// <summary>
+        /// 한 프레임에 돌 수 있는 최대 각도입니다. 프레임이 크게 끊겼을 때 시점이 튀는 것을 막습니다.
+        /// 0이면 제한하지 않습니다.
+        /// </summary>
         [Tooltip("한 프레임에 돌 수 있는 최대 각도. 프레임이 크게 끊겼을 때 시점이 튀는 것을 막습니다. " +
                  "0이면 제한하지 않습니다.")]
         public float maxDegreesPerFrame = 25f;
@@ -73,8 +96,10 @@ namespace CarDrive.Gameplay
         /// <summary>시작 안정화가 끝나기까지 남은 프레임 수입니다.</summary>
         private int settleFrames;
 
+        // --- Unity Event Functions ---
+
         /// <summary>
-        /// 스크립트가 처음 활성화될 때 마우스 커서 및 초기 회전 값을 설정합니다.
+        /// 커서를 잠그고 지금 자세에서 시선 각도를 이어받은 뒤, 시작 안정화를 시작합니다.
         /// </summary>
         void Start()
         {

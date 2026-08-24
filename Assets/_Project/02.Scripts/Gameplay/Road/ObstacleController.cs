@@ -4,8 +4,15 @@ using CarDrive.Common;
 namespace CarDrive.Gameplay
 {
     /// <summary>
-    /// 차량과 충돌 시 위쪽으로 튕겨나가는 장애물 스크립트입니다.
-    /// 이 스크립트가 적용된 GameObject는 반드시 Rigidbody와 Collider가 있어야 합니다.
+    /// 차와 부딪히면 위로 튕겨 오르는 장애물입니다.
+    ///
+    /// <b>세게 박을수록 높이 뜹니다.</b> 고정된 힘만 주면 살살 밀어도 크게 날아가
+    /// 부딪힌 무게가 전해지지 않습니다. 충돌 속도를 힘에 섞어 그것을 맞춥니다.
+    ///
+    /// <b>차와 부딪힐 때만 반응합니다.</b> 다른 장애물이나 지형과 스쳐도 튀지 않습니다.
+    /// 판정은 <see cref="CarController"/>를 부모까지 거슬러 찾아서 합니다.
+    ///
+    /// Rigidbody와 Collider가 반드시 함께 있어야 합니다.
     /// </summary>
     [RequireComponent(typeof(Rigidbody))]
     [RequireComponent(typeof(Collider))]
@@ -13,20 +20,35 @@ namespace CarDrive.Gameplay
     {
         // --- Public Member Variables ---
 
+        /// <summary>
+        /// 차와 부딪혔을 때 받을 최소한의 위쪽 힘입니다.
+        ///
+        /// 충돌 속도와 무관하게 항상 더해집니다. 아주 천천히 밀어도
+        /// 최소한 이만큼은 반응하게 하는 바닥값입니다.
+        /// </summary>
         [Header("충돌 설정")]
         [Tooltip("차와 부딪혔을 때 받을 최소한의 위쪽 힘")]
         public float baseBounceForce = 10f;
 
+        /// <summary>충돌 속도(m/s) 1당 더해질 힘입니다. 세게 박을수록 높이 뜨게 만드는 값입니다.</summary>
         [Tooltip("충돌 속도에 비례하여 추가될 힘의 배율")]
         public float speedToForceMultiplier = 2f;
 
+        /// <summary>
+        /// 힘을 가하는 방식입니다.
+        ///
+        /// <see cref="ForceMode.Impulse"/>는 순간적인 타격이라 부딪힌 그 순간에 튑니다.
+        /// <see cref="ForceMode.Force"/>는 지속적인 힘이라 한 프레임분만 걸려 거의 안 움직입니다.
+        /// </summary>
         [Tooltip("힘을 가하는 방식 (Impulse: 순간적인 폭발력, Force: 지속적인 힘)")]
         public ForceMode bounceForceMode = ForceMode.Impulse;
 
+        /// <summary>충돌음을 재생할 컨트롤러입니다. 비워 두면 같은 오브젝트에서 찾습니다.</summary>
         [Header("사운드")]
         [Tooltip("충돌음을 재생할 컨트롤러. 비워두면 같은 오브젝트에서 찾습니다.")]
         public EnvironmentSoundController soundController;
 
+        /// <summary>충돌음이 최대 볼륨이 되는 충돌 속도(m/s)입니다. 이보다 느리면 그만큼 작게 납니다.</summary>
         [Tooltip("충돌음이 최대 볼륨이 되는 충돌 속도(m/s). 이보다 느리면 더 작게 납니다.")]
         public float soundFullVolumeSpeed = 12f;
 
@@ -40,7 +62,9 @@ namespace CarDrive.Gameplay
         // --- Unity Event Functions ---
 
         /// <summary>
-        /// 스크립트가 처음 활성화될 때 호출됩니다.
+        /// 튕길 때 쓸 Rigidbody와 사운드 컨트롤러를 찾아 둡니다.
+        ///
+        /// 사운드는 없어도 그대로 굴러갑니다. 소리 없는 장애물은 고장이 아니기 때문입니다.
         /// </summary>
         void Start()
         {
@@ -52,7 +76,9 @@ namespace CarDrive.Gameplay
         }
 
         /// <summary>
-        /// 다른 Collider와 물리적 충돌이 시작될 때 호출됩니다.
+        /// 무언가와 부딪혔을 때 그것이 차라면 위로 튕겨 내고 충돌음을 냅니다.
+        ///
+        /// 차가 아니면 아무것도 하지 않습니다. 힘의 크기는 부딪힌 속도에 비례합니다.
         /// </summary>
         /// <param name="collision">충돌 관련 정보를 담고 있는 Collision 객체</param>
         private void OnCollisionEnter(Collision collision)

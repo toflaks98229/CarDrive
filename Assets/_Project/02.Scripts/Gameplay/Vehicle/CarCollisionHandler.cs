@@ -7,51 +7,78 @@ using CarDrive.Common;
 namespace CarDrive.Gameplay
 {
     /// <summary>
-    /// 차량의 물리적 충돌을 감지하고, 관련 효과(카메라, UI)를 호출하며
-    /// 체력을 관리하는 역할만 전담하는 클래스입니다.
-    /// 이 컴포넌트는 CarController와 같은 GameObject에 추가해야 합니다.
+    /// 차량이 적과 부딪혔을 때 일어날 일을 한자리에서 처리합니다.
+    ///
+    /// 부딪히면 네 가지가 함께 일어납니다. <b>차체와 계기판이 흔들리고</b>, <b>내구도가 줄고</b>,
+    /// <b>스트레스가 오르고</b>, <b>충돌음이 납니다.</b> 넷 다 같은 사건의 다른 얼굴이라
+    /// 한 곳에서 부르는 편이 낫습니다.
+    ///
+    /// <b>적 판정은 태그가 아니라 <see cref="IHostile"/>로 합니다.</b> 태그 문자열은 오타가 나도
+    /// 컴파일이 통과하고, 씬에서 조용히 어긋납니다. 콜라이더가 자식에 달려 있을 수 있어
+    /// 부모까지 거슬러 올라가며 찾습니다.
+    ///
+    /// <see cref="CarController"/>와 같은 GameObject에 두어야 합니다.
     /// </summary>
     public class CarCollisionHandler : MonoBehaviour
     {
+        // --- Public Member Variables ---
+
+        /// <summary>
+        /// 이 충돌 처리가 속한 차량입니다. 비워 두면 이 오브젝트와 부모에서 찾습니다.
+        ///
+        /// 차체 흔들림·계기판·내구도를 전부 여기서 가져옵니다. 이것을 못 찾으면
+        /// 충돌이 나도 아무 일도 일어나지 않습니다.
+        /// </summary>
         [Header("연동 컴포넌트")]
         [Tooltip("이 충돌 처리가 속한 차량. 비워두면 이 오브젝트와 부모에서 찾습니다. " +
                  "차체 흔들림·계기판·내구도를 전부 여기서 가져옵니다.")]
         public Vehicle vehicle;
 
+        /// <summary>적과 한 번 부딪힐 때 차량 내구도에서 깎을 양입니다.</summary>
         [Header("충돌 설정")]
         [Tooltip("적과 충돌 시 받을 데미지")]
         public int damageOnEnemyCollision = 10;
 
+        /// <summary>
+        /// 적과 부딪힐 때 오르는 스트레스 양입니다.
+        ///
+        /// 니즈 시스템이 주입되지 않았으면 조용히 버려집니다.
+        /// 그래서 니즈 없이 차만 있는 씬에서도 그대로 굴러갑니다.
+        /// </summary>
         [Tooltip("적과 충돌 시 오르는 스트레스 (NeedsSystem이 씬에 없으면 무시됩니다)")]
         public float stressOnEnemyCollision = 0.06f;
 
+        /// <summary>적과 부딪힐 때 차체가 흔들리는 세기에 곱할 배율입니다.</summary>
         [Tooltip("적과 충돌 시 차체가 흔들리는 세기 배율")]
         public float shakeScaleOnEnemyCollision = 1f;
 
+        /// <summary>충돌음을 재생할 컨트롤러입니다. 비워 두면 같은 오브젝트에서 찾습니다.</summary>
         [Header("사운드")]
         [Tooltip("충돌음을 재생할 컨트롤러. 비워두면 같은 오브젝트에서 찾습니다.")]
         public CarSoundController soundController;
 
+        /// <summary>
+        /// 충돌음이 최대 볼륨이 되는 충돌 속도(m/s)입니다. 이보다 느리면 그만큼 작게 납니다.
+        ///
+        /// 살짝 스친 것과 정면으로 박은 것이 같은 소리를 내면 충돌의 무게가 사라집니다.
+        /// </summary>
         [Tooltip("충돌음이 최대 볼륨이 되는 충돌 속도(m/s). 이보다 느리면 더 작게 납니다.")]
         public float soundFullVolumeSpeed = 15f;
 
-        /// <summary>
-        /// 스크립트가 처음 활성화될 때 연동 컴포넌트들을 찾습니다.
-        /// (인스펙터에서 직접 할당하는 것을 권장합니다)
-        /// </summary>
-        // --- Injection ---
+        // --- Private Member Variables ---
 
         /// <summary>충돌 스트레스를 흘려보낼 곳입니다. 주입되지 않으면 조용히 버려집니다.</summary>
         private INeedsSink _needs = NullNeedsSink.Instance;
 
-        /// <summary>스트레스를 올릴 곳을 받습니다.</summary>
-        /// <param name="needs">니즈를 받는 쪽</param>
-        [Inject]
-        public void Construct(INeedsSink needs)
-        {
-            if (needs != null) _needs = needs;
-        }
+        // --- Unity Event Functions ---
 
+        /// <summary>
+        /// 연동 컴포넌트들을 찾아 두고, 빠진 것이 있으면 알립니다.
+        ///
+        /// 인스펙터에서 직접 할당하는 쪽을 권장합니다. 여기서 찾는 것은 배선을 빠뜨렸을 때의
+        /// 대비책입니다. 차량과 내구도는 없으면 경고를 남기고, 사운드는 없어도
+        /// 조용히 넘어갑니다. 소리가 안 나는 것은 고장이 아니기 때문입니다.
+        /// </summary>
         void Start()
         {
             if (vehicle == null) vehicle = GetComponentInParent<Vehicle>();
@@ -72,9 +99,12 @@ namespace CarDrive.Gameplay
         }
 
         /// <summary>
-        /// 다른 Collider와 충돌이 시작될 때 호출됩니다.
-        /// (원본 CarController의 OnCollisionEnter 로직)
+        /// 무언가와 부딪혔을 때 그것이 적이면 흔들림·내구도·스트레스·소리를 한 번에 처리합니다.
+        ///
+        /// 적이 아니면 아무것도 하지 않습니다. 벽이나 바닥과의 충돌은
+        /// 물리 엔진이 알아서 처리하도록 둡니다.
         /// </summary>
+        /// <param name="collision">부딪힌 상대와 접촉 지점·상대 속도가 담긴 충돌 정보</param>
         private void OnCollisionEnter(Collision collision)
         {
             if (vehicle == null) return;
@@ -122,6 +152,21 @@ namespace CarDrive.Gameplay
                     soundController.PlayCollisionSound(strength);
                 }
             }
+        }
+
+        // --- Public Methods ---
+
+        /// <summary>
+        /// 스트레스를 올릴 곳을 받습니다.
+        ///
+        /// VContainer가 <c>Start</c> 이전에 부릅니다. 주입이 없는 씬에서는
+        /// <see cref="NullNeedsSink"/>가 그대로 남아 스트레스가 조용히 버려집니다.
+        /// </summary>
+        /// <param name="needs">니즈를 받는 쪽. null이면 기존 값을 그대로 둡니다</param>
+        [Inject]
+        public void Construct(INeedsSink needs)
+        {
+            if (needs != null) _needs = needs;
         }
     }
 }

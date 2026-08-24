@@ -4,12 +4,21 @@ using CarDrive.Common;
 namespace CarDrive.Gameplay
 {
     /// <summary>
-    /// [신규]
-    /// 플레이어의 상호작용 로직(레이캐스트, E키 입력)을 전담하는 클래스입니다.
-    /// 이 컴포넌트는 PlayerCameraController와 같은 카메라 GameObject에 추가해야 합니다.
+    /// 플레이어의 상호작용을 전담합니다. 조준점으로 레이캐스트를 쏘아 대상을 찾고,
+    /// 상호작용 키 입력을 그 대상에게 전달합니다.
+    ///
+    /// 이 컴포넌트는 <see cref="PlayerCameraController"/>와 같은 카메라 GameObject에 붙입니다.
+    /// 원근 카메라에서 정면 방향이 곧 화면 중앙이므로, 조준점 판정이 레이캐스트 한 줄로 끝나기 때문입니다.
+    ///
+    /// <b>대상이 무엇인지는 구분하지 않습니다.</b> 문·운전대·음료·침대는 모두
+    /// <see cref="IInteractable"/>일 뿐이고, 무슨 일이 일어날지는 각 대상이 정합니다.
+    /// 그래서 새 상호작용 대상을 추가해도 이 클래스는 고칠 필요가 없습니다.
     /// </summary>
     public class PlayerInteractor : MonoBehaviour
     {
+        // --- Public Member Variables ---
+
+        /// <summary>상호작용이 닿는 최대 거리(m)입니다.</summary>
         [Header("상호작용 설정")]
         [Tooltip("상호작용이 가능한 최대 거리")]
         public float interactionDistance = 3f;
@@ -19,19 +28,35 @@ namespace CarDrive.Gameplay
         // 상호작용 키는 GameInput이 소유합니다. (GameAction.Interact)
         // 안내 문구의 키 이름도 거기서 가져오므로, 키를 바꾸면 문구가 저절로 따라갑니다.
 
+        /// <summary>상호작용 레이캐스트가 훑을 레이어입니다. 여기에 없는 레이어는 조준되지 않습니다.</summary>
         [Tooltip("상호작용 레이캐스트가 감지할 레이어")]
         public LayerMask interactionLayer;
 
+        /// <summary>
+        /// 조준 광선을 쏠 기준 Transform입니다.
+        /// 비워두면 <see cref="PlayerAim.Resolve"/>가 이 오브젝트의 카메라나 메인 카메라를 찾아 줍니다.
+        /// </summary>
         [Tooltip("조준 광선을 쏠 기준. 비워두면 이 오브젝트가 카메라인지 확인하고, 아니면 Camera.main을 씁니다.")]
         public Transform aimSource;
 
+        /// <summary>
+        /// 상호작용 사운드를 재생할 컨트롤러입니다. 비워두면 같은 오브젝트에서 찾으며, 없으면 조용히 넘어갑니다.
+        /// </summary>
         [Tooltip("상호작용 사운드를 재생할 컨트롤러. 비워두면 같은 오브젝트에서 찾습니다.")]
         public PlayerSoundController soundController;
 
+        /// <summary>
+        /// 안내 문구의 서식입니다. <c>{0}</c>에는 상호작용 키 이름이, <c>{1}</c>에는 대상의 라벨이 들어갑니다.
+        /// 키 이름은 <see cref="GameInput"/>에서 가져오므로 키를 재설정하면 문구가 저절로 따라갑니다.
+        /// </summary>
         [Header("문구 (다국어 대응)")]
         [Tooltip("{0}에는 키 이름, {1}에는 대상의 promptLabel이 들어갑니다.")]
         public string satisfierFormat = "{0}: {1}";
 
+        /// <summary>
+        /// 마시는 중인지 알려 줄 컴포넌트입니다. 마시는 동안에는 상호작용을 받지 않습니다.
+        /// 비워두면 같은 오브젝트에서 찾고, 그래도 없으면 <see cref="GameContext"/>에서 찾습니다.
+        /// </summary>
         [Header("연동")]
         [Tooltip("마시는 중에는 상호작용을 막습니다. 비워두면 같은 오브젝트와 씬에서 찾습니다.")]
         public BeverageConsumer beverageConsumer;
@@ -72,28 +97,6 @@ namespace CarDrive.Gameplay
         /// <summary>마시는 중이라 상호작용을 받지 않는 상태인지 여부입니다.</summary>
         public bool IsBlocked { get { return beverageConsumer != null && beverageConsumer.IsBusy; } }
 
-        /// <summary>
-        /// 지금 상호작용 키로 할 수 있는 일을 문장으로 돌려줍니다. 없으면 빈 문자열입니다.
-        /// 조준점에 아무것도 걸리지 않았다면 항상 빈 문자열입니다.
-        /// </summary>
-        public string GetInteractionPrompt()
-        {
-            // 마시는 중에는 아무 안내도 띄우지 않습니다. 눌러도 받지 않기 때문입니다.
-            if (IsBlocked) return "";
-
-            if (currentInteractable != null && currentInteractable.CanInteract())
-            {
-                string label = currentInteractable.GetInteractionLabel();
-                if (!string.IsNullOrEmpty(label))
-                {
-                    // 키 이름을 GameInput에서 가져옵니다. 재설정하면 안내 문구도 함께 바뀝니다.
-                    return string.Format(satisfierFormat, GameInput.GetBindingName(GameAction.Interact), label);
-                }
-            }
-
-            return "";
-        }
-
         // --- Unity Event Functions ---
 
         /// <summary>
@@ -112,7 +115,7 @@ namespace CarDrive.Gameplay
         }
 
         /// <summary>
-        /// 스크립트가 처음 활성화될 때 카메라 Transform을 캐시합니다.
+        /// 조준 기준을 확정하고, 비워 둔 사운드·음료 참조를 같은 오브젝트와 씬에서 찾아 채웁니다.
         /// </summary>
         void Start()
         {
@@ -129,7 +132,7 @@ namespace CarDrive.Gameplay
         }
 
         /// <summary>
-        /// 매 프레임마다 호출됩니다.
+        /// 매 프레임 조준점 판정과 상호작용 키 입력을 처리합니다.
         /// </summary>
         void Update()
         {
@@ -137,6 +140,36 @@ namespace CarDrive.Gameplay
             HandleInteractionRaycast();
             HandleInteractionInput();
         }
+
+        // --- Public Methods ---
+
+        /// <summary>
+        /// 지금 상호작용 키로 할 수 있는 일을 안내 문장으로 만들어 돌려줍니다.
+        /// </summary>
+        /// <returns>
+        /// <see cref="satisfierFormat"/>에 키 이름과 대상 라벨을 채운 문장.
+        /// 조준점에 아무것도 걸리지 않았거나, 대상이 지금 상호작용을 받지 않거나,
+        /// 마시는 중이라면 빈 문자열입니다.
+        /// </returns>
+        public string GetInteractionPrompt()
+        {
+            // 마시는 중에는 아무 안내도 띄우지 않습니다. 눌러도 받지 않기 때문입니다.
+            if (IsBlocked) return "";
+
+            if (currentInteractable != null && currentInteractable.CanInteract())
+            {
+                string label = currentInteractable.GetInteractionLabel();
+                if (!string.IsNullOrEmpty(label))
+                {
+                    // 키 이름을 GameInput에서 가져옵니다. 재설정하면 안내 문구도 함께 바뀝니다.
+                    return string.Format(satisfierFormat, GameInput.GetBindingName(GameAction.Interact), label);
+                }
+            }
+
+            return "";
+        }
+
+        // --- Private Methods ---
 
         /// <summary>
         /// 화면 중앙(카메라 정면)으로 레이캐스트를 쏘아 조준점에 걸린 대상을 찾습니다.
@@ -174,8 +207,8 @@ namespace CarDrive.Gameplay
         }
 
         /// <summary>
-        /// 상호작용 키('E') 입력을 처리합니다.
-        /// (원본 PlayerCameraController의 메서드)
+        /// 상호작용 키 입력을 읽어 조준점에 걸린 대상에게 넘깁니다.
+        /// 마시고 던지는 절차가 끝나기 전에는 받지 않습니다. 연타로 상자를 순식간에 비우는 것을 막기 위해서입니다.
         /// </summary>
         private void HandleInteractionInput()
         {

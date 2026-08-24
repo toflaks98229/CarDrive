@@ -31,51 +31,75 @@ namespace CarDrive.Systems
     /// </summary>
     public class TimeSystem : MonoBehaviour, ISaveable, IGameClock, ISunSource
     {
+        /// <summary>게임 하루의 길이(분)입니다. 하루를 1440분으로 두어 실제 시계와 같은 단위를 씁니다.</summary>
         public const float MinutesPerDay = 1440f;
 
         // --- Public Member Variables ---
 
+        /// <summary>실제 1초당 흐르는 게임 시간(분)입니다. 1이면 실제 24분이 게임 하루입니다.</summary>
         [Header("시간 흐름")]
         [Tooltip("실제 1초당 흐르는 게임 시간(분). 1이면 실제 24분이 게임 하루입니다.")]
         public float gameMinutesPerRealSecond = 1f;
 
+        /// <summary>켜면 시간이 멈춥니다. 시간을 읽어 가는 시스템 전체가 함께 멈춥니다.</summary>
         [Tooltip("체크하면 시간이 멈춥니다.")]
         public bool paused = false;
 
+        /// <summary>게임을 시작할 시각(0~24)입니다.</summary>
         [Header("시작 시각")]
         [Range(0f, 24f)]
         public float startHour = 8f;
 
+        /// <summary>게임을 시작할 날짜입니다. 1일차부터 셉니다.</summary>
         [Tooltip("시작 날짜 (1일차부터)")]
         public int startDay = 1;
 
+        /// <summary>새벽이 시작되는 시각입니다.</summary>
         [Header("주야 구분 (시)")]
         [Tooltip("새벽 시작")]
         public float dawnStartHour = 5f;
+
+        /// <summary>아침이 시작되는 시각입니다.</summary>
         [Tooltip("아침 시작")]
         public float morningStartHour = 7f;
+
+        /// <summary>낮이 시작되는 시각입니다.</summary>
         [Tooltip("낮 시작")]
         public float afternoonStartHour = 12f;
+
+        /// <summary>저녁이 시작되는 시각입니다.</summary>
         [Tooltip("저녁 시작")]
         public float eveningStartHour = 18f;
+
+        /// <summary>밤이 시작되는 시각입니다.</summary>
         [Tooltip("밤 시작")]
         public float nightStartHour = 21f;
 
+        /// <summary>해가 완전히 뜬 것으로 보는 시각입니다. 이때 햇빛 비율이 1이 됩니다.</summary>
         [Header("햇빛")]
         [Tooltip("해가 완전히 뜬 것으로 보는 시각")]
         public float fullDaylightHour = 9f;
+
+        /// <summary>해가 완전히 진 것으로 보는 시각입니다. 이때 햇빛 비율이 0이 됩니다.</summary>
         [Tooltip("해가 완전히 진 것으로 보는 시각")]
         public float fullDarkHour = 20f;
 
+        /// <summary>시각에 맞춰 회전시킬 태양광입니다. 비워두면 조명은 건드리지 않습니다.</summary>
         [Tooltip("회전시킬 태양광. 비워두면 조명은 건드리지 않습니다.")]
         public Light sunLight;
 
+        /// <summary>태양광의 최대 밝기입니다. <see cref="DaylightFactor"/>에 비례해 줄어듭니다.</summary>
         [Tooltip("태양광의 최대 밝기. DaylightFactor에 비례해 줄어듭니다.")]
         public float sunMaxIntensity = 1.2f;
 
+        /// <summary>날짜가 바뀔 때 새 날짜를 담아 던지는 이벤트입니다.</summary>
         [Header("이벤트")]
         public IntEvent onDayChanged;
+
+        /// <summary>정각이 바뀔 때 새 시를 담아 던지는 이벤트입니다.</summary>
         public IntEvent onHourChanged;
+
+        /// <summary>시간대(새벽·아침·낮·저녁·밤)가 바뀔 때 던지는 이벤트입니다.</summary>
         public DayPhaseEvent onPhaseChanged;
 
         // --- Public Properties ---

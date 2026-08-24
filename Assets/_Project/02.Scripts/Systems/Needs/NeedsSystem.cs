@@ -22,65 +22,47 @@ namespace CarDrive.Systems
     /// </summary>
     public class NeedsSystem : MonoBehaviour, ISaveable, INeedsSink
     {
-        // --- Static Access ---
-
         // --- Public Member Variables ---
 
+        /// <summary>니즈 설정 에셋입니다. 비워두면 <see cref="NeedDefaults"/>의 기본값이 쓰입니다.</summary>
         [Header("설정")]
         [Tooltip("니즈 설정 에셋. 비워두면 NeedDefaults의 기본값이 사용됩니다.")]
         public NeedsProfile profile;
 
+        /// <summary>
+        /// 실제 1초당 흐르는 게임 시간(분)입니다. 1이면 실제 24분이 게임 내 하루입니다.
+        /// 시계가 주입되지 않았을 때만 이 값이 그대로 배율로 쓰입니다.
+        /// </summary>
         [Tooltip("실제 1초당 흐르는 게임 시간(분). 1이면 실제 24분이 게임 내 하루입니다.")]
         public float gameMinutesPerRealSecond = 1f;
 
+        /// <summary>끄면 니즈가 더 이상 차오르지 않습니다. 디버그용입니다.</summary>
         [Tooltip("체크를 해제하면 니즈가 더 이상 차오르지 않습니다. (디버그용)")]
         public bool needsEnabled = true;
 
-        /// <summary>
-        /// 한계 초과 시 체력을 깎을 대상입니다. <b>Composition이 기동할 때 꽂아 줍니다.</b>
-        ///
-        /// <b>왜 인스펙터 필드가 아닌가.</b> 예전에는 <c>public PlayerHealth healthBar</c>였고,
-        /// 타입을 <c>PlayerHealth</c>로 좁혀 둔 것이 이 프로젝트에서 가장 좋은 설계였습니다.
-        /// 인스펙터에서 이 자리에 차량 내구도를 끌어다 놓는 실수가 <b>컴파일 단계에서</b> 막혔기 때문입니다.
-        ///
-        /// 그런데 그 한 줄 때문에 Systems 계층이 Gameplay 계층을 거꾸로 참조했고,
-        /// 어셈블리를 나누는 순간 순환이 되었습니다.
-        ///
-        /// <b>안전성은 사라지지 않고 자리를 옮겼습니다.</b> 이제 <c>SimulationScope</c>가
-        /// <c>PlayerHealth</c> 타입으로 받아 <see cref="SetDamageTarget"/>에 넘깁니다.
-        /// 오배선은 여전히 컴파일 에러이고, 확인 시점만 인스펙터에서 설치자로 바뀌었습니다.
-        /// </summary>
-        private IDamageable damageTarget;
-
-        /// <summary>
-        /// 이 시스템이 보는 시계입니다.
-        ///
-        /// <b>니즈가 시간에 좌우된다는 사실이 이 한 줄로 드러납니다.</b> 예전에는
-        /// <c>TimeSystem.GetMinutesPerSecond()</c>를 <see cref="Tick"/> 본문에서 불렀기 때문에,
-        /// 파일을 열어 보기 전에는 알 수 없었습니다.
-        ///
-        /// 주입되지 않으면 <see cref="NullGameClock"/>이 들어 있고, 그 경우
-        /// 아래 <see cref="gameMinutesPerRealSecond"/>가 그대로 배율이 됩니다.
-        /// </summary>
-        private IGameClock clock = NullGameClock.Instance;
-
+        /// <summary>피로가 한계를 넘어 기절했을 때 되돌려 놓을 피로 수치입니다.</summary>
         [Header("기절 설정")]
         [Tooltip("피로가 한계를 넘어 기절했을 때 회복되는 피로 수치")]
         public float blackoutFatigueReset = 0.35f;
 
+        /// <summary>기절해 있는 동안 흐르는 게임 시간(분)입니다. 그동안 다른 니즈는 계속 차오릅니다.</summary>
         [Tooltip("기절해 있는 동안 흐르는 게임 시간(분). 그동안 다른 니즈는 계속 차오릅니다.")]
         public float blackoutGameMinutes = 240f;
 
+        /// <summary>어떤 니즈가 경고 임계를 넘었을 때 그 종류를 담아 던지는 이벤트입니다.</summary>
         [Header("이벤트")]
         [Tooltip("경고 임계를 넘었을 때")]
         public NeedTypeEvent onNeedWarning;
 
+        /// <summary>어떤 니즈가 한계를 넘었을 때 그 종류를 담아 던지는 이벤트입니다.</summary>
         [Tooltip("한계(overflowLimit)를 넘었을 때")]
         public NeedTypeEvent onNeedCritical;
 
+        /// <summary>어떤 니즈가 경고 임계 아래로 회복되었을 때 그 종류를 담아 던지는 이벤트입니다.</summary>
         [Tooltip("경고 임계 아래로 회복되었을 때")]
         public NeedTypeEvent onNeedRelieved;
 
+        /// <summary>피로 한계 초과로 기절했을 때 던지는 이벤트입니다.</summary>
         [Tooltip("피로 한계 초과로 기절했을 때")]
         public UnityEvent onBlackout;
 
@@ -128,6 +110,34 @@ namespace CarDrive.Systems
         // --- Private Member Variables ---
 
         /// <summary>
+        /// 한계 초과 시 체력을 깎을 대상입니다. <b>Composition이 기동할 때 꽂아 줍니다.</b>
+        ///
+        /// <b>왜 인스펙터 필드가 아닌가.</b> 예전에는 <c>public PlayerHealth healthBar</c>였고,
+        /// 타입을 <c>PlayerHealth</c>로 좁혀 둔 것이 이 프로젝트에서 가장 좋은 설계였습니다.
+        /// 인스펙터에서 이 자리에 차량 내구도를 끌어다 놓는 실수가 <b>컴파일 단계에서</b> 막혔기 때문입니다.
+        ///
+        /// 그런데 그 한 줄 때문에 Systems 계층이 Gameplay 계층을 거꾸로 참조했고,
+        /// 어셈블리를 나누는 순간 순환이 되었습니다.
+        ///
+        /// <b>안전성은 사라지지 않고 자리를 옮겼습니다.</b> 이제 <c>SimulationScope</c>가
+        /// <c>PlayerHealth</c> 타입으로 받아 <see cref="SetDamageTarget"/>에 넘깁니다.
+        /// 오배선은 여전히 컴파일 에러이고, 확인 시점만 인스펙터에서 설치자로 바뀌었습니다.
+        /// </summary>
+        private IDamageable damageTarget;
+
+        /// <summary>
+        /// 이 시스템이 보는 시계입니다.
+        ///
+        /// <b>니즈가 시간에 좌우된다는 사실이 이 한 줄로 드러납니다.</b> 예전에는
+        /// <c>TimeSystem.GetMinutesPerSecond()</c>를 <see cref="Tick"/> 본문에서 불렀기 때문에,
+        /// 파일을 열어 보기 전에는 알 수 없었습니다.
+        ///
+        /// 주입되지 않으면 <see cref="NullGameClock"/>이 들어 있고, 그 경우
+        /// <see cref="gameMinutesPerRealSecond"/>가 그대로 배율이 됩니다.
+        /// </summary>
+        private IGameClock clock = NullGameClock.Instance;
+
+        /// <summary>
         /// 설정과 상태를 짝지어 관리하는 표입니다.
         /// 프로파일 복사·빠진 항목 메우기·조회·세이브 담기를 전부 여기가 합니다.
         /// (예전에는 이 골격을 <see cref="Wallet"/>과 각각 손으로 썼습니다)
@@ -144,22 +154,19 @@ namespace CarDrive.Systems
         /// <summary>설정과 상태를 이미 만들었는지 여부입니다.</summary>
         private bool initialized;
 
-        // 이번 프레임에 연쇄 규칙으로 추가될 증가량 (매 프레임 재계산)
+        /// <summary>
+        /// 이번 프레임에 연쇄 규칙으로 추가될 증가량입니다. 매 프레임 다시 계산합니다.
+        /// 미리 잡아 두고 재사용해 프레임마다 새로 할당하지 않습니다.
+        /// </summary>
         private readonly Dictionary<NeedType, float> couplingBuffer = new Dictionary<NeedType, float>();
 
-        // --- Unity Event Functions ---
-
-        /// <summary>
-        /// 자신을 전역 인스턴스로 등록하고 니즈 설정과 초기 상태를 만듭니다.
-        /// 이미 다른 인스턴스가 있으면 경고를 남기고 자신을 끕니다.
-        /// </summary>
         // --- Injection ---
 
         /// <summary>
         /// 시계를 받습니다. 니즈는 <b>실제 시간이 아니라 게임 시간</b>으로 차오르므로,
         /// 수면으로 시간을 건너뛰면 여기서도 함께 건너뛰어집니다.
         /// </summary>
-        /// <param name="gameClock">게임 시계</param>
+        /// <param name="gameClock">게임 시계. null이면 기본값인 <see cref="NullGameClock"/>이 그대로 남습니다.</param>
         [Inject]
         public void Construct(IGameClock gameClock)
         {
@@ -168,6 +175,10 @@ namespace CarDrive.Systems
 
         // --- Unity Event Functions ---
 
+        /// <summary>
+        /// 자신을 전역 인스턴스로 등록하고 니즈 설정과 초기 상태를 만듭니다.
+        /// 이미 다른 인스턴스가 있으면 경고를 남기고 자신을 끕니다.
+        /// </summary>
         void Awake()
         {
             // 등록이 거부되면 이미 다른 것이 있다는 뜻입니다. (경고는 GameContext가 남깁니다)

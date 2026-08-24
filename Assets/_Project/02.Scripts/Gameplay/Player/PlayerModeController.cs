@@ -7,8 +7,10 @@ namespace CarDrive.Gameplay
     /// <summary>플레이어가 지금 무엇을 조종하고 있는지 나타냅니다.</summary>
     public enum PlayerMode
     {
-        Driving,    // 차량 탑승 중
-        OnFoot      // 하차 상태
+        /// <summary>차량에 탑승해 운전하고 있는 상태입니다.</summary>
+        Driving,
+        /// <summary>차에서 내려 걸어 다니는 상태입니다.</summary>
+        OnFoot
     }
 
     /// <summary>
@@ -33,44 +35,63 @@ namespace CarDrive.Gameplay
     {
         // --- Public Member Variables ---
 
+        /// <summary>게임을 시작할 때의 상태입니다.</summary>
         [Header("시작 상태")]
         [Tooltip("게임을 시작할 때의 상태")]
         public PlayerMode startMode = PlayerMode.Driving;
 
+        /// <summary>CharacterController와 <see cref="PlayerFootMotor"/>가 붙은 도보 리그 오브젝트입니다.</summary>
         [Header("도보 리그")]
         [Tooltip("CharacterController와 PlayerFootMotor가 붙은 오브젝트")]
         public GameObject footRig;
 
+        /// <summary>도보 상태에서 카메라가 붙을 눈높이 위치입니다.</summary>
         [Tooltip("도보 상태에서 카메라가 붙을 위치 (눈높이)")]
         public Transform headMount;
 
+        /// <summary>
+        /// 시작할 때 탈 차량입니다. 비워두면 씬에서 찾습니다.
+        /// 실제 탑승 대상은 문을 조준할 때 그 문이 정해 주므로, 이 값은 시작 시점에만 쓰입니다.
+        /// </summary>
         [Header("차량")]
         [Tooltip("시작할 때 탈 차량. 비워두면 씬에서 찾습니다. " +
                  "실제 탑승 대상은 문을 조준할 때 그 문이 정해 줍니다.")]
         public Vehicle vehicle;
 
+        /// <summary>운전석을 따라다니는 카메라 리그의 <see cref="CarCameraFollow"/>입니다.</summary>
         [Tooltip("운전석을 따라다니는 카메라 리그의 CarCameraFollow")]
         public CarCameraFollow carCameraFollow;
 
+        /// <summary>
+        /// 주행 중 카메라가 붙을 피벗입니다.
+        /// 카메라 리그의 자식으로 두면 차 안에서 두리번거릴 수 있습니다.
+        /// </summary>
         [Tooltip("주행 중 카메라가 붙을 피벗. 카메라 리그의 자식으로 두면 차 안에서 두리번거릴 수 있습니다.")]
         public Transform driverPivot;
 
+        /// <summary>상태에 따라 옮겨 다닐 메인 카메라입니다.</summary>
         [Header("카메라")]
         [Tooltip("옮겨 다닐 메인 카메라")]
         public Transform mainCamera;
 
+        /// <summary>마우스 시점 컨트롤러입니다. 상태가 바뀔 때 좌우 회전을 적용할 몸체 참조를 바꿔 줍니다.</summary>
         [Tooltip("마우스 시점 컨트롤러. 몸체 참조를 상태에 맞춰 바꿔 줍니다.")]
         public PlayerCameraController lookController;
 
+        /// <summary>주행 진동 효과입니다. 도보 상태에서는 꺼야 걸어다닐 때 화면이 떨리지 않습니다.</summary>
         [Tooltip("주행 진동 효과. 도보 상태에서는 꺼야 걸어다닐 때 화면이 떨리지 않습니다.")]
         public CarCameraEffects carCameraEffects;
 
+        /// <summary>이 속도(km/h)보다 빠르면 내릴 수 없습니다.</summary>
         [Header("하차 조건")]
         [Tooltip("이 속도(km/h)보다 빠르면 내릴 수 없습니다.")]
         public float maxExitSpeed = 5f;
 
+        /// <summary>차량에 탑승했을 때 던지는 이벤트입니다.</summary>
         [Header("이벤트")]
         public UnityEvent onEnteredVehicle;
+
+        /// <summary>차량에서 내렸을 때 던지는 이벤트입니다.</summary>
         public UnityEvent onExitedVehicle;
 
         // --- Public Properties ---

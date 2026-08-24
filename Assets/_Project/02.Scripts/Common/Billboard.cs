@@ -3,21 +3,26 @@
 namespace CarDrive.Common
 {
     /// <summary>
-    /// 이 오브젝트가 항상 메인 카메라를 바라보도록 만듭니다.
-    /// 주로 3D 공간의 2D 스프라이트(예: 이름표, 파티클)에 사용됩니다.
-    /// [수정됨] 축 잠금 기능이 추가되었습니다.
+    /// 이 오브젝트가 항상 메인 카메라를 바라보도록 회전시킵니다.
+    /// 주로 3D 공간에 놓인 2D 스프라이트(이름표, 파티클 등)에 사용합니다.
+    ///
+    /// 축을 개별로 잠글 수 있습니다. 잠근 축은 카메라를 따라가지 않고 현재 각도를 유지하므로,
+    /// 예를 들어 X축을 잠그면 카메라가 위아래로 움직여도 스프라이트는 서 있는 채로 좌우만 돕니다.
     /// </summary>
     public class Billboard : MonoBehaviour
     {
         // --- Public Member Variables ---
 
+        /// <summary>X축 회전을 잠급니다. 켜면 상하 기울기가 현재 각도에 고정됩니다.</summary>
         [Header("축 잠금 설정")]
         [Tooltip("X축 회전을 잠급니다 (상하 회전 고정)")]
         public bool lockXAxis = false;
 
+        /// <summary>Y축 회전을 잠급니다. 켜면 좌우 방향이 현재 각도에 고정됩니다.</summary>
         [Tooltip("Y축 회전을 잠급니다 (좌우 회전 고정)")]
         public bool lockYAxis = false;
 
+        /// <summary>Z축 회전을 잠급니다. 켜면 화면상의 기울임이 현재 각도에 고정됩니다.</summary>
         [Tooltip("Z축 회전을 잠급니다 (기울임 고정)")]
         public bool lockZAxis = false;
 
