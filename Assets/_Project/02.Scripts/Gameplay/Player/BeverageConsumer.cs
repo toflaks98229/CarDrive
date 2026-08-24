@@ -164,7 +164,27 @@ namespace CarDrive.Gameplay
             aim = PlayerAim.Resolve(footThrowOrigin, this);
 
             drinkView = drinkAnimator as IDrinkView;
-            if (drinkAnimator != null && drinkView == null)
+
+            // 배선이 빠진 것과 잘못 끼운 것을 <b>둘 다</b> 알립니다.
+            //
+            // 예전에는 잘못 끼운 경우만 알렸습니다. 그래서 칸이 <em>비어 있을</em> 때는
+            // 아무 말도 없이 연출만 나오지 않았고, 그 상태가 여덟 커밋 동안 이어졌습니다.
+            // (씬의 DrinkAnimation 이 c46240d 에서 사라지면서 이 칸이 비었습니다)
+            // 마시는 절차 자체는 fallbackDrinkSeconds 로 계속 돌기 때문에, 로그가 없으면
+            // <b>고장을 알아챌 방법이 없습니다.</b>
+            //
+            // Feel 로 대체했다면 정상이므로 그때는 조용히 넘어갑니다.
+            if (drinkAnimator == null)
+            {
+                if (drinkFeedback == null)
+                {
+                    GameLog.Warn(GameLog.Channel.Player,
+                        "BeverageConsumer: drinkAnimator 가 비어 있어 마시는 연출이 나오지 않습니다. " +
+                        "인스펙터에 DrinkAnimation 을 연결하거나 drinkFeedback 을 쓰세요. " +
+                        "(마시기 자체는 fallbackDrinkSeconds 로 계속 동작합니다)", this);
+                }
+            }
+            else if (drinkView == null)
             {
                 GameLog.Error(GameLog.Channel.Player, "BeverageConsumer: drinkAnimator 에 끼운 " + drinkAnimator.GetType().Name +
                                " 은(는) IDrinkView 를 구현하지 않아 마시는 연출이 나오지 않습니다.", this);

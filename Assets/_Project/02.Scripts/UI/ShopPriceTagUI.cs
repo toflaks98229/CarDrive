@@ -145,7 +145,7 @@ namespace CarDrive.UI
             if (counter != null) return;
 
             counter = GetComponentInParent<ShopCounter>(true);
-            if (counter == null) counter = FindAnyObjectByType<ShopCounter>(FindObjectsInactive.Include);
+            if (counter == null) counter = GameContext.Resolve<ShopCounter>(this);
 
             if (counter == null)
             {

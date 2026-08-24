@@ -83,6 +83,18 @@ namespace CarDrive.Gameplay
         /// <summary>지금 고른 물건들입니다. 고른 순서 그대로입니다.</summary>
         public IReadOnlyList<ShopShelfItem> Selected { get { Prune(); return selected; } }
 
+        /// <summary>
+        /// 지금 영업 중인지 여부입니다.
+        ///
+        /// <b>기본값이 열림입니다.</b> <see cref="ShopSchedule"/> 을 붙이지 않은 씬에서는
+        /// 마트가 늘 열려 있어야 예전처럼 돌아갑니다. 시간을 붙이는 것은 선택이지
+        /// 전제가 아닙니다.
+        /// </summary>
+        public bool IsOpen { get { return isOpen; } }
+
+        /// <summary>이 계산대에 딸린 진열 칸들입니다. 입고할 때 훑습니다.</summary>
+        public IReadOnlyList<ShopShelfItem> Shelves { get { return shelves; } }
+
         // --- Private Member Variables ---
 
         /// <summary>
@@ -98,6 +110,17 @@ namespace CarDrive.Gameplay
         /// <summary>값을 치를 지갑입니다. 주입되지 않으면 계산이 되지 않습니다.</summary>
         private Wallet wallet;
 
+        /// <summary>
+        /// 이 계산대에 딸린 진열 칸들입니다. 진열 칸이 <c>Start</c> 에서 스스로 등록합니다.
+        ///
+        /// 등록을 받는 이유는 입고 때문입니다 — 채울 대상을 씬에서 찾지 않으려면
+        /// 누가 내 것인지 알고 있어야 합니다.
+        /// </summary>
+        private readonly List<ShopShelfItem> shelves = new List<ShopShelfItem>();
+
+        /// <summary>지금 영업 중인지입니다. 일정표가 없으면 늘 열려 있습니다.</summary>
+        private bool isOpen = true;
+
         // --- Injection ---
 
         /// <summary>값을 치를 지갑을 받습니다.</summary>
@@ -108,38 +131,156 @@ namespace CarDrive.Gameplay
             wallet = playerWallet;
         }
 
+        // --- Unity Event Functions ---
+
+        /// <summary>
+        /// 자신을 레지스트리에 등록합니다. 진열 칸·점원·가격표가 <c>Start</c> 에서 찾아 씁니다.
+        ///
+        /// 예전에는 그 셋이 각자 <c>FindAnyObjectByType</c> 으로 씬을 훑었습니다.
+        /// 진열 칸이 수십 개면 시작 프레임에 그만큼 씬을 훑습니다.
+        /// </summary>
+        void Awake()
+        {
+            GameContext.Register(this);
+        }
+
+        /// <summary>등록을 해제합니다.</summary>
+        void OnDestroy()
+        {
+            GameContext.Unregister(this);
+        }
+
         // --- Public Methods : 장바구니 ---
 
-        /// <summary>이 진열품이 이미 골라져 있는지 확인합니다.</summary>
-        /// <param name="shelfItem">확인할 진열품</param>
-        /// <returns>골라져 있으면 true</returns>
+        // --- Public Methods : 영업과 진열 ---
+
+        /// <summary>
+        /// 문을 열거나 닫습니다. <see cref="ShopSchedule"/> 이 시각을 보고 부릅니다.
+        ///
+        /// <b>왜 계산대가 상태를 갖는가.</b> 문이 열렸는지 물어야 하는 쪽이 넷입니다 —
+        /// 진열 칸·점원·무르는 자리, 그리고 가격표. 그 넷이 각자 일정표를 찾아가면
+        /// 배선이 넷으로 늘어납니다. 계산대는 이미 그 넷이 모두 알고 있는 곳입니다.
+        /// </summary>
+        /// <param name="open">열려 있어야 하면 true</param>
+        internal void SetOpen(bool open)
+        {
+            isOpen = open;
+        }
+
+        /// <summary>
+        /// 진열 칸을 등록합니다. 진열 칸이 <c>Start</c> 에서 스스로 부릅니다.
+        /// </summary>
+        /// <param name="shelfItem">등록할 진열 칸</param>
+        public void RegisterShelf(ShopShelfItem shelfItem)
+        {
+            if (shelfItem == null || shelves.Contains(shelfItem)) return;
+            shelves.Add(shelfItem);
+        }
+
+        /// <summary>
+        /// 진열 칸의 등록을 해제합니다.
+        /// </summary>
+        /// <param name="shelfItem">해제할 진열 칸</param>
+        public void UnregisterShelf(ShopShelfItem shelfItem)
+        {
+            if (shelfItem == null) return;
+            shelves.Remove(shelfItem);
+        }
+
+        /// <summary>
+        /// 모든 진열 칸을 처음 상태로 채웁니다.
+        ///
+        /// <b>담아 둔 것을 먼저 되돌립니다.</b> 그러지 않으면 진열대는 가득 찼는데
+        /// 장바구니에는 어제 담은 것이 남아, 실물과 값이 어긋납니다.
+        /// </summary>
+        /// <returns>다시 채운 진열 칸의 수</returns>
+        public int RestockAll()
+        {
+            ReturnAll();
+
+            int count = 0;
+            for (int i = shelves.Count - 1; i >= 0; i--)
+            {
+                if (shelves[i] == null) { shelves.RemoveAt(i); continue; }
+
+                shelves[i].Restock();
+                count++;
+            }
+
+            return count;
+        }
+
+        // --- Public Methods : 장바구니 ---
+
+        /// <summary>이 진열 칸에서 담아 온 것이 있는지 확인합니다.</summary>
+        /// <param name="shelfItem">확인할 진열 칸</param>
+        /// <returns>하나라도 담겨 있으면 true</returns>
         public bool Contains(ShopShelfItem shelfItem)
         {
             return shelfItem != null && selected.Contains(shelfItem);
         }
 
         /// <summary>
-        /// 진열품을 고르거나 무릅니다. 이미 골랐다면 빠집니다.
+        /// 진열 칸에서 하나를 담습니다.
+        ///
+        /// <b>같은 칸을 여러 번 담을 수 있습니다.</b> 목록의 항목 하나가 <b>물건 한 개</b>입니다.
+        /// 진열대에서 실물이 하나 사라지는 것과 짝을 이룹니다.
+        /// (실물을 감추는 일은 <see cref="ShopShelfItem.Interact"/> 가 먼저 합니다)
         /// </summary>
-        /// <param name="shelfItem">고르거나 무를 진열품</param>
-        public void Toggle(ShopShelfItem shelfItem)
+        /// <param name="shelfItem">담아 온 진열 칸</param>
+        public void Add(ShopShelfItem shelfItem)
         {
             if (shelfItem == null || shelfItem.item == null) return;
 
-            if (!selected.Remove(shelfItem)) selected.Add(shelfItem);
-
+            selected.Add(shelfItem);
             RaiseCartChanged();
         }
 
-        /// <summary>고른 것을 모두 무릅니다.</summary>
+        /// <summary>
+        /// <b>가장 마지막에 담은 것</b>을 하나 진열대로 되돌립니다.
+        ///
+        /// 마지막부터 되돌리는 것은 봉투에서 꺼내는 순서와 같은 규칙입니다 —
+        /// 방금 한 일을 무르는 것이 가장 자연스럽습니다.
+        /// </summary>
+        /// <returns>되돌렸으면 true. 담은 것이 없으면 false</returns>
+        public bool ReturnLast()
+        {
+            Prune();
+
+            if (selected.Count == 0) return false;
+
+            int last = selected.Count - 1;
+            ShopShelfItem shelfItem = selected[last];
+            selected.RemoveAt(last);
+
+            // 진열대가 사라졌어도 장바구니에서는 빠져야 합니다. 값이 남아 있으면
+            // 되돌릴 수 없는 물건 값을 계속 치르게 됩니다.
+            if (shelfItem != null) shelfItem.ReturnOne();
+
+            RaiseCartChanged();
+            return true;
+        }
+
+        /// <summary>
+        /// 담은 것을 <b>모두</b> 진열대로 되돌립니다.
+        /// </summary>
+        /// <returns>되돌린 개수</returns>
+        public int ReturnAll()
+        {
+            int count = 0;
+            while (ReturnLast()) count++;
+            return count;
+        }
+
+        /// <summary>
+        /// 장바구니를 비웁니다. <b>진열대로 되돌리지 않습니다.</b>
+        ///
+        /// 계산을 마친 뒤에 부르는 것이라, 담겼던 물건은 <b>팔린 것</b>입니다.
+        /// 무르려는 것이라면 <see cref="ReturnAll"/> 를 쓰세요.
+        /// </summary>
         public void ClearCart()
         {
             if (selected.Count == 0) return;
-
-            for (int i = 0; i < selected.Count; i++)
-            {
-                if (selected[i] != null) selected[i].NotifyDeselected();
-            }
 
             selected.Clear();
             RaiseCartChanged();
@@ -166,6 +307,26 @@ namespace CarDrive.Gameplay
                 return false;
             }
 
+            // <b>내줄 수 있는지를 값을 받기 전에 확인합니다.</b>
+            //
+            // 예전에는 순서가 반대였습니다. TrySpend 로 돈을 먼저 빼고 그 다음에 봉투를
+            // 만들다가 실패하면 경고만 남겼습니다. 그러면 <b>돈은 나갔는데 물건은 없는</b>
+            // 상태가 되고, 세이브에 소지품이 없어 불러오기로도 되돌릴 수 없습니다.
+            // (당시 주석이 "값은 치러졌으므로 다시 사야 합니다" 라고 그 결과를 인정하고 있었습니다)
+            //
+            // 확인 대상은 <b>계산대 자신의 배선</b>뿐입니다. 개별 상품의 프리팹이 비어 있는 것은
+            // <see cref="ShopItem.prefab"/> 이 "값만 있는 물건" 용도로 허용하는 상태이므로
+            // 여기서 막지 않습니다. 그쪽은 꺼낼 때 경고가 남습니다.
+            string blocker;
+            if (!CanFulfill(out blocker))
+            {
+                GameLog.Error(GameLog.Channel.Player,
+                    "ShopCounter: " + blocker + " 계산을 진행하지 않았습니다. 돈은 그대로입니다.", this);
+
+                if (onRefused != null) onRefused.Invoke();
+                return false;
+            }
+
             if (!wallet.TrySpend(CurrencyType.Money, total))
             {
                 // 지갑이 이미 onInsufficientFunds 를 냅니다. 여기서는 계산대 쪽 연출만 겁니다.
@@ -182,6 +343,45 @@ namespace CarDrive.Gameplay
         }
 
         // --- Private Methods ---
+
+        /// <summary>
+        /// 지금 고른 것을 <b>실제로 내줄 수 있는지</b> 확인합니다. 값을 받기 전에 부릅니다.
+        ///
+        /// 봉투가 필요 없는 장바구니(큰 물건만 고른 경우)라면 봉투 배선을 보지 않습니다.
+        /// 없는 것을 이유로 거절하면 살 수 있는 것도 못 사게 되기 때문입니다.
+        /// </summary>
+        /// <param name="blocker">막힌 이유가 담깁니다. 내줄 수 있으면 null입니다.</param>
+        /// <returns>내줄 수 있으면 true</returns>
+        private bool CanFulfill(out string blocker)
+        {
+            blocker = null;
+
+            // 봉투에 담길 것이 하나라도 있어야 봉투 배선이 문제가 됩니다.
+            bool needsBag = false;
+            for (int i = 0; i < selected.Count; i++)
+            {
+                ShopItem item = selected[i] != null ? selected[i].item : null;
+                if (item != null && item.fitsInBag) { needsBag = true; break; }
+            }
+
+            if (!needsBag) return true;
+
+            if (bagPrefab == null)
+            {
+                blocker = "봉투 프리팹이 연결되지 않아 담아 줄 봉투가 없습니다.";
+                return false;
+            }
+
+            // 프리팹은 인스턴스를 만들지 않고도 컴포넌트를 확인할 수 있습니다.
+            // 만들어 보고 되돌리는 방식은 Awake·OnEnable 이 한 번 헛돌기 때문에 쓰지 않습니다.
+            if (bagPrefab.GetComponent<ShoppingBag>() == null)
+            {
+                blocker = "봉투 프리팹에 ShoppingBag 이 없어 담아도 꺼낼 수 없습니다.";
+                return false;
+            }
+
+            return true;
+        }
 
         /// <summary>
         /// 산 것을 봉투와 계산대 위로 나눠 놓습니다.
@@ -218,14 +418,8 @@ namespace CarDrive.Gameplay
         /// <param name="contents">봉투에 넣을 물건들. 고른 순서 그대로입니다.</param>
         private void CreateBag(List<ShopItem> contents)
         {
-            if (bagPrefab == null)
-            {
-                GameLog.Warn(GameLog.Channel.Player,
-                    "ShopCounter: 봉투 프리팹이 없어 산 물건을 담지 못했습니다. " +
-                    "값은 치러졌으므로 프리팹을 연결하고 다시 사야 합니다.", this);
-                return;
-            }
-
+            // 여기까지 왔다면 <see cref="CanFulfill"/> 이 봉투 배선을 이미 확인했습니다.
+            // 아래 검사가 걸린다면 그 사이에 프리팹이 바뀌었다는 뜻이므로 오류로 남깁니다.
             Transform spot = ResolveBagPlacement();
             GameObject go = Instantiate(bagPrefab, spot.position, spot.rotation);
 
@@ -233,7 +427,10 @@ namespace CarDrive.Gameplay
             if (bag == null)
             {
                 GameLog.Error(GameLog.Channel.Player,
-                    "ShopCounter: 봉투 프리팹에 ShoppingBag 이 없어 꺼낼 수 없습니다.", this);
+                    "ShopCounter: 봉투 프리팹에 ShoppingBag 이 없어 꺼낼 수 없습니다. " +
+                    "계산 직전 확인을 통과했는데 여기서 걸렸다면 그 사이에 프리팹이 바뀐 것입니다.", this);
+
+                Destroy(go);
                 return;
             }
 

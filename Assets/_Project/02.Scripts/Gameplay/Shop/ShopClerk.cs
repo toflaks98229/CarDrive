@@ -27,6 +27,10 @@ namespace CarDrive.Gameplay
         [Tooltip("계산할 수 있을 때 보여 줄 동사")]
         public string checkoutLabel = "계산하기";
 
+        /// <summary>영업 시간이 아닐 때 보여 줄 문구입니다. {0}에 여는 시각이 들어갑니다.</summary>
+        [Tooltip("영업 시간이 아닐 때 보여 줄 문구. {0}에 여는 시각이 들어갑니다.")]
+        public string closedFormat = "영업 시간이 아닙니다 ({0} 개점)";
+
         [Header("이벤트")]
         /// <summary>계산에 성공했을 때. 인사말이나 소리를 여기에 거세요.</summary>
         [Tooltip("계산에 성공했을 때. 인사말이나 소리를 거세요.")]
@@ -56,7 +60,7 @@ namespace CarDrive.Gameplay
         void Start()
         {
             if (counter == null) counter = GetComponentInParent<ShopCounter>(true);
-            if (counter == null) counter = FindAnyObjectByType<ShopCounter>(FindObjectsInactive.Include);
+            if (counter == null) counter = GameContext.Resolve<ShopCounter>(this);
 
             if (counter == null)
             {
@@ -76,7 +80,7 @@ namespace CarDrive.Gameplay
         /// <returns>계산할 것이 있으면 true</returns>
         public bool CanInteract()
         {
-            return counter != null && counter.SelectedCount > 0;
+            return counter != null && (counter.SelectedCount > 0 || !counter.IsOpen);
         }
 
         /// <summary>조준했을 때 보여 줄 문구입니다. 치를 값을 함께 적습니다.</summary>
@@ -84,6 +88,13 @@ namespace CarDrive.Gameplay
         public string GetInteractionLabel()
         {
             if (!CanInteract()) return "";
+
+            // 문이 닫혔으면 계산해 줄 수 없습니다. 왜 안 되는지는 알려 줍니다.
+            if (!counter.IsOpen)
+            {
+                ShopSchedule schedule = counter.GetComponent<ShopSchedule>();
+                return string.Format(closedFormat, schedule != null ? schedule.OpenTimeText : "");
+            }
 
             int total = counter.TotalPrice;
             string price = wallet != null
@@ -97,6 +108,7 @@ namespace CarDrive.Gameplay
         public void Interact()
         {
             if (!CanInteract()) return;
+            if (!counter.IsOpen) return;
 
             bool served = counter.TryCheckout();
 
