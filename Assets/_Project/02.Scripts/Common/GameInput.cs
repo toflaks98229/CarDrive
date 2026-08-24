@@ -284,6 +284,38 @@ namespace CarDrive.Common
             return Input.GetKeyDown(key);
         }
 
+        // --- Public Methods : 디버그 도구용 ---
+
+        /// <summary>
+        /// 게이트를 <b>지키면서</b> 임의의 키를 확인합니다. <b>디버그 도구 전용</b>입니다.
+        ///
+        /// 디버그 도구는 자기만 쓰는 키를 갖고 싶지만, 그렇다고 <see cref="GameAction"/>에
+        /// 한 자리를 내주면 조작 안내 UI와 키 재설정 화면에 정식 기능처럼 나타납니다.
+        /// 그렇다고 <c>Input.GetKeyDown</c>을 직접 부르면 <b>오버레이 위에서도 발사됩니다.</b>
+        ///
+        /// 그래서 그 사이에 이 창구를 둡니다. 게이트는 지키되 키 배치에는 올라가지 않습니다.
+        /// 정식 기능이 되면 <see cref="GameAction"/>으로 올리세요.
+        /// (게이트를 <em>무시해야</em> 하는 것은 오버레이 여닫기뿐이고 그쪽은 <see cref="GetKeyDownRaw"/>입니다)
+        /// </summary>
+        /// <param name="key">확인할 키. <c>KeyCode.None</c>이면 항상 false입니다.</param>
+        /// <returns>이번 프레임에 눌렀으면 true</returns>
+        public static bool GetDebugKeyDown(KeyCode key)
+        {
+            if (Suspended || key == KeyCode.None) return false;
+            return Input.GetKeyDown(key);
+        }
+
+        /// <summary>
+        /// 게이트를 지키면서 키를 <b>누르고 있는지</b> 확인합니다. 디버그 도구 전용입니다.
+        /// </summary>
+        /// <param name="key">확인할 키. <c>KeyCode.None</c>이면 항상 false입니다.</param>
+        /// <returns>누르고 있으면 true</returns>
+        public static bool GetDebugKey(KeyCode key)
+        {
+            if (Suspended || key == KeyCode.None) return false;
+            return Input.GetKey(key);
+        }
+
         // --- Private Methods ---
 
         /// <summary>

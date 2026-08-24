@@ -276,6 +276,25 @@ namespace CarDrive.EditorTools
                         },
                         new CarDriveTool
                         {
+                            MenuPath = "CarDrive/Gameplay/디버그 발사기 배선",
+                            Label = "디버그 발사기",
+                            Description = "플레이어 카메라에 리지드바디 발사기를 붙입니다. F로 쏴서 로봇을 넘어뜨려 봅니다."
+                        },
+                        new CarDriveTool
+                        {
+                            MenuPath = "CarDrive/Gameplay/보행 로봇/전부 만들기",
+                            Label = "보행 로봇 전부",
+                            Description = "4족 · 2족 드레드노트 · 3족 스트라이더를 구워 지형 위에 나란히 놓습니다.",
+                            NeedsConfirm = true
+                        },
+                        new CarDriveTool
+                        {
+                            MenuPath = "CarDrive/Gameplay/보행 로봇/선택한 메시를 로봇 메시로 굽기",
+                            Label = "로봇 메시 굽기",
+                            Description = "손으로 다듬은 메시를 로봇 메시 에셋에 덮어씁니다. 그 메시를 쓰는 프리팹이 전부 함께 바뀝니다."
+                        },
+                        new CarDriveTool
+                        {
                             MenuPath = "CarDrive/World/풀 그리는 거리만 적용",
                             Label = "풀 그리는 거리",
                             Description = "월드 설정의 detailDistance·detailDensity 만 지형에 대입합니다. 풀을 다시 심지 않습니다."
@@ -306,6 +325,12 @@ namespace CarDrive.EditorTools
                             MenuPath = "CarDrive/World/4. 월드 점검",
                             Label = "월드 점검",
                             Description = "타일·장소·배치가 제대로 서 있는지 봅니다."
+                        },
+                        new CarDriveTool
+                        {
+                            MenuPath = "CarDrive/Gameplay/보행 로봇 지면 점검",
+                            Label = "로봇 지면 점검",
+                            Description = "로봇이 지형을 못 찾는 이유를 찍습니다. 레이캐스트와 터레인 높이맵을 따로 물어봅니다."
                         },
                         new CarDriveTool
                         {
