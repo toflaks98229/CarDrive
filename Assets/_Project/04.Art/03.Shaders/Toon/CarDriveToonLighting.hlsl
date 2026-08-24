@@ -57,6 +57,73 @@ float4 _CloudShadowParams;
 // xy = 흘러온 거리. 바람 방향과 세기로 CloudShadows 가 누적합니다.
 float4 _CloudShadowScroll;
 
+// ── 멀어지는 것을 디더로 지우기 ──
+//
+// 멀어지는 물체를 <b>알파로 흐리게</b> 하려면 반투명으로 그려야 하고, 그러면 정렬 문제가
+// 생기고 깊이도 못 씁니다. 나무가 수천 그루, 풀이 수십만 포기면 감당이 안 됩니다.
+//
+// 대신 <b>성기게 버립니다.</b> 대상마다 정해진 문턱값을 두고, 남을 정도가 그보다 작으면
+// 버립니다. 멀어질수록 더 많이 버려져 서서히 성글어지다 사라집니다.
+// 불투명 그대로라 값이 싸고 정렬도 필요 없습니다.
+//
+// 이 게임에는 특히 잘 맞습니다. 화면이 어차피 픽셀화를 거치므로
+// 디더 무늬가 <b>결점이 아니라 시대 표현</b>으로 읽힙니다.
+//
+// <b>여기 있는 이유.</b> 원래는 <c>CarDriveToonLit.shader</c> 안에만 있었습니다.
+// 풀도 같은 방식이 필요해졌는데, 복사해 두면 한쪽만 고쳐지는 날이 옵니다.
+// 나무는 <b>화면 픽셀</b>마다, 풀은 <b>잎</b>마다 문턱값을 뽑는다는 것만 다르고
+// 행렬도 곡선도 같습니다.
+
+/// 4x4 Bayer 행렬입니다. 값이 고르게 흩어져 있어 무늬가 뭉치지 않습니다.
+static const half CarDriveBayer4x4[16] =
+{
+     0.0h / 16.0h,  8.0h / 16.0h,  2.0h / 16.0h, 10.0h / 16.0h,
+    12.0h / 16.0h,  4.0h / 16.0h, 14.0h / 16.0h,  6.0h / 16.0h,
+     3.0h / 16.0h, 11.0h / 16.0h,  1.0h / 16.0h,  9.0h / 16.0h,
+    15.0h / 16.0h,  7.0h / 16.0h, 13.0h / 16.0h,  5.0h / 16.0h,
+};
+
+/// <summary>이 화면 픽셀의 문턱값을 구합니다. 나무·바위·건물이 씁니다.</summary>
+/// <param name="pixelPos">화면 픽셀 좌표</param>
+/// <returns>0~1 문턱값</returns>
+half CarDriveDitherThreshold(float2 pixelPos)
+{
+    int2 cell = int2(fmod(abs(pixelPos), 4.0));
+    return CarDriveBayer4x4[cell.y * 4 + cell.x];
+}
+
+/// <summary>
+/// 대상마다 하나씩 주어진 씨앗으로 문턱값을 구합니다. 풀이 <b>잎마다</b> 씁니다.
+///
+/// 화면 픽셀 대신 씨앗을 쓰는 이유가 있습니다. 40m 앞의 풀잎은 화면에서 두어 픽셀이라,
+/// 픽셀마다 버리면 잎이 통째로 있다 없다 하며 <b>반짝입니다.</b> 잎을 단위로 버리면
+/// 어느 잎이 사라질지가 카메라가 움직여도 바뀌지 않고, 풀밭이 성겨질 뿐입니다.
+///
+/// 같은 행렬을 그대로 쓰는 것이 중요합니다. 16 단계가 0~1 에 고르게 흩어져 있어서,
+/// 남을 정도가 0.5 면 <b>정확히 절반</b>이 남습니다. 난수로 뽑으면 그 보장이 없어
+/// 어느 구간에서는 뭉텅 사라지고 어느 구간에서는 그대로입니다.
+/// </summary>
+/// <param name="seed">대상마다 다르고, 프레임 사이에 <b>변하지 않아야 하는</b> 0~1 값</param>
+/// <returns>0~1 문턱값</returns>
+half CarDriveOrderedThreshold(float seed)
+{
+    // 비트 연산과 uint 를 피합니다. 이 파일은 <c>#pragma target 3.0</c> 셰이더도 포함하는데,
+    // 그쪽에서는 둘 다 쓸 수 없습니다. 위의 픽셀 판이 쓰는 방식과 같게 맞췄습니다.
+    return CarDriveBayer4x4[(int)(saturate(seed) * 15.999)];
+}
+
+/// <summary>
+/// 거리에 따라 얼마나 남을지 구합니다. 1이면 그대로, 0이면 다 지웁니다.
+/// </summary>
+/// <param name="viewDistance">카메라까지의 거리(m). 이름이 <c>distance</c> 면 동명의 내장 함수를 가립니다.</param>
+/// <param name="start">지워지기 시작하는 거리(m)</param>
+/// <param name="end">다 지워지는 거리(m)</param>
+/// <returns>0~1 남을 정도</returns>
+half CarDriveFadeCurve(float viewDistance, float start, float end)
+{
+    return (half)saturate(1.0 - (viewDistance - start) / max(0.001, end - start));
+}
+
 /// <summary>툰 음영을 계산할 때 쓰는 설정 묶음입니다.</summary>
 struct ToonSurface
 {

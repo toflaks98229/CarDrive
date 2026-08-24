@@ -11,6 +11,16 @@
 //               멀리서는 잎 하나가 몇 픽셀이라, 명암이 남아 있으면 부피가 아니라
 //               <b>자글거리는 잡음</b>으로 보입니다. 그래서 색을 하나로 눕힙니다.
 //
+// <b>멀어지면 잎이 하나씩 사라집니다.</b>
+//
+// 그리는 거리(<c>Terrain.detailObjectDistance</c>)는 하드 컷이라, 그 앞에서 다 지워져 있지 않으면
+// 풀이 통짜로 튀어나옵니다. 지워지는 구간은 <see cref="ViewRangeScaler"/> 가 전역으로 넘깁니다 —
+// 실제 그리는 거리는 rangeScale 과 속도 단계에 따라 실행 중에 49m·36.8m·24.5m 로 바뀌고,
+// 재질에 숫자로 적어 두면 그 변화를 따라갈 수 없습니다.
+//
+// 지우는 방식은 <b>나무와 같은 Bayer 행렬</b>인데 단위가 다릅니다. 나무는 화면 픽셀마다,
+// 풀은 <b>잎마다</b> 문턱값을 뽑습니다. 이유는 GrassBladeSeed 위에 적었습니다.
+//
 // 그라데이션의 기준은 잎 자신의 위아래 비율이 아니라 <b>지면에서 잰 실제 높이</b>입니다.
 // 잎 자신의 비율로 정하면 키 작은 잎의 끝과 키 큰 잎의 중간이 같은 눈높이에서 색이 갈라져,
 // 그 차이가 곧 잎의 윤곽선이 됩니다.
@@ -52,6 +62,7 @@ Shader "CarDrive/LowPoly Grass"
         [Header(Distance)]
         _FadeStart ("가라앉기 시작 (m)", Float) = 35
         _FadeEnd   ("완전히 눕는 거리 (m)", Float) = 69
+        _FadeScatter ("잎이 흩어져 사라지는 정도", Range(0, 0.9)) = 0.6
 
         [Header(Cozy)]
         _ShadowColor  ("그늘 색", Color) = (0.596, 0.514, 0.494, 1)
@@ -134,9 +145,27 @@ Shader "CarDrive/LowPoly Grass"
                 float  _WindScale;
                 float  _FadeStart;
                 float  _FadeEnd;
+                float  _FadeScatter;
                 float  _ShadeSteps;
                 float  _AmbientBoost;
             CBUFFER_END
+
+            // 그리는 거리에서 유도한 페이드 구간입니다. ViewRangeScaler 가 매 프레임 씁니다.
+            //
+            // <b>왜 전역인가.</b> 위의 _FadeStart/_FadeEnd 는 재질에 구워져 있습니다(35~68.6m).
+            // detailDistance 70m 에 0.5 와 0.98 을 곱해 에디터 도구가 적어 넣은 값인데,
+            // 그 도구는 rangeScale 도 속도 단계도 몰랐습니다. 실제로 그리는 거리는
+            // 49m 이고 속도가 붙으면 36.8m·24.5m 까지 줄어듭니다.
+            // <b>시속 90 이상에서는 풀이 100% 키로 서 있는 자리에서 그대로 잘렸습니다.</b>
+            // (나무가 똑같은 이유로 한 번 튀었고, 그래서 나무도 전역으로 옮겼습니다)
+            //
+            // 재질 값을 실행 중에 고치면 에디터에서 그 변경이 에셋에 저장됩니다.
+            // 전역은 그런 일이 없고 재질을 복제할 필요도 없습니다.
+            //
+            // 설정되지 않으면 0 이므로, 그때는 재질 값으로 물러섭니다.
+            // (셰이더만 열어 보는 에디터 미리보기가 그렇습니다)
+            float _CarDriveGrassFadeStart;
+            float _CarDriveGrassFadeEnd;
 
             // 풀을 밟고 지나가는 것들입니다. GrassPushField 가 매 프레임 채웁니다.
             // xyz 가 자리, w 가 반경입니다.
@@ -217,6 +246,39 @@ Shader "CarDrive/LowPoly Grass"
             }
         #endif
 
+            // ── 잎마다 다른 문턱값 ──
+            //
+            // 나무는 <b>화면 픽셀</b>마다 문턱값을 뽑아 성기게 버립니다(CarDriveToonLit).
+            // 풀에 그대로 쓰면 곤란합니다. 40m 앞의 풀잎은 화면에서 두어 픽셀이라
+            // 픽셀 단위로 버리면 잎이 있다 없다 하며 <b>반짝입니다.</b> 게다가 clip 이
+            // 들어가면 이 패스가 얼리-Z 를 잃는데, 풀은 화면을 겹겹이 덮는 쪽이라 손해가 큽니다.
+            //
+            // 그래서 <b>같은 행렬을 잎 단위로</b> 씁니다. 문턱값을 넘긴 잎은 정점 셋을
+            // 밑동 한 점으로 모아 버립니다. 삼각형이 찌그러져 사라지므로 픽셀이 아예 나오지 않고,
+            // 멀어질수록 그리는 삼각형이 <b>실제로 줄어듭니다.</b>
+
+            /// <summary>
+            /// 이 잎만의 씨앗을 뽑습니다. <b>한 잎의 정점 셋에서 반드시 같아야 합니다.</b>
+            ///
+            /// 잎의 법선이 그 표식입니다. VegetationBuilder 가 잎마다 다른 방향(face)으로 굽고,
+            /// 한 잎의 정점 셋은 그 값을 그대로 나눠 갖습니다. 메시에 잎 번호를 따로 담을 수도
+            /// 있지만, 포기가 수십만이라 정점 스트림을 늘리고 싶지 않습니다.
+            ///
+            /// 포기 자리를 섞는 이유가 있습니다. 한 종의 포기는 모두 <b>같은 메시</b>라
+            /// 법선만 쓰면 어느 포기에서든 같은 잎이 동시에 사라져 격자가 보입니다.
+            /// </summary>
+            /// <param name="normalOS">잎의 오브젝트 공간 법선. 잎마다 다릅니다.</param>
+            /// <param name="baseWS">포기가 심어진 자리. 포기마다 다릅니다.</param>
+            /// <returns>0 이상 1 미만</returns>
+            float GrassBladeSeed(float3 normalOS, float3 baseWS)
+            {
+                // 월드 좌표를 그대로 sin 에 넣으면 먼 곳에서 정밀도가 무너져 이웃한 포기가
+                // 같은 값을 받습니다. frac 으로 0~1 에 접어 넣고 씁니다.
+                float2 p = frac(baseWS.xz * 0.017) + normalOS.xz * 0.37;
+
+                return frac(sin(dot(p, float2(12.9898, 78.233))) * 43758.5453);
+            }
+
             struct Attributes
             {
                 float4 positionOS : POSITION;
@@ -254,9 +316,34 @@ Shader "CarDrive/LowPoly Grass"
 
                 float dist = distance(baseWS, GetCameraPositionWS());
 
-                // 멀수록 키를 줄여 지면에 눕힙니다.
-                // 구간을 길게 잡아야 풀밭이 원형으로 잘린 자국이 남지 않습니다.
-                float sink = 1.0 - saturate((dist - _FadeStart) / max(_FadeEnd - _FadeStart, 0.001));
+                // --- 멀어지면 사라지기 ---
+                //
+                // 전역이 들어와 있으면 그것을 씁니다. 그리는 거리와 함께 움직여야
+                // <b>잘리기 전에</b> 페이드가 끝납니다. 없으면 재질 값으로 물러섭니다.
+                bool useGlobal = _CarDriveGrassFadeEnd > 0.001;
+                float fadeStart = useGlobal ? _CarDriveGrassFadeStart : _FadeStart;
+                float fadeEnd = useGlobal ? _CarDriveGrassFadeEnd : _FadeEnd;
+
+                // 이 포기가 얼마나 남을지입니다. 1이면 그대로, 0이면 사라집니다.
+                // 나무와 같은 곡선을 씁니다. (CarDriveToonLighting.hlsl)
+                float fade = CarDriveFadeCurve(dist, fadeStart, fadeEnd);
+
+                // <b>잎마다 사라지는 때를 어긋냅니다.</b>
+                //
+                // 어긋내지 않으면 한 포기의 잎 열여덟이 <b>같이</b> 가라앉고, 그러면 풀밭이
+                // 카메라를 둘러싼 원 모양으로 낮아집니다. 그 원이 차를 따라다니는 것이
+                // 예전 코드가 "구간을 길게 잡아야 원형 자국이 안 남는다"고 적어 둔 문제입니다.
+                // 구간을 늘리는 것은 그 자국을 흐리게 할 뿐 없애지는 못합니다.
+                //
+                // 잎마다 문턱값을 달리 주면 사라지는 순서가 흩어져, 원 대신 <b>성겨지는 결</b>이
+                // 됩니다. 문턱값이 큰 잎일수록 먼저 갑니다.
+                //
+                // _FadeScatter 가 0 이면 아래 식은 sink = fade 가 되어 예전 동작 그대로입니다.
+                half band = CarDriveOrderedThreshold(GrassBladeSeed(input.normalOS, baseWS)) * (half)_FadeScatter;
+                float sink = saturate((fade - band) / max(1.0h - band, 0.05h));
+
+                // 사라진 잎은 정점 셋이 밑동 한 점으로 모여 삼각형이 없어집니다.
+                // 픽셀이 아예 나오지 않으므로 멀어질수록 그리는 양이 실제로 줄어듭니다.
                 positionWS = lerp(baseWS, positionWS, sink);
 
                 // --- 밟힘 ---
@@ -407,6 +494,17 @@ Shader "CarDrive/LowPoly Grass"
             ENDHLSL
         }
 
+        // <b>주의 — 이 패스는 ForwardLit 의 정점 계산을 따라 하지 않습니다.</b>
+        //
+        // 위에서는 밟힘·바람·거리 페이드로 정점을 월드 공간에서 옮기는데, 여기서는
+        // 그냥 클립 공간으로 보냅니다. 그래서 사라진 잎도 깊이를 씁니다.
+        //
+        // 지금은 문제가 되지 않습니다. URP 에셋 셋(Performant·Balanced·HighFidelity) 모두
+        // <c>m_RequireDepthTexture: 0</c> 이라 이 패스가 <b>한 번도 돌지 않습니다.</b>
+        //
+        // 깊이 텍스처가 필요한 기능(소프트 파티클·화면 공간 안개·외곽선 등)을 켜게 되면
+        // 그때 위의 계산을 여기로 옮겨야 합니다. 옮기지 않으면 풀이 <b>보이지 않는 자리에서</b>
+        // 뒤를 가립니다.
         Pass
         {
             Name "DepthOnly"

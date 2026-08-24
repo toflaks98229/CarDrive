@@ -35,13 +35,27 @@ namespace CarDrive.Systems
         /// <summary>쓸 셰이더의 이름입니다.</summary>
         private const string ShaderName = "CarDrive/Grass Trample Map";
 
+        /// <summary>자국이 남는 시간의 아래 한계(초)입니다. 셰이더가 이 사이를 오갑니다.</summary>
+        private const float LifeMin = 1f;
+
+        /// <summary>자국이 남는 시간의 위 한계(초)입니다.</summary>
+        private const float LifeMax = 90f;
+
         // --- Private Member Variables ---
 
+        /// <summary>이번 장에 찍을 자국들입니다. 각 항목이 시작점과 끝점을 담은 선분 하나입니다.</summary>
         private readonly Vector4[] segments = new Vector4[MaxSegments];
+
+        /// <summary>자국별 모양값입니다. 굵기와 세기 등 <see cref="segments"/>와 짝을 이루는 정보입니다.</summary>
         private readonly Vector4[] shapes = new Vector4[MaxSegments];
 
+        /// <summary>지금 읽고 있는 그림입니다. 풀 셰이더가 전역 텍스처로 받아 가는 쪽입니다.</summary>
         private RenderTexture front;
+
+        /// <summary>이번에 그려 넣을 그림입니다. 같은 그림을 읽으며 쓸 수 없어 두 장을 번갈아 씁니다.</summary>
         private RenderTexture back;
+
+        /// <summary>지난 장을 옅게 만들고 새 자국을 찍는 셰이더 재질입니다.</summary>
         private Material material;
 
         /// <summary>지금 지도가 덮고 있는 땅의 한가운데입니다.</summary>
@@ -50,15 +64,31 @@ namespace CarDrive.Systems
         /// <summary>아직 한 번도 그리지 않았는지 여부입니다.</summary>
         private bool started;
 
+        /// <summary>자국 선분 배열의 셰이더 프로퍼티 ID입니다.</summary>
         private static readonly int SegmentsId = Shader.PropertyToID("_TrampleSegments");
+
+        /// <summary>자국 모양 배열의 셰이더 프로퍼티 ID입니다.</summary>
         private static readonly int ShapeId = Shader.PropertyToID("_TrampleShape");
+
+        /// <summary>이번 장에 찍을 자국 개수의 셰이더 프로퍼티 ID입니다.</summary>
         private static readonly int CountId = Shader.PropertyToID("_TrampleCount");
+
+        /// <summary>지도가 덮는 범위(중심과 한 변 길이)의 셰이더 프로퍼티 ID입니다.</summary>
         private static readonly int BoundsId = Shader.PropertyToID("_MapBounds");
+
+        /// <summary>이번 프레임에 지도가 옮겨간 양의 셰이더 프로퍼티 ID입니다.</summary>
         private static readonly int ShiftId = Shader.PropertyToID("_MapShift");
+
+        /// <summary>지난 프레임에서 흐른 시간의 셰이더 프로퍼티 ID입니다.</summary>
         private static readonly int StepId = Shader.PropertyToID("_StepSeconds");
+
+        /// <summary>자국이 남는 시간 범위의 셰이더 프로퍼티 ID입니다.</summary>
         private static readonly int LifeRangeId = Shader.PropertyToID("_LifeRange");
 
+        /// <summary>풀 셰이더에 넘길 전역 자국 지도의 프로퍼티 ID입니다.</summary>
         private static readonly int MapId = Shader.PropertyToID("_GrassTrampleMap");
+
+        /// <summary>풀 셰이더에 넘길 전역 지도 범위의 프로퍼티 ID입니다.</summary>
         private static readonly int MapBoundsId = Shader.PropertyToID("_GrassTrampleBounds");
 
         // --- Public Methods ---
@@ -117,14 +147,6 @@ namespace CarDrive.Systems
 
             started = false;
         }
-
-        // --- Private Member Variables ---
-
-        /// <summary>자국이 남는 시간의 아래 한계(초)입니다. 셰이더가 이 사이를 오갑니다.</summary>
-        private const float LifeMin = 1f;
-
-        /// <summary>자국이 남는 시간의 위 한계(초)입니다.</summary>
-        private const float LifeMax = 90f;
 
         // --- Private Methods ---
 

@@ -49,6 +49,12 @@ namespace CarDrive.Systems
         /// <summary>디더 페이드 종료 거리를 넘길 전역 이름입니다.</summary>
         private static readonly int FadeEndId = Shader.PropertyToID("_CarDriveFadeEnd");
 
+        /// <summary>풀이 흩어져 사라지기 시작하는 거리를 넘길 전역 이름입니다.</summary>
+        private static readonly int GrassFadeStartId = Shader.PropertyToID("_CarDriveGrassFadeStart");
+
+        /// <summary>풀이 다 사라지는 거리를 넘길 전역 이름입니다.</summary>
+        private static readonly int GrassFadeEndId = Shader.PropertyToID("_CarDriveGrassFadeEnd");
+
         // --- Private Member Variables ---
 
         /// <summary>마지막으로 비싼 대입을 한 배율입니다.</summary>
@@ -95,7 +101,19 @@ namespace CarDrive.Systems
             Shader.SetGlobalFloat(FadeStartId, ladder.FadeStart);
             Shader.SetGlobalFloat(FadeEndId, ladder.FadeEnd);
 
-            // 5. 지형에 직접 쓰는 값들은 비싸므로 <b>바뀌었을 때만, 주기로만</b> 맞춥니다.
+            // 5. 풀의 페이드 구간도 같은 방식으로 넘깁니다.
+            //
+            //    <b>나무와 따로 두는 이유.</b> 풀이 잘리는 거리는 나무의 1/7 이고
+            //    (49m 대 340m) 속도 단계에 따라 실행 중에 또 반으로 줄어듭니다.
+            //    나무의 창을 그대로 쓰면 풀은 페이드가 시작도 하기 전에 잘립니다.
+            //
+            //    예전에는 이 두 값이 재질에 <b>숫자로 구워져</b> 있었습니다(35m / 68.6m).
+            //    <c>detailDistance</c> 70m 기준으로 에디터 도구가 적어 넣은 값인데,
+            //    그 도구는 rangeScale 도 속도 단계도 몰랐고 지금은 도구 자체가 없습니다.
+            Shader.SetGlobalFloat(GrassFadeStartId, ladder.GrassFadeStart);
+            Shader.SetGlobalFloat(GrassFadeEndId, ladder.GrassFadeEnd);
+
+            // 6. 지형에 직접 쓰는 값들은 비싸므로 <b>바뀌었을 때만, 주기로만</b> 맞춥니다.
             //
             // 나무 거리·LOD 오차·베이스맵 거리를 한 번의 순회로 함께 씁니다.
             // 예전에는 나무 거리만 여기서 쓰고 LOD 둘은 에디터 도구가 씬에 구워 넣었는데,

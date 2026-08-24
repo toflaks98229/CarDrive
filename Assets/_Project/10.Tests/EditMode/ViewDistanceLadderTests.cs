@@ -41,11 +41,76 @@ namespace CarDrive.Tests
         /// <param name="scale">전체 거리 배율</param>
         /// <param name="weatherFog">날씨가 요청한 안개 짙기</param>
         /// <param name="weatherView">날씨가 요청한 시야 배율</param>
+        /// <param name="grassSpeedScale">속도에 따른 풀 거리 배율. 1이면 줄이지 않습니다.</param>
         /// <returns>계산된 사다리</returns>
-        private ViewDistances.Ladder Build(float scale, float weatherFog = 0f, float weatherView = 1f)
+        private ViewDistances.Ladder Build(float scale, float weatherFog = 0f, float weatherView = 1f,
+                                           float grassSpeedScale = 1f)
         {
             settings.rangeScale = scale;
-            return new ViewDistances.Ladder(settings, 340f, 360f, 340f, weatherFog, weatherView);
+            return new ViewDistances.Ladder(settings, 340f, 360f, 340f, weatherFog, weatherView, grassSpeedScale);
+        }
+
+        /// <summary>
+        /// 어떤 배율·어떤 속도 단계에서도 풀 페이드가 <b>잘라내기보다 먼저</b> 끝나야 합니다.
+        ///
+        /// <b>왜 이 테스트인가.</b> 이 부등식이 실제로 뒤집혀 있었습니다. 페이드 창이
+        /// <c>detailDistance</c> 70m 기준으로 재질에 구워져 있었고(35m / 68.6m),
+        /// 그 숫자는 <c>rangeScale</c> 도 속도 단계도 몰랐습니다. 실제로 그리는 거리는
+        /// 0.7 배율에서 49m 이고 시속 90 이상이면 24.5m 까지 줄어드는데, 24.5m 는
+        /// 페이드가 <b>시작도 하기 전</b>이라 풀이 100% 키로 선 채 잘렸습니다.
+        ///
+        /// 눈으로 확인하려면 차를 몰고 시속 90 을 넘긴 채 지평선을 봐야 하는데,
+        /// 그 확인은 반복되지 않습니다.
+        /// </summary>
+        /// <param name="scale">확인할 전체 거리 배율</param>
+        /// <param name="grassSpeed">확인할 속도 단계 배율 (1 · 0.75 · 0.5 이 실제 단계입니다)</param>
+        [TestCase(1.0f, 1.0f)]
+        [TestCase(1.0f, 0.5f)]
+        [TestCase(0.7f, 1.0f)]
+        [TestCase(0.7f, 0.75f)]
+        [TestCase(0.7f, 0.5f)]
+        [TestCase(0.25f, 0.5f)]
+        public void 풀_페이드가_풀_잘라내기보다_먼저_끝난다(float scale, float grassSpeed)
+        {
+            ViewDistances.Ladder l = Build(scale, grassSpeedScale: grassSpeed);
+
+            Assert.Less(l.GrassFadeStart, l.GrassFadeEnd, "풀 페이드 시작이 끝보다 뒤에 있습니다.");
+            Assert.Less(l.GrassFadeEnd, l.Grass, "다 지워지기 전에 풀이 잘립니다.");
+        }
+
+        /// <summary>
+        /// 속도 단계는 풀 거리에 <b>정확히 한 번</b> 곱해져야 합니다.
+        ///
+        /// 예전에는 <see cref="TerrainDetailLod"/> 가 사다리 밖에서 곱했습니다.
+        /// 곱하는 자리를 안으로 옮기면서 <b>양쪽에서 곱해 제곱이 되는</b> 실수를 막습니다.
+        /// (컬러가 <c>treeDistance</c> 에 한 번 그렇게 했고, 그것이 위의 3번 버그입니다)
+        /// </summary>
+        [Test]
+        public void 속도_단계가_풀_거리에_한_번만_곱해진다()
+        {
+            ViewDistances.Ladder full = Build(0.7f, grassSpeedScale: 1f);
+            ViewDistances.Ladder half = Build(0.7f, grassSpeedScale: 0.5f);
+
+            Assert.AreEqual(full.Grass * 0.5f, half.Grass, 0.01f,
+                "속도 단계가 두 번 곱해졌거나 아예 빠졌습니다.");
+        }
+
+        /// <summary>
+        /// 속도 단계는 <b>풀만</b> 줄입니다. 나무·시야·파클립은 그대로여야 합니다.
+        ///
+        /// 빠를 때 풀을 줄이는 것은 안개와 흐름이 가려 주기 때문인데, 나무는 지평선의
+        /// 실루엣이라 같은 논리가 통하지 않습니다. 함께 줄면 속도를 올리고 내릴 때마다
+        /// 먼 나무가 나타났다 사라집니다.
+        /// </summary>
+        [Test]
+        public void 속도_단계가_풀_말고는_건드리지_않는다()
+        {
+            ViewDistances.Ladder full = Build(0.7f, grassSpeedScale: 1f);
+            ViewDistances.Ladder slow = Build(0.7f, grassSpeedScale: 0.5f);
+
+            Assert.AreEqual(full.View, slow.View, 0.01f, "속도 단계가 시야를 건드렸습니다.");
+            Assert.AreEqual(full.TreeCut, slow.TreeCut, 0.01f, "속도 단계가 나무 거리를 건드렸습니다.");
+            Assert.AreEqual(full.FarClip, slow.FarClip, 0.01f, "속도 단계가 파클립을 건드렸습니다.");
         }
 
         /// <summary>

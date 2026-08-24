@@ -22,6 +22,11 @@ namespace CarDrive.Systems
     /// <b>밀도는 건드리지 않습니다.</b> 밀도를 줄이면 풀밭이 눈에 띄게 성겨지지만
     /// 거리는 줄여도 끝이 안개에 묻혀 알아채기 어렵습니다. 같은 이득에 값이 싼 쪽만 씁니다.
     ///
+    /// <b>GPU 풀에 자리를 내주는 것도 여기서 합니다.</b>
+    /// <see cref="GpuGrassRenderer.IsDrawing"/> 이 참이 되면 대입할 거리를 0 으로 바꿔
+    /// 터레인 디테일을 끕니다. <c>detailObjectDistance</c> 를 이미 예산제로 다루고 있는
+    /// 곳이 여기뿐이라, 끄는 일도 같은 통로를 지나는 편이 맞습니다.
+    ///
     /// <b>스스로 생겨나지 않습니다.</b> 예전에는 <c>[RuntimeInitializeOnLoadMethod]</c>로
     /// 자기를 만들었는데, 그러면 씬에 하나 얹어 둔 경우 <b>둘이 되어</b> 예산이 두 배가 됩니다.
     /// 이제 <c>WorldRuntimeInstaller</c>가 하나만 만들어 붙입니다.
@@ -62,6 +67,26 @@ namespace CarDrive.Systems
         /// <summary>마지막으로 반영한 전체 거리 배율입니다. 이것이 바뀌면 단계가 그대로여도 다시 대입합니다.</summary>
         private static float appliedRangeScale = -1f;
 
+        /// <summary>이번 단계가 <b>목표로 하는</b> 속도 배율입니다.</summary>
+        private static float targetSpeedScale = 1f;
+
+        /// <summary>
+        /// <see cref="ViewDistances"/> 에 <b>실제로 알린</b> 속도 배율입니다.
+        ///
+        /// 목표와 다를 수 있습니다. 대입이 몇 프레임에 걸쳐 끝나는 동안에는
+        /// 옛 거리와 새 거리를 안은 타일이 섞여 있고, 그때 알려야 하는 것은
+        /// <b>둘 중 짧은 쪽</b>이기 때문입니다.
+        /// </summary>
+        private static float reportedSpeedScale = 1f;
+
+        /// <summary>
+        /// 마지막으로 반영한 <see cref="GpuGrassRenderer.IsDrawing"/> 값입니다.
+        ///
+        /// GPU 풀이 그리기 시작하거나 물러나는 것은 단계·배율과 무관하게 대입을 다시 해야
+        /// 하는 사건이라, 따로 기억해 두고 견줍니다.
+        /// </summary>
+        private static bool appliedHandOff;
+
         // --- Unity Event Functions ---
 
         /// <summary>주기가 되면 단계를 다시 정하고, 매 프레임 대입을 조금씩 진행합니다.</summary>
@@ -69,12 +94,27 @@ namespace CarDrive.Systems
         {
             CarDriveWorldSettings settings = CarDriveWorldSettings.Instance;
 
+            // <b>GPU 풀이 그리기 시작했는지</b>가 바뀌면 단계와 무관하게 다시 대입해야 합니다.
+            // 주기를 기다리지 않는 이유가 있습니다 — 넘겨받는 쪽이 이미 그리고 있으므로,
+            // 기다리는 동안은 풀이 두 겹으로 보입니다.
+            bool handOffChanged = appliedHandOff != GpuGrassRenderer.IsDrawing;
+
             if (!settings.speedLodEnabled)
             {
                 // 껐다면 원래 거리로 돌려놓아야 합니다. 그러지 않으면 끈 순간의 단계가 굳습니다.
-                if (currentLevel != 0) Retarget(settings, 0);
+                //
+                // <b>배율이 바뀐 경우도 여기서 받습니다.</b> 예전에는 단계만 보고 있어서,
+                // 속도 적응을 꺼 두면 <c>rangeScale</c> 이 풀에만 닿지 않았습니다. 그러면
+                // 지형은 씬에 구워진 70m 를 그리는데 셰이더는 46m 에서 다 지워, 보이지도 않는
+                // 24m 어치를 계속 그리게 됩니다.
+                //
+                // 매 프레임 도는 자리지만 Retarget 이 appliedRangeScale 을 맞춰 두므로
+                // 실제로 일하는 것은 바뀐 그 프레임 한 번뿐입니다.
+                bool scaleMoved = !Mathf.Approximately(appliedRangeScale, settings.rangeScale);
+
+                if (currentLevel != 0 || scaleMoved || handOffChanged) Retarget(settings, 0);
             }
-            else if (Time.unscaledTime >= nextCheck)
+            else if (handOffChanged || Time.unscaledTime >= nextCheck)
             {
                 nextCheck = Time.unscaledTime + CheckSeconds;
 
@@ -83,7 +123,7 @@ namespace CarDrive.Systems
                 int level = DecideLevel(settings, currentLevel);
                 bool scaleChanged = !Mathf.Approximately(appliedRangeScale, settings.rangeScale);
 
-                if (level != currentLevel || scaleChanged) Retarget(settings, level);
+                if (level != currentLevel || scaleChanged || handOffChanged) Retarget(settings, level);
             }
 
             DrainPending(settings.maxDetailLodApplicationsPerFrame);
@@ -144,11 +184,49 @@ namespace CarDrive.Systems
             if (level == 1) scale = settings.speedLodMidScale;
             else if (level >= 2) scale = settings.speedLodHighScale;
 
-            // 거리 배율은 ViewDistances 가 이미 적용해 둡니다. 여기서는 <b>속도 단계만</b> 곱합니다.
-            // 두 곳에서 곱하면 배율의 제곱이 됩니다. 컬러가 한 번 그랬습니다.
             appliedRangeScale = settings.rangeScale;
+            targetSpeedScale = Mathf.Clamp(scale, 0.05f, 1f);
 
-            pendingDistance = ViewDistances.Current.Grass * Mathf.Clamp(scale, 0.05f, 1f);
+            // <b>여기서 곱하지 않습니다.</b> 곱셈은 전부 사다리 안에 있습니다.
+            // 속도 단계를 알려 준 뒤 그 결과를 되받습니다.
+            //
+            // 예전에는 이 줄이 <c>ViewDistances.Current.Grass * scale</c> 이었습니다.
+            // 그래서 사다리는 <b>실제로 몇 미터에 풀이 잘리는지 몰랐고</b>, 페이드 창을
+            // 낼 수 없어 재질에 숫자를 구워 두는 수밖에 없었습니다. 그 숫자가 배율을 몰라
+            // 시속 90 이상에서 풀이 통짜로 튀어나왔습니다.
+            ViewDistances.ReportGrassSpeedScale(targetSpeedScale);
+            float target = ViewDistances.Current.Grass;
+
+            // <b>GPU 풀이 그리기 시작했으면 터레인 디테일을 끕니다.</b> 둘 다 그리면 두 겹입니다.
+            //
+            // 끄는 방법으로 거리 0 을 씁니다. 디테일 <b>데이터</b>는 그대로 두어야 하기 때문입니다 —
+            // GPU 쪽이 바로 그 디테일맵을 읽어 포기 자리를 만듭니다. 레이어를 비우거나 밀도를 0으로
+            // 두면 되돌릴 때 다시 심어야 합니다.
+            //
+            // <b>준비되기 전에는 끄지 않습니다.</b> 신호가 "설정이 켜졌다"가 아니라
+            // "실제로 그리고 있다"인 이유가 이것입니다. 씬에 렌더러가 없거나 기기가 컴퓨트를
+            // 못 쓰면 이쪽이 계속 그려야 합니다.
+            appliedHandOff = GpuGrassRenderer.IsDrawing;
+
+            pendingDistance = appliedHandOff ? 0f : target;
+
+            // <b>알리는 값은 아직 목표가 아닐 수 있습니다.</b>
+            //
+            // 대입은 아래 DrainPending 이 몇 프레임에 걸쳐 합니다. 그동안 지형에는 옛 거리와
+            // 새 거리가 섞여 있으므로, 페이드 창은 <b>둘 중 짧은 쪽</b>에 맞춰야 합니다.
+            //
+            // 줄이는 쪽이면 새 값이 곧 짧은 쪽이라 그대로 갑니다. 아직 옛(긴) 거리인 타일이
+            // 새 페이드 끝보다 멀리까지 그리지만, 그 구간의 풀은 이미 다 지워져 있어 보이지 않습니다.
+            // 늘리는 쪽이면 옛 값을 그대로 안고 있다가 대입이 끝난 뒤에 올립니다.
+            // 먼저 올리면 아직 짧은 타일에서 페이드가 끝나기 전에 풀이 잘립니다.
+            //
+            // <b>넘겨준 뒤에는 기다릴 이유가 없습니다.</b> 페이드 창을 보는 쪽이 GPU 렌더러
+            // 하나뿐이고, 그쪽은 잘라내는 거리도 같은 사다리에서 매 프레임 새로 읽습니다.
+            reportedSpeedScale = appliedHandOff
+                ? targetSpeedScale
+                : Mathf.Min(reportedSpeedScale, targetSpeedScale);
+
+            ViewDistances.ReportGrassSpeedScale(reportedSpeedScale);
 
             // 목록은 TerrainRegistry 가 한 번만 찾아 나눠 씁니다.
             //
@@ -177,7 +255,18 @@ namespace CarDrive.Systems
         /// <param name="budget">이번 프레임에 대입할 최대 수</param>
         private static void DrainPending(int budget)
         {
-            if (pending.Count == 0) return;
+            if (pending.Count == 0)
+            {
+                // 대입이 다 끝났으면 이제 모든 타일이 목표 거리를 갖고 있습니다.
+                // 그제야 페이드 창을 목표에 맞춰 올립니다. (늘리는 쪽에서만 실제로 움직입니다)
+                if (!Mathf.Approximately(reportedSpeedScale, targetSpeedScale))
+                {
+                    reportedSpeedScale = targetSpeedScale;
+                    ViewDistances.ReportGrassSpeedScale(reportedSpeedScale);
+                }
+
+                return;
+            }
 
             int count = Mathf.Min(Mathf.Max(1, budget), pending.Count);
             for (int i = 0; i < count; i++)
@@ -203,6 +292,9 @@ namespace CarDrive.Systems
             nextCheck = 0f;
             pendingDistance = 0f;
             appliedRangeScale = -1f;
+            targetSpeedScale = 1f;
+            reportedSpeedScale = 1f;
+            appliedHandOff = false;
             pending.Clear();
         }
     }

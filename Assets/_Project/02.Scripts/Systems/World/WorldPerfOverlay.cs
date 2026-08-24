@@ -148,7 +148,34 @@ namespace CarDrive.Systems
             y = Row(x, y, width, line, "풀 거리 재대입", WorldProfiler.Counter.DetailDistanceWritten, 20f);
             y = Row(x, y, width, line, "지형 목록 재탐색", WorldProfiler.Counter.TerrainScanned, 2f);
 
-            y += line * 0.4f;
+            y += line * 1.5f;
+
+            // --- 지금의 풀 거리 ---
+            //
+            // <b>숫자로 보이지 않아서 놓친 버그가 있었습니다.</b> 인스펙터의 detailDistance 는
+            // 70m 라고 적혀 있는데 실제로 그리는 거리는 rangeScale 과 속도 단계를 거쳐
+            // 49m·36.8m·24.5m 였습니다. 페이드 창은 재질에 35~68.6m 로 구워져 있었고요.
+            // 셋을 나란히 놓고 보기 전에는 어긋난 것을 알아채기 어렵습니다.
+            //
+            // 페이드 끝이 그리는 거리보다 <b>가까워야</b> 합니다. 넘어가면 잘리는 순간이 보입니다.
+            ViewDistances.Ladder ladder = ViewDistances.Current;
+
+            GUI.Label(new Rect(x, y, width, line), "── 지금의 풀 거리 ──", labelStyle);
+            y += line;
+
+            GUI.Label(new Rect(x, y, width, line),
+                "그리기 " + ladder.Grass.ToString("0") + "m   " +
+                "지워짐 " + ladder.GrassFadeStart.ToString("0") + "~" + ladder.GrassFadeEnd.ToString("0") + "m",
+                ladder.GrassFadeEnd < ladder.Grass ? labelStyle : warnStyle);
+            y += line;
+
+            // 어느 경로가 그리고 있는지입니다. 설정만 봐서는 알 수 없습니다 —
+            // gpuGrass 가 켜져 있어도 씬에 렌더러가 없거나, 컴퓨트를 못 쓰거나,
+            // 아직 지형을 다 훑지 못했으면 터레인 디테일이 그립니다.
+            GUI.Label(new Rect(x, y, width, line),
+                GpuGrassRenderer.IsDrawing ? "그리는 쪽: GPU 간접 드로우" : "그리는 쪽: 터레인 디테일",
+                labelStyle);
+            y += line * 1.4f;
 
             if (GUI.Button(new Rect(x, y, 110f, 22f), "숫자 초기화"))
             {

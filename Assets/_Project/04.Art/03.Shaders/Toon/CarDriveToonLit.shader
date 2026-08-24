@@ -127,31 +127,9 @@ Shader "CarDrive/Toon Lit"
 
         // ── 디더로 지우기 ──
         //
-        // 멀어지는 물체를 <b>알파로 흐리게</b> 하려면 반투명으로 그려야 하고,
-        // 그러면 정렬 문제가 생기고 깊이도 못 씁니다. 나무가 수천 그루면 감당이 안 됩니다.
-        //
-        // 대신 <b>픽셀을 성기게 버립니다.</b> 화면 위치에 따라 정해진 문턱값을 두고
-        // 남을 정도가 그보다 작으면 그 픽셀을 버립니다. 멀어질수록 더 많이 버려져
-        // 서서히 성글어지다 사라집니다. 불투명 그대로라 값이 싸고 정렬도 필요 없습니다.
-        //
-        // 이 게임에는 특히 잘 맞습니다. 화면이 어차피 픽셀화를 거치므로
-        // 디더 무늬가 <b>결점이 아니라 시대 표현</b>으로 읽힙니다.
-
-        /// 4x4 Bayer 행렬입니다. 값이 고르게 흩어져 있어 무늬가 뭉치지 않습니다.
-        static const half CarDriveBayer4x4[16] =
-        {
-             0.0h / 16.0h,  8.0h / 16.0h,  2.0h / 16.0h, 10.0h / 16.0h,
-            12.0h / 16.0h,  4.0h / 16.0h, 14.0h / 16.0h,  6.0h / 16.0h,
-             3.0h / 16.0h, 11.0h / 16.0h,  1.0h / 16.0h,  9.0h / 16.0h,
-            15.0h / 16.0h,  7.0h / 16.0h, 13.0h / 16.0h,  5.0h / 16.0h,
-        };
-
-        /// 이 화면 픽셀의 문턱값을 구합니다.
-        half CarDriveDitherThreshold(float2 pixelPos)
-        {
-            int2 cell = int2(fmod(abs(pixelPos), 4.0));
-            return CarDriveBayer4x4[cell.y * 4 + cell.x];
-        }
+        // <b>행렬과 곡선은 CarDriveToonLighting.hlsl 에 있습니다.</b> 풀도 같은 방식으로
+        // 사라지는데(LowPolyGrass), 복사해 두면 한쪽만 고쳐지는 날이 옵니다.
+        // 여기 남은 것은 <b>이 재질의 프로퍼티를 읽는 부분</b>뿐입니다.
 
         /// 거리에 따라 얼마나 남을지 구합니다. 1이면 그대로, 0이면 다 지웁니다.
         half CarDriveFadeAmount(float3 positionWS)
@@ -165,7 +143,7 @@ Shader "CarDrive/Toon Lit"
                 float s = useGlobal ? _CarDriveFadeStart : _FadeStart;
                 float e = useGlobal ? _CarDriveFadeEnd : _FadeEnd;
 
-                return saturate(1.0 - (d - s) / max(0.001, e - s));
+                return CarDriveFadeCurve(d, s, e);
             #else
                 return 1.0h;
             #endif

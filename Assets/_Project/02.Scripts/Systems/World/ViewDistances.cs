@@ -7,6 +7,7 @@ namespace CarDrive.Systems
     ///
     /// <b>왜 만들었는가.</b> 이 거리들은 서로 순서를 지켜야 합니다.
     /// <code>
+    ///   풀 페이드 시작 &lt; 풀 페이드 끝 &lt; 풀
     ///   그림자 ≤ 시야   ·   풀 &lt; 페이드 시작 &lt; 페이드 끝 ≤ 타일 접기 = 나무 컷 ≤ 터레인 &lt; 파클립
     /// </code>
     /// 하나라도 뒤집히면 그 자리가 <b>눈에 보이는 선</b>이 됩니다. 안개보다 파클립이
@@ -62,6 +63,28 @@ namespace CarDrive.Systems
         /// </summary>
         private const float FarClipMargin = 150f;
 
+        /// <summary>
+        /// 풀이 <b>흩어져 사라지기 시작</b>하는 지점입니다. 풀 그리는 거리에 대한 비율입니다.
+        ///
+        /// 예전에는 이 두 비율이 재질에 <b>숫자로 구워져</b> 있었습니다(35m / 68.6m).
+        /// <c>detailDistance</c> 70m 에 0.5 와 0.98 을 곱해 에디터 도구가 적어 넣은 값인데,
+        /// 그 도구는 <see cref="CarDriveWorldSettings.rangeScale"/> 도 속도 단계도 몰랐습니다.
+        /// 그래서 실제 그리는 거리가 49m·36.8m·24.5m 로 줄어드는 동안 페이드 창은 그대로였고,
+        /// <b>시속 90 이상에서는 페이드가 시작되기도 전에 풀이 통짜로 잘렸습니다.</b>
+        /// (나무가 똑같은 이유로 한 번 튀었고, 그 기록이 위의 2번입니다)
+        ///
+        /// 비율로 바꾸면 거리가 어떻게 줄어도 창이 함께 줄어듭니다.
+        /// </summary>
+        private const float GrassFadeStartRatio = 0.50f;
+
+        /// <summary>
+        /// 풀이 <b>다 사라지는</b> 지점입니다. 풀 그리는 거리에 대한 비율입니다.
+        ///
+        /// 1 보다 작아야 합니다. <c>Terrain.detailObjectDistance</c> 의 잘라내기는
+        /// 하드 컷이라, 그보다 먼저 다 지워져 있어야 잘리는 순간이 보이지 않습니다.
+        /// </summary>
+        private const float GrassFadeEndRatio = 0.95f;
+
         /// <summary>기준값이 등록되기 전에 쓸 시야 거리(m)입니다.</summary>
         private const float FallbackView = 340f;
 
@@ -89,7 +112,24 @@ namespace CarDrive.Systems
             /// <summary>지금 적용 중인 배율입니다.</summary>
             public readonly float Scale;
 
-            /// <summary>풀을 그리는 거리(m)입니다. 속도 단계는 여기에 <b>더</b> 곱해집니다.</summary>
+            /// <summary>
+            /// 풀이 <b>흩어져 사라지기 시작</b>하는 거리(m)입니다.
+            ///
+            /// 이 구조체에서 가장 가까운 값이라 맨 앞에 적었습니다.
+            /// </summary>
+            public readonly float GrassFadeStart;
+
+            /// <summary>풀이 <b>다 사라지는</b> 거리(m)입니다. 잘라내는 거리보다 가깝습니다.</summary>
+            public readonly float GrassFadeEnd;
+
+            /// <summary>
+            /// 풀을 그리는 거리(m)입니다. <b>속도 단계까지 이미 곱해져 있습니다.</b>
+            ///
+            /// 예전에는 여기까지만 계산하고 속도 단계는 <see cref="TerrainDetailLod"/> 가
+            /// 밖에서 <b>또</b> 곱했습니다. 그래서 이 사다리는 실제로 몇 미터에 풀이 잘리는지
+            /// 몰랐고, 페이드 창을 여기서 낼 수가 없었습니다. 이제 속도 단계도
+            /// <see cref="ReportGrassSpeedScale"/> 로 들어와 <b>곱셈이 다시 한곳에 모였습니다.</b>
+            /// </summary>
             public readonly float Grass;
 
             /// <summary>나무·바위·건물이 디더로 지워지기 <b>시작</b>하는 거리(m)입니다.</summary>
@@ -170,8 +210,9 @@ namespace CarDrive.Systems
             /// <param name="baseInstant">기준 즉시 활성 거리(m)</param>
             /// <param name="weatherFog">날씨가 요청한 안개 짙기. 0이면 요청 없음입니다.</param>
             /// <param name="weatherView">날씨가 요청한 시야 배율(0~1). 1이면 요청 없음입니다.</param>
+            /// <param name="grassSpeedScale">속도 단계가 풀 거리에 곱할 배율(0~1). 1이면 요청 없음입니다.</param>
             public Ladder(CarDriveWorldSettings settings, float baseView, float baseActive, float baseInstant,
-                          float weatherFog, float weatherView)
+                          float weatherFog, float weatherView, float grassSpeedScale)
             {
                 Scale = Mathf.Clamp(settings.rangeScale, 0.05f, 1f);
 
@@ -182,7 +223,13 @@ namespace CarDrive.Systems
                 // 시야 거리를 덮는 데 필요한 짙기가 바닥이고, 날씨가 더 짙게 하려 하면 그것을 씁니다.
                 FogDensity = Mathf.Max(FogReachFactor / View, weatherFog);
 
-                Grass = settings.detailDistance * Scale;
+                // 속도 단계까지 <b>여기서</b> 곱합니다. 밖에서 곱하면 페이드 창이 이 값을
+                // 따라올 수 없고, 그것이 정확히 풀이 통짜로 잘리던 이유였습니다.
+                Grass = settings.detailDistance * Scale * Mathf.Clamp(grassSpeedScale, 0.05f, 1f);
+
+                // 페이드는 <b>비율</b>입니다. 거리가 어떻게 줄어도 창이 함께 줄어듭니다.
+                GrassFadeStart = Grass * GrassFadeStartRatio;
+                GrassFadeEnd = Grass * GrassFadeEndRatio;
 
                 // <b>그림자는 시야를 넘지 못합니다.</b> 안개에 다 묻히는 거리까지 그려도
                 // 보이지 않고, 섀도맵만 넓게 퍼져 가까운 그림자가 거칠어집니다.
@@ -245,6 +292,13 @@ namespace CarDrive.Systems
         /// <summary>날씨가 요청한 시야 배율입니다. 1이면 요청이 없다는 뜻입니다.</summary>
         private static float weatherVisibility = 1f;
 
+        /// <summary>
+        /// 속도 단계가 요청한 풀 거리 배율입니다. 1이면 요청이 없다는 뜻입니다.
+        ///
+        /// <b>날씨와 같은 방식입니다.</b> 요청은 밖에서 오고 곱셈은 사다리가 합니다.
+        /// </summary>
+        private static float grassSpeedScale = 1f;
+
         // --- Public Properties ---
 
         /// <summary>
@@ -263,7 +317,8 @@ namespace CarDrive.Systems
                     baseActive > 0f ? baseActive : FallbackActive,
                     baseInstant > 0f ? baseInstant : FallbackActive,
                     weatherFogDensity,
-                    weatherVisibility);
+                    weatherVisibility,
+                    grassSpeedScale);
             }
         }
 
@@ -315,6 +370,26 @@ namespace CarDrive.Systems
         }
 
         /// <summary>
+        /// 속도 단계가 풀 거리에 곱할 배율을 <b>요청합니다.</b> 매 프레임 불러도 됩니다.
+        ///
+        /// <b>왜 요청인가.</b> 속도 단계를 아는 것은 <see cref="TerrainDetailLod"/> 하나뿐인데,
+        /// 그것이 직접 곱해 버리면 <b>사다리가 실제 풀 거리를 모릅니다.</b> 그러면 페이드 창을
+        /// 여기서 낼 수 없고, 재질에 숫자를 구워 넣는 수밖에 없습니다. 실제로 그렇게 되어 있었고
+        /// 그 숫자가 배율을 몰라서 시속 90 이상에서 풀이 통짜로 잘렸습니다.
+        ///
+        /// <b>알리는 쪽이 지켜야 할 것이 하나 있습니다.</b> 이 값을 바꾸면 사다리는 즉시
+        /// 새 거리를 내지만, 지형 103장에 <c>detailObjectDistance</c> 를 대입하는 일은
+        /// 예산제라 몇 프레임에 걸쳐 끝납니다. 그 사이에는 옛 거리와 새 거리가 섞여 있으므로
+        /// <b>둘 중 짧은 쪽</b>을 알려야 합니다. 길게 알리면 아직 옛 거리인 타일에서
+        /// 페이드가 끝나기 전에 풀이 잘립니다.
+        /// </summary>
+        /// <param name="scale">속도 단계가 원하는 배율(0~1). 1이면 요청하지 않습니다.</param>
+        public static void ReportGrassSpeedScale(float scale)
+        {
+            grassSpeedScale = Mathf.Clamp(scale, 0.05f, 1f);
+        }
+
+        /// <summary>
         /// 날씨의 요청을 물립니다. 날씨 표현이 꺼질 때 부르세요.
         /// 부르지 않으면 마지막으로 요청한 폭우가 그대로 남습니다.
         /// </summary>
@@ -338,6 +413,7 @@ namespace CarDrive.Systems
             baseInstant = -1f;
             weatherFogDensity = 0f;
             weatherVisibility = 1f;
+            grassSpeedScale = 1f;
         }
     }
 }

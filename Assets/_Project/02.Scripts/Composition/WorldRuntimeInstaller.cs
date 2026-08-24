@@ -34,13 +34,19 @@ namespace CarDrive.Composition
         public string driverObjectName = "[World Runtime]";
 
         /// <summary>
-        /// 실험용 GPU 풀 렌더러를 함께 만들지 여부입니다.
+        /// GPU 풀 렌더러를 함께 만들지 여부입니다.
         ///
-        /// <see cref="CarDriveWorldSettings.gpuGrass"/>가 꺼져 있으면 렌더러가 있어도
-        /// 아무 일도 하지 않지만, 아직 실기에서 확인되지 않은 경로라 <b>기본은 만들지 않습니다.</b>
+        /// <b>이것과 <see cref="CarDriveWorldSettings.gpuGrass"/> 는 둘 다 켜져야 합니다.</b>
+        /// 한쪽만 켜면 조용히 아무 일도 일어나지 않습니다 — 실제로 설정은 켜져 있는데
+        /// 이 체크가 꺼져 있어서, <b>렌더러가 아예 만들어지지 않은 채</b>
+        /// 터레인 디테일이 그리고 있었습니다. 어느 쪽 로그에도 그 사실이 남지 않았습니다.
+        ///
+        /// 만들어져도 설정이 꺼져 있으면 아무것도 하지 않으므로, 켜 두는 쪽이 안전합니다.
+        /// 못 켜지는 경우(컴퓨트 미지원 등)에는 스스로 물러나고 터레인 디테일이 계속 그립니다.
         /// </summary>
-        [Tooltip("실험용 GPU 풀 렌더러를 함께 만듭니다. 월드 설정의 gpuGrass 와 함께 켜세요.")]
-        public bool createGpuGrassRenderer = false;
+        [Tooltip("GPU 풀 렌더러를 함께 만듭니다. 월드 설정의 gpuGrass 와 반드시 함께 켜세요. " +
+                 "한쪽만 켜면 조용히 아무 일도 일어나지 않습니다.")]
+        public bool createGpuGrassRenderer = true;
 
         /// <summary>
         /// 계측 오버레이를 함께 만들지 여부입니다.
