@@ -7,7 +7,7 @@
       "dependencies": {}
     },
     "com.toflaks.console-display": {
-      "version": "file:E:/GamePJ/unity-console-display",
+      "version": "file:../../unity-console-display",
       "depth": 0,
       "source": "local",
       "dependencies": {}
