@@ -8,19 +8,21 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: ClerkBody
-  m_Shader: {fileID: 4800000, guid: 933532a4fcc9baf4fa0491de14d08ed7, type: 3}
+  m_Shader: {fileID: 4800000, guid: 709c1582bc7946bf935f7ebd1d7c9be8, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
+  m_ValidKeywords:
+  - _HATCHING
   m_InvalidKeywords: []
   m_LightmapFlags: 4
-  m_EnableInstancingVariants: 0
+  m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
   stringTagMap:
     RenderType: Opaque
   disabledShaderPasses:
   - MOTIONVECTORS
+  - SRPDEFAULTUNLIT
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
@@ -69,6 +71,10 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _ToonRampMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - unity_Lightmaps:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -86,6 +92,7 @@ Material:
     - _AddPrecomputedVelocity: 0
     - _AlphaClip: 0
     - _AlphaToMask: 0
+    - _Ambient: 0.85
     - _Blend: 0
     - _BlendModePreserveSpecular: 1
     - _BumpScale: 1
@@ -98,20 +105,37 @@ Material:
     - _DstBlend: 0
     - _DstBlendAlpha: 0
     - _EnvironmentReflections: 1
+    - _FadeEnd: 330
+    - _FadeStart: 240
     - _GlossMapScale: 0
     - _Glossiness: 0
     - _GlossyReflections: 0
+    - _HeightBottom: 0
+    - _HeightStrength: 0
+    - _HeightTop: 20
     - _Metallic: 0
+    - _MidPoint: 0.35
     - _OcclusionStrength: 1
+    - _OutlineWidth: 0
     - _Parallax: 0.005
     - _QueueOffset: 0
     - _ReceiveShadows: 1
+    - _RimStrength: 0
+    - _RimWidth: 4
+    - _ShadowStrength: 0.75
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0
+    - _Softness: 0.05
     - _SpecularHighlights: 1
+    - _SpecularSize: 40
+    - _SpecularStrength: 0
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
+    - _Steps: 0
     - _Surface: 0
+    - _UseDitherFade: 0
+    - _UseHatching: 1
+    - _UseRamp: 0
     - _WorkflowMode: 1
     - _XRMotionVectorsPass: 1
     - _ZWrite: 1
@@ -119,6 +143,10 @@ Material:
     - _BaseColor: {r: 0.3, g: 0.42, b: 0.58, a: 1}
     - _Color: {r: 0.29999998, g: 0.41999996, b: 0.58, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
+    - _HeightColor: {r: 0.29999998, g: 0.33999997, b: 0.47999996, a: 1}
+    - _OutlineColor: {r: 0.079999976, g: 0.06999998, b: 0.09999997, a: 1}
+    - _RimColor: {r: 1, g: 1, b: 1, a: 1}
+    - _ShadowTint: {r: 0.41999996, g: 0.4699999, b: 0.62, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

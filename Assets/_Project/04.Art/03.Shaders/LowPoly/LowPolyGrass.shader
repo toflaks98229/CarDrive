@@ -67,6 +67,9 @@ Shader "CarDrive/LowPoly Grass"
         [Header(Cozy)]
         _ShadowColor  ("그늘 색", Color) = (0.596, 0.514, 0.494, 1)
 
+        [Header(Hand Drawn)]
+        [Toggle(_HATCHING)] _UseHatching ("빗금으로 음영 그리기", Float) = 0
+
         [Header(Toon Ramp)]
         [Toggle(_TOON_RAMP)] _UseRamp ("램프 텍스처 쓰기", Float) = 0
         [NoScaleOffset] _ToonRampMap ("램프 (가로축 = 밝기)", 2D) = "white" {}
@@ -111,6 +114,10 @@ Shader "CarDrive/LowPoly Grass"
             #pragma multi_compile_fragment _ _SHADOWS_SOFT
             #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
             #pragma shader_feature_local_fragment _TOON_RAMP
+
+            // 풀도 같은 빗금을 받습니다. 월드 좌표로 긋기 때문에 잎마다 잡음이 되지 않고
+            // 풀밭 전체에 하나의 획이 걸립니다. (화면 고정이었다면 잎이 두어 픽셀이라 불가능했습니다)
+            #pragma shader_feature_local_fragment _HATCHING
 
             // 그림자를 부드럽게 하는 여러 번 샘플링은 넣지 않습니다.
             // 풀은 지면과 같이 어두워지기만 하면 되고, 그림자 경계가 잎 위에서
@@ -172,7 +179,9 @@ Shader "CarDrive/LowPoly Grass"
             //
             // 이 수는 <b>GrassPushField.MaxPushers 와 반드시 같아야 합니다.</b>
             // 한쪽만 고치면 넘긴 자리 일부가 조용히 버려집니다.
-            #define GRASS_PUSHER_MAX 16
+            // 그래서 셰이더 쪽 숫자는 GrassShared.hlsl 한곳에만 두고,
+            // C# 과 어긋나지 않는지는 EditMode 테스트가 확인합니다.
+            #include "GrassShared.hlsl"
 
             // 머티리얼마다 다른 값이 아니라 게임 전체가 공유하는 값이라
             // UnityPerMaterial 바깥에 둡니다.

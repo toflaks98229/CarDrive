@@ -12,6 +12,7 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
+  - _HATCHING
   - _TOON_RAMP
   m_InvalidKeywords: []
   m_LightmapFlags: 4
@@ -30,10 +31,11 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _AmbientBoost: 1
+    - _AmbientBoost: 0.5
     - _CanopyHeight: 0.75
     - _ColorNoiseScale: 0.022
     - _FadeEnd: 68.6
+    - _FadeScatter: 0.6
     - _FadeStart: 35
     - _GradientFar: 30
     - _GradientNear: 10
@@ -47,6 +49,7 @@ Material:
     - _ShadowStrength: 0.7
     - _Softness: 0.06
     - _TipBlend: 0.35
+    - _UseHatching: 1
     - _UseRamp: 1
     - _WindScale: 0.08
     - _WindSpeed: 1.1

@@ -29,12 +29,13 @@ Material:
   - _TOON_RAMP
   m_InvalidKeywords: []
   m_LightmapFlags: 1
-  m_EnableInstancingVariants: 0
+  m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
   stringTagMap: {}
   disabledShaderPasses:
   - MOTIONVECTORS
+  - SRPDEFAULTUNLIT
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
@@ -117,6 +118,8 @@ Material:
     - _DstBlend: 0
     - _DstBlendAlpha: 0
     - _EnvironmentReflections: 1
+    - _FadeEnd: 330
+    - _FadeStart: 240
     - _GlossMapScale: 0
     - _Glossiness: 0
     - _GlossyReflections: 0
@@ -143,6 +146,8 @@ Material:
     - _SrcBlendAlpha: 1
     - _Steps: 0
     - _Surface: 0
+    - _UseDitherFade: 0
+    - _UseHatching: 0
     - _UseRamp: 1
     - _WorkflowMode: 1
     - _XRMotionVectorsPass: 1

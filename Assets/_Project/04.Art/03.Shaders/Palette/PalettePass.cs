@@ -9,18 +9,36 @@ using UnityEngine.Rendering.Universal;
 namespace CarDrive.Rendering
 {
     /// <summary>
-    /// '색상 보정' 효과를 적용하는 ScriptableRenderPass입니다.
+    /// 카메라 컬러의 색 수를 줄여 새 텍스처에 그리고, 그것을 카메라 컬러로 갈아 끼우는 패스입니다.
+    ///
+    /// <b>Blit 한 번으로 끝냅니다.</b> 예전에는 임시 텍스처로 갔다가 화면으로 되돌리는 두 번이
+    /// 필요했지만, RenderGraph 에서는 결과 핸들을 <c>cameraColor</c> 에 꽂아 주면
+    /// 이후 패스들이 알아서 그것을 읽습니다.
+    ///
+    /// 어느 방식으로 줄일지는 <see cref="PaletteFeature.PaletteSettings.method"/> 가 정하고,
+    /// 이 패스는 그에 맞는 셰이더 키워드 하나만 켜고 나머지를 끕니다.
     /// </summary>
     public class PalettePass : ScriptableRenderPass
     {
+        // --- Constants ---
+
+        /// <summary>프로파일러와 RenderGraph 뷰어에 표시할 패스 이름입니다.</summary>
         private const string k_PassName = "Palette Effect";
 
+        // --- Private Member Variables ---
+
+        /// <summary>렌더러 기능에서 넘겨받은 설정입니다. 참조를 공유하므로 값 변경이 바로 보입니다.</summary>
         private PaletteFeature.PaletteSettings settings;
+
+        /// <summary>색 감축을 수행하는 <c>Hidden/PixelizePalette</c> 재질입니다.</summary>
         private Material paletteMaterial;
 
+        // --- Constructors ---
+
         /// <summary>
-        /// 생성자
+        /// 설정을 받아 패스 시점과 전용 재질을 준비합니다.
         /// </summary>
+        /// <param name="settings">렌더러 기능이 인스펙터에 노출한 설정입니다.</param>
         public PalettePass(PaletteFeature.PaletteSettings settings)
         {
             this.settings = settings;
@@ -34,9 +52,14 @@ namespace CarDrive.Rendering
             requiresIntermediateTexture = true;
         }
 
+        // --- Public Methods ---
+
         /// <summary>
-        /// 렌더링 로직 실행
+        /// 고른 방식에 맞춰 셰이더 키워드와 수치를 넣고, 색을 줄인 결과를 새 텍스처에 그린 뒤
+        /// 이후 패스가 볼 카메라 컬러를 그것으로 교체합니다.
         /// </summary>
+        /// <param name="renderGraph">이번 프레임의 렌더 그래프입니다.</param>
+        /// <param name="frameData">카메라와 렌더 타겟 정보를 담은 프레임 데이터입니다.</param>
         public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
         {
             if (paletteMaterial == null) return;
@@ -44,7 +67,7 @@ namespace CarDrive.Rendering
             UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
             if (resourceData.isActiveTargetBackBuffer) return;
 
-            // [변경] 셰이더 키워드 설정을 3가지 모드를 모두 지원하도록 switch문으로 변경
+            // 세 가지 모드 중 하나만 켜고 나머지는 끈다.
             switch (settings.method)
             {
                 case PaletteFeature.PaletteSettings.Method.LuminanceQuantize:
@@ -68,7 +91,6 @@ namespace CarDrive.Rendering
             paletteMaterial.SetFloat("_Strength", settings.strength);
             paletteMaterial.SetFloat("_Levels", settings.levels);
 
-            // [변경] 새로 추가된 프로퍼티 값을 셰이더로 전달
             paletteMaterial.SetFloat("_ToneThreshold", settings.toneThreshold);
             paletteMaterial.SetFloat("_DitherStrength", settings.ditherStrength);
 

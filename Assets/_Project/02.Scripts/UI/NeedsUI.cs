@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using MoreMountains.Feedbacks;
 using MoreMountains.Tools;
 using TMPro;
@@ -63,6 +63,25 @@ namespace CarDrive.UI
             [Tooltip("Feel 게이지 (선택). 연결하면 채움과 지연 바를 이쪽이 담당합니다.")]
             public MMProgressBar progressBar;
 
+            /// <summary>
+            /// 지금 <b>화면에 그려지고 있는</b> 채움입니다. 목표를 향해 부드럽게 따라갑니다.
+            ///
+            /// 음수로 시작해 <b>첫 프레임에는 목표로 바로 뜁니다.</b> 0으로 두면 게이지가
+            /// 늘 빈 칸에서 차오르며 시작해, 불러오기 직후에 없던 연출이 생깁니다.
+            /// </summary>
+            [System.NonSerialized]
+            public float DisplayFill = -1f;
+
+            /// <summary>
+            /// 이 게이지만의 재질입니다. 채움을 셰이더로 넘겨야 해서 하나씩 따로 가집니다.
+            ///
+            /// <b>공유하면 안 됩니다.</b> UI 재질은 캔버스가 묶어 그리는 단위인데,
+            /// 여섯 게이지가 한 재질을 쓰면 <b>마지막에 쓴 채움 하나만</b> 남습니다.
+            /// 게이지가 여섯뿐이라 재질 여섯 개의 값은 치를 만합니다.
+            /// </summary>
+            [System.NonSerialized]
+            public Material GaugeMaterial;
+
             /// <summary>이 니즈가 나빠졌을 때 재생할 피드백입니다.</summary>
             [Tooltip("이 니즈가 눈에 띄게 나빠졌을 때 재생할 피드백 (선택)")]
             public MMF_Player worsenedFeedback;
@@ -97,6 +116,31 @@ namespace CarDrive.UI
         [Tooltip("경고 상태에서 깜빡이는 속도 (초당 횟수)")]
         public float warningBlinkSpeed = 2f;
 
+        /// <summary>
+        /// 디더 게이지 재질의 <b>원본</b>입니다. 게이지마다 복제해서 씁니다.
+        ///
+        /// 비워 두면 디더를 쓰지 않고 예전처럼 <c>Image.fillAmount</c> 로 그립니다.
+        /// 셰이더가 없어도 게임은 돌아야 하기 때문입니다.
+        /// </summary>
+        [Header("디더 게이지")]
+        [Tooltip("CarDrive/UI Need Gauge 셰이더를 쓰는 재질. 비워 두면 예전 방식(fillAmount)으로 그립니다.")]
+        public Material gaugeMaterial;
+
+        /// <summary>
+        /// 게이지가 <b>차오를 때</b>의 따라가는 속도입니다. (초당 채움 비율)
+        ///
+        /// <b>왜 방향마다 다른가.</b> 나빠지는 것은 빨리 알아야 하고, 해소되는 것은
+        /// 천천히 보여도 됩니다. 니즈 게이지는 값이 오르는 쪽이 나빠지는 쪽입니다.
+        /// </summary>
+        [Tooltip("게이지가 차오를 때 따라가는 속도 (초당 채움 비율)")]
+        [Range(0.2f, 10f)]
+        public float fillSpeedUp = 3f;
+
+        /// <summary>게이지가 <b>줄어들 때</b>의 따라가는 속도입니다. (초당 채움 비율)</summary>
+        [Tooltip("게이지가 줄어들 때 따라가는 속도 (초당 채움 비율)")]
+        [Range(0.2f, 10f)]
+        public float fillSpeedDown = 1.5f;
+
         // --- Private Member Variables ---
 
         /// <summary>
@@ -106,6 +150,9 @@ namespace CarDrive.UI
         /// 값이 바뀔 때조차 새 문자열이 생기지 않으므로, 이 화면의 숫자 표시는 <b>할당이 0</b>입니다.
         /// </summary>
         private static readonly string[] PercentLabels = CreatePercentLabels();
+
+        /// <summary>디더 게이지 셰이더에 채움을 넘길 이름입니다.</summary>
+        private static readonly int FillId = Shader.PropertyToID("_Fill");
 
         // --- Injection ---
 
@@ -150,7 +197,32 @@ namespace CarDrive.UI
                 {
                     bars[i].labelText.text = setting.displayName;
                 }
+
+                SetUpGauge(bars[i]);
             }
+        }
+
+        /// <summary>
+        /// 게이지 하나에 <b>자기만의 디더 재질</b>을 붙입니다.
+        ///
+        /// 재질을 공유하면 여섯 게이지가 서로의 채움을 덮어써 <b>마지막 하나만</b> 남습니다.
+        /// 캔버스 묶어 그리기가 깨져 드로우 콜이 여섯이 되지만, 게이지가 여섯뿐이라 치를 만합니다.
+        ///
+        /// <b>판은 늘 가득 그립니다.</b> 자르는 일은 셰이더가 합니다 —
+        /// <c>Filled</c> 로 기하를 잘라 내면 경계 바깥에 흩뜨릴 픽셀이 남지 않습니다.
+        /// </summary>
+        /// <param name="bar">준비할 게이지</param>
+        private void SetUpGauge(NeedBar bar)
+        {
+            if (gaugeMaterial == null || bar.fillImage == null) return;
+
+            bar.GaugeMaterial = new Material(gaugeMaterial);
+            bar.fillImage.material = bar.GaugeMaterial;
+            bar.fillImage.fillAmount = 1f;
+
+            // Feel 게이지가 남아 있으면 같은 Image 를 두고 다투게 됩니다.
+            // 채움은 이제 이쪽이 소유하므로 그쪽은 재워 둡니다.
+            if (bar.progressBar != null) bar.progressBar.enabled = false;
         }
 
         /// <summary>
@@ -177,6 +249,15 @@ namespace CarDrive.UI
 
             needsSystem.onNeedWorsened.RemoveListener(PlayWorsened);
             needsSystem.onNeedRelievedStep.RemoveListener(PlayRelieved);
+
+            // 복제한 재질은 GC 가 거두지 않습니다. 게이지마다 하나씩 만들었으므로 하나씩 놓아 줍니다.
+            for (int i = 0; i < bars.Count; i++)
+            {
+                if (bars[i].GaugeMaterial == null) continue;
+
+                Destroy(bars[i].GaugeMaterial);
+                bars[i].GaugeMaterial = null;
+            }
         }
 
         // --- Private Methods ---
@@ -234,13 +315,31 @@ namespace CarDrive.UI
             bool isCritical = needsSystem.IsCritical(bar.type);
             bool isWarning = needsSystem.IsWarning(bar.type);
 
-            float fill = needsSystem.GetDisplayFill(bar.type);
+            float target = needsSystem.GetDisplayFill(bar.type);
 
-            // Feel 게이지를 연결했으면 채움을 그쪽에 맡깁니다.
-            // 부드러운 추종과 지연 바가 함께 따라오므로 여기서 직접 쓰면 서로 밀어냅니다.
-            if (bar.progressBar != null)
+            // <b>따라가는 일을 직접 합니다.</b>
+            //
+            // 예전에는 Feel 게이지(<c>MMProgressBar</c>)에 맡겼는데, 그쪽은 값이 <b>가끔</b>
+            // 바뀌는 것을 전제로 만들어져 있습니다. 부를 때마다 자기 보간 시계를 지금으로
+            // 되돌리고 애니메이션 코루틴을 죽였다 다시 시작하기 때문에, 니즈처럼
+            // <b>매 프레임 바뀌는 값</b>을 넘기면 코루틴이 한 번도 시간을 얻지 못해
+            // 게이지가 <b>제자리에 얼어붙습니다.</b> 값이 멈춰야 비로소 움직였고,
+            // 그것이 "소변 키를 떼야 게이지가 반영된다"로 보였습니다.
+            //
+            // 여기서 직접 하면 그 문제가 생길 자리가 없습니다. 매 프레임 조금씩 다가갈 뿐입니다.
+            float speed = target > bar.DisplayFill ? fillSpeedUp : fillSpeedDown;
+
+            bar.DisplayFill = bar.DisplayFill < 0f
+                ? target                                                        // 첫 프레임은 바로 맞춥니다
+                : Mathf.MoveTowards(bar.DisplayFill, target, speed * Time.unscaledDeltaTime);
+
+            float fill = bar.DisplayFill;
+
+            if (bar.GaugeMaterial != null)
             {
-                bar.progressBar.UpdateBar01(fill);
+                // 디더 셰이더가 채움을 받아 경계를 흩뜨립니다. 판은 늘 가득 그리고
+                // 자르는 일은 셰이더가 합니다. (Filled 로 자르면 흩뜨릴 픽셀이 남지 않습니다)
+                bar.GaugeMaterial.SetFloat(FillId, fill);
             }
             else if (bar.fillImage != null)
             {

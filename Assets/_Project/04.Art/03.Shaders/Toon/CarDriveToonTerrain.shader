@@ -1,4 +1,4 @@
-// 지면용 툰 셰이더입니다.
+﻿// 지면용 툰 셰이더입니다.
 //
 // 바탕색은 기존 LowPoly 지면과 <b>같은 방식</b>으로 만듭니다.
 // (LowPolyGround.hlsl 의 팔레트 · 스플랫 가중치를 그대로 씁니다)
@@ -31,11 +31,19 @@ Shader "CarDrive/Toon Terrain"
         _RoadColorA  ("도로 (어두운 쪽)", Color) = (0.290, 0.286, 0.302, 1)
         _RoadColorB  ("도로 (밝은 쪽)",   Color) = (0.353, 0.349, 0.365, 1)
         _ColorNoiseScale ("색 얼룩 크기", Float) = 0.08
-        _TextureBlend ("텍스처 섞기", Range(0, 1)) = 0
+
+        // 끄면 스플랫 텍스처 샘플이 <b>컴파일되지 않습니다.</b> 색은 위의 팔레트가 전부 정합니다.
+        [Toggle(_SPLAT_TEXTURES)] _UseSplatTextures ("레이어 텍스처 섞기", Float) = 0
+        _TextureBlend ("텍스처 섞는 정도", Range(0, 1)) = 0
+
+        [Header(Hand Drawn)]
+        [Toggle(_HATCHING)] _UseHatching ("빗금으로 음영 그리기", Float) = 0
 
         [Header(Toon Shading)]
         _MidPoint ("명암 경계 (낮을수록 밝은 면이 넓음)", Range(0, 1)) = 0.42
         _Softness ("경계 부드러움", Range(0, 0.5)) = 0.06
+        _ShadowSoftness ("그림자 경계 부드러움", Range(0, 1)) = 0.25
+        _StepSoftness ("단계 사이 부드러움", Range(0, 1)) = 0.35
         _Steps ("밝은 쪽 단계 수 (2 미만이면 끊지 않음)", Range(0, 8)) = 3
         _ShadowTint ("그림자 색", Color) = (0.40, 0.46, 0.62, 1)
         _ShadowStrength ("그림자 세기", Range(0, 1)) = 0.7
@@ -83,6 +91,8 @@ Shader "CarDrive/Toon Terrain"
             float  _TextureBlend;
             half   _MidPoint;
             half   _Softness;
+            half   _ShadowSoftness;
+            half   _StepSoftness;
             half   _Steps;
             half4  _ShadowTint;
             half   _ShadowStrength;
@@ -119,6 +129,8 @@ Shader "CarDrive/Toon Terrain"
             ToonParams p = DefaultToonParams();
             p.midPoint = _MidPoint;
             p.softness = _Softness;
+            p.shadowSoftness = _ShadowSoftness;
+            p.stepSoftness = _StepSoftness;
             p.steps = _Steps;
             p.shadowTint = _ShadowTint.rgb;
             p.shadowStrength = _ShadowStrength;
@@ -150,6 +162,18 @@ Shader "CarDrive/Toon Terrain"
             #pragma multi_compile_fragment _ _SHADOWS_SOFT
             #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
             #pragma shader_feature_local_fragment _TOON_RAMP
+            #pragma shader_feature_local_fragment _HATCHING
+
+            // <b>스플랫 텍스처를 쓰지 않으면 아예 컴파일되지 않게 합니다.</b>
+            //
+            // 예전에는 <c>if (_TextureBlend > 0.001)</c> 라는 <b>실행 중 분기</b>였습니다.
+            // 값이 0이라 픽셀마다 건너뛰기는 했지만, 분기 안에 텍스처 샘플 넷이 남아 있는 한
+            // 컴파일러는 <b>그 경로가 돌 것을 가정하고</b> 레지스터와 샘플러를 잡아 둡니다.
+            // 실제로 안 도는 코드가 도는 코드의 점유율을 깎는 셈입니다.
+            //
+            // 키워드로 바꾸면 쓰지 않는 배리언트에는 샘플러도 좌표 계산도 남지 않습니다.
+            // 텍스처를 다시 쓰고 싶으면 머터리얼에서 이 토글만 켜면 됩니다.
+            #pragma shader_feature_local_fragment _SPLAT_TEXTURES
 
             struct Attributes
             {
@@ -191,8 +215,9 @@ Shader "CarDrive/Toon Terrain"
 
                 half3 albedo = SampleGroundAlbedo(BuildPalette(), input.positionWS.xz, control);
 
-                // 텍스처를 다시 쓰고 싶을 때를 위해 남겨 둔 길입니다. 기본값은 0이라 건너뜁니다.
-                if (_TextureBlend > 0.001)
+                // 텍스처를 다시 쓰고 싶을 때를 위해 남겨 둔 길입니다.
+                // 머터리얼에서 켜지 않으면 아래는 <b>컴파일되지 않습니다.</b>
+                #ifdef _SPLAT_TEXTURES
                 {
                     half total = dot(control, half4(1, 1, 1, 1));
                     half4 w = control / max(total, 1e-4h);
@@ -205,6 +230,7 @@ Shader "CarDrive/Toon Terrain"
 
                     albedo = lerp(albedo, albedo * tex * 2.0h, _TextureBlend);
                 }
+                #endif
 
                 ToonSurface s;
                 s.albedo = albedo;

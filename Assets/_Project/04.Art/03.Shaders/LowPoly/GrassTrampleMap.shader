@@ -36,7 +36,9 @@ Shader "CarDrive/Grass Trample Map"
 
             // 한 번에 찍을 수 있는 자국의 수입니다.
             // <b>GrassTrampleMap.MaxSegments 와 반드시 같아야 합니다.</b>
-            #define TRAMPLE_SEGMENT_MAX 16
+            // 그래서 셰이더 쪽 숫자는 GrassShared.hlsl 한곳에만 두고,
+            // C# 과 어긋나지 않는지는 EditMode 테스트가 확인합니다.
+            #include "GrassShared.hlsl"
 
             TEXTURE2D(_MainTex);
             SAMPLER(sampler_MainTex);

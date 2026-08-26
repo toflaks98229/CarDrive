@@ -1,4 +1,3 @@
-
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
@@ -7,15 +6,44 @@ using UnityEngine.Rendering.Universal;
 
 namespace CarDrive.Rendering
 {
+    /// <summary>
+    /// 카메라 컬러를 저해상도 버퍼로 <b>한 번 줄였다가 다시 키워</b> 픽셀 블록을 만드는 패스입니다.
+    ///
+    /// <b>두 번의 Blit 이 각각 하는 일이 다릅니다.</b> 내려갈 때는 셰이더가 블록 중심 한 점만
+    /// 골라 찍어 블록 안의 색을 하나로 정하고, 올라올 때는 <c>ClampNearest</c> 로 늘려
+    /// 그 색이 블록 전체를 채우게 합니다. 어느 한쪽이라도 보간이 섞이면 <b>블록 경계가 흐려져</b>
+    /// 픽셀 그림으로 읽히지 않습니다.
+    ///
+    /// 설정은 <see cref="PixelizeFeature"/> 가 넘겨준 객체를 그대로 들고 있으므로,
+    /// 인스펙터에서 값을 바꾸면 다음 프레임에 반영됩니다.
+    /// </summary>
     public class PixelizePass : ScriptableRenderPass
     {
+        // --- Constants ---
+
+        /// <summary>프로파일러와 RenderGraph 뷰어에 표시할 패스 이름입니다.</summary>
         private const string k_PassName = "Pixelize Pass";
 
+        // --- Private Member Variables ---
+
+        /// <summary>렌더러 기능에서 넘겨받은 설정입니다. 참조를 공유하므로 값 변경이 바로 보입니다.</summary>
         private PixelizeFeature.CustomPassSettings settings;
 
+        /// <summary>블록 중심을 포인트 샘플링하는 <c>Hidden/Pixelize</c> 재질입니다.</summary>
         private Material material;
-        private int pixelScreenHeight, pixelScreenWidth;
 
+        /// <summary>이번 프레임의 저해상도 버퍼 세로 픽셀 수입니다. 설정값을 그대로 씁니다.</summary>
+        private int pixelScreenHeight;
+
+        /// <summary>이번 프레임의 저해상도 버퍼 가로 픽셀 수입니다. 세로에 카메라 종횡비를 곱해 구합니다.</summary>
+        private int pixelScreenWidth;
+
+        // --- Constructors ---
+
+        /// <summary>
+        /// 설정을 받아 패스 시점과 전용 재질을 준비합니다.
+        /// </summary>
+        /// <param name="settings">렌더러 기능이 인스펙터에 노출한 설정입니다.</param>
         public PixelizePass(PixelizeFeature.CustomPassSettings settings)
         {
             this.settings = settings;
@@ -26,6 +54,14 @@ namespace CarDrive.Rendering
             requiresIntermediateTexture = true;
         }
 
+        // --- Public Methods ---
+
+        /// <summary>
+        /// 저해상도 버퍼로 내려갔다 올라오는 두 Blit 을 RenderGraph 에 기록하고,
+        /// 이후 패스가 볼 카메라 컬러를 그 결과로 교체합니다.
+        /// </summary>
+        /// <param name="renderGraph">이번 프레임의 렌더 그래프입니다.</param>
+        /// <param name="frameData">카메라와 렌더 타겟 정보를 담은 프레임 데이터입니다.</param>
         public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
         {
             if (material == null) return;
