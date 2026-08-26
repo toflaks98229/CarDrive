@@ -40,3 +40,19 @@ MonoBehaviour:
   - id: beer_crate
     prefab: {fileID: 1000012711949794, guid: 91aa3923ad3211f48884dce901952186, type: 3}
     shopItem: {fileID: 11400000, guid: a2e4da4c112158d46b5bf46ed8a3c540, type: 2}
+  - id: cola
+    prefab: {fileID: 5096881485773496799, guid: ea8b9b601283d3c45b608fbcaa05b73f,
+      type: 3}
+    shopItem: {fileID: 0}
+  - id: soda
+    prefab: {fileID: 3590517927992181107, guid: 047c143314b9cbb45b071c43e48a61b9,
+      type: 3}
+    shopItem: {fileID: 0}
+  - id: cola_crate
+    prefab: {fileID: 1680781018605814184, guid: 7e15d3561f455c641bc8b67361cbfc77,
+      type: 3}
+    shopItem: {fileID: 11400000, guid: 1a406fa72bfd5324d9d5f3957208e766, type: 2}
+  - id: soda_crate
+    prefab: {fileID: 2456594433266529068, guid: f4f1d6e86f84a2247ac18e7efb7c1ffb,
+      type: 3}
+    shopItem: {fileID: 11400000, guid: 804292221ab7fc74e87b71eb4a47479b, type: 2}
