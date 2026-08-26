@@ -1,10 +1,10 @@
 ﻿<Solution>
   <Project Path="MoreMountains.Tools.csproj" />
+  <Project Path="CarDrive.Tests.EditMode.csproj" />
   <Project Path="CarDrive.Gameplay.csproj" />
   <Project Path="MoreMountains.Tools.Editor.csproj" />
   <Project Path="ConsoleDisplay.csproj" />
   <Project Path="Lofelt.NiceVibrations.csproj" />
-  <Project Path="CarDrive.Tests.EditMode.csproj" />
   <Project Path="LogiUnityBridge.Editor.csproj" />
   <Project Path="CarDrive.Rendering.csproj" />
   <Project Path="CarDrive.Systems.csproj" />
