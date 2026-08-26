@@ -12,24 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f1ed3fdae2518964388cdcbe40b204a7, type: 3}
   m_Name: CarDriveWorldSettings
   m_EditorClassIdentifier: Assembly-CSharp::CarDriveWorldSettings
-  maxPerCell: 1
-  detailDensity: 0.55
   detailDistance: 70
-  grassThreshold: 0.4
-  bladesPerTuft: 18
   tuftRadius: 0.32
   bladeHeight: 0.55
-  vegetation: []
-  gradientNear: 10
-  gradientFar: 30
-  pushLay: 1
-  pushSpread: 0.35
-  pushHeightReach: 2
-  wheelRadius: 1.2
-  bodyRadius: 2
-  playerRadius: 0.5
-  ghostRadius: 0.6
-  playerMass: 70
   rangeScale: 0.7
   hideDrawDistanceWithFog: 1
   foliageDistance: 95

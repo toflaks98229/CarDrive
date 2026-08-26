@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using CarDrive.Common;
 
@@ -48,6 +48,15 @@ namespace CarDrive.Systems
 
         /// <summary>자국별 모양값입니다. 굵기와 세기 등 <see cref="segments"/>와 짝을 이루는 정보입니다.</summary>
         private readonly Vector4[] shapes = new Vector4[MaxSegments];
+
+        /// <summary>
+        /// 셰이더를 못 찾았다고 <b>이미 알렸는지</b>입니다.
+        ///
+        /// <see cref="EnsureResources"/> 는 매 프레임 불립니다. 실패할 때마다 경고를 찍으면
+        /// 유니티가 로그 하나마다 스택 트레이스를 떠서 <b>프레임이 통째로 멈춥니다.</b>
+        /// 2026-08-25 빌드 캡처에서 그 값이 한 프레임에 274ms 였습니다.
+        /// </summary>
+        private bool warnedMissingShader;
 
         /// <summary>지금 읽고 있는 그림입니다. 풀 셰이더가 전역 텍스처로 받아 가는 쪽입니다.</summary>
         private RenderTexture front;
@@ -204,7 +213,20 @@ namespace CarDrive.Systems
                 Shader shader = Shader.Find(ShaderName);
                 if (shader == null)
                 {
-                    GameLog.Warn(GameLog.Channel.World, "GrassTrampleMap: " + ShaderName + " 셰이더를 찾지 못해 자국이 남지 않습니다.");
+                    // <b>한 번만 알립니다.</b> 여기는 매 프레임 지나가는 자리입니다.
+                    //
+                    // 빌드에서 이 셰이더가 걷혀 나간 적이 있습니다. 아무 에셋도 참조하지 않으면
+                    // 유니티가 빌드에서 빼기 때문입니다. 그때 이 경고가 초당 수백 번 찍혔고,
+                    // 경고마다 스택 트레이스를 뜨느라 274ms 짜리 프레임이 생겼습니다.
+                    // <b>고장보다 고장을 알리는 비용이 더 컸습니다.</b>
+                    //
+                    // 셰이더는 Always Included Shaders 에 등록해 두었습니다.
+                    if (!warnedMissingShader)
+                    {
+                        warnedMissingShader = true;
+                        GameLog.Warn(GameLog.Channel.World, "GrassTrampleMap: " + ShaderName + " 셰이더를 찾지 못해 자국이 남지 않습니다.");
+                    }
+
                     return false;
                 }
 

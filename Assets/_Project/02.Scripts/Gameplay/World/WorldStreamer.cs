@@ -107,16 +107,22 @@ namespace CarDrive.Gameplay
         public int layoutSeed = 20260817;
 
         /// <summary>
-        /// 에디터 도구(WorldTerrainBaker)로 미리 구운 타일들의 부모입니다.
+        /// 미리 구워 둔 타일들의 부모입니다. <b>지금 월드는 이 경로로 돕니다.</b>
         ///
         /// 지정하면 타일을 <b>새로 만들지 않고</b> 이 아래에 이미 있는 것을 그대로 씁니다.
         /// 터레인은 프리팹을 복제해서 쓸 수 없습니다. 복제본이 모두 같은 TerrainData를
         /// 가리켜 지형이 그대로 반복되고, 회전도 되지 않아 길 방향을 맞출 수 없기 때문입니다.
         /// 그래서 터레인 월드는 미리 구워 두고 여기서는 켜고 끄기만 합니다.
+        ///
+        /// <b>굽는 도구는 저장소에 없습니다.</b> 커밋 <c>1170605</c> 가 <c>WorldTerrainBaker</c> 를
+        /// 지웠고, 남은 것은 결과물(<c>03.DataAssets/Terrain/Generated</c> 의 타일 103장)뿐입니다.
+        /// 월드를 다시 깔아야 하면 <c>git show 1170605^:...</c> 로 도구를 먼저 되살리세요.
+        /// (<see cref="Systems.CarDriveWorldSettings"/> 의 클래스 주석에 함께 적어 두었습니다)
         /// </summary>
         [Header("미리 구운 월드")]
-        [Tooltip("에디터 도구로 미리 구운 타일들의 부모. 지정하면 타일을 새로 만들지 않고 " +
-                 "이 아래에 있는 것을 그대로 씁니다. (CarDrive > World > 터레인 월드 굽기)")]
+        [Tooltip("미리 구운 타일들의 부모. 지정하면 타일을 새로 만들지 않고 " +
+                 "이 아래에 있는 것을 그대로 씁니다. " +
+                 "굽는 도구는 커밋 1170605 에서 지워졌으므로 지금 월드는 저장소 자산으로 동결되어 있습니다.")]
         public Transform bakedRoot;
 
         /// <summary>거리 판정의 기준이 될 대상입니다. 비워두면 메인 카메라를 씁니다.</summary>
@@ -188,6 +194,20 @@ namespace CarDrive.Gameplay
 
         /// <summary>타일들을 담아 두는 부모 트랜스폼입니다. 하이어라키가 어지러워지지 않게 묶어 둡니다.</summary>
         private Transform tileRoot;
+
+        /// <summary>
+        /// 거리를 잴 때 쓸 타일 한 변의 길이(m)입니다. <see cref="BuildWorld"/> 가 정합니다.
+        ///
+        /// <b>왜 <see cref="fallbackTileSize"/> 를 그대로 쓰지 않는가.</b> 그 값은 <b>타일을 새로
+        /// 깔 때</b> 다음 지점을 못 찾으면 쓰는 기본 보폭입니다. 구운 월드를 쓸 때는 타일을
+        /// 깔지 않으므로 그 뜻이 아예 성립하지 않는데도, <b>숫자가 같다는 이유로</b> 거리 판정이
+        /// 같은 필드를 빌려 쓰고 있었습니다. 절차적 배치의 기본값을 만지면 구운 월드의 활성
+        /// 거리가 함께 틀어지고, 그 연결은 코드 어디에도 드러나지 않았습니다.
+        ///
+        /// 구운 월드에서는 <see cref="Systems.WorldBakeManifest.tileSize"/> 가 답합니다.
+        /// 절차적 경로에서는 실제로 그 보폭으로 깔았으므로 <see cref="fallbackTileSize"/> 가 맞습니다.
+        /// </summary>
+        private float tileSpan;
 
         /// <summary>다음 거리 검사까지 남은 시간(초)입니다.</summary>
         private float checkTimer;
@@ -305,6 +325,9 @@ namespace CarDrive.Gameplay
 
             if (bakedRoot != null)
             {
+                // 구운 월드의 한 변 길이는 기록이 갖고 있습니다. 인스펙터의 기본 보폭이 아닙니다.
+                tileSpan = Systems.WorldBakeManifest.Instance.tileSize;
+
                 // 미리 구운 터레인을 그대로 씁니다. 타일은 만들지 않고 장소만 세웁니다.
                 AdoptBakedTiles();
 
@@ -315,6 +338,9 @@ namespace CarDrive.Gameplay
             }
             else
             {
+                // 절차적 경로는 실제로 이 보폭으로 깔므로 그 값이 곧 한 변의 길이입니다.
+                tileSpan = fallbackTileSize;
+
                 tileRoot = new GameObject("WorldTiles").transform;
                 tileRoot.SetParent(transform, false);
                 tileRoot.position = Vector3.zero;
@@ -347,6 +373,25 @@ namespace CarDrive.Gameplay
             {
                 GameLog.Warn(GameLog.Channel.World, "WorldStreamer: bakedRoot 아래에 타일이 없습니다. " +
                                  "CarDrive > World > 터레인 월드 굽기 를 먼저 실행하세요.", this);
+                return;
+            }
+
+            // <b>기록과 실제가 같은지 봅니다.</b>
+            //
+            // 타일 수가 기록과 다르면 누군가 타일을 더하거나 뺐다는 뜻이고, 그러면 같은 기록에
+            // 적힌 <b>다른 값들도 그 월드의 것이 아닙니다</b> — 특히 밀도가 그렇습니다.
+            // GPU 풀은 그 밀도로 디테일맵을 솎아내므로, 어긋난 채로 굴러가면 풀밭이 혼자
+            // 촘촘하거나 성겨지고 <b>그 사실이 어디에도 드러나지 않습니다.</b>
+            //
+            // 고칠 방법이 없으므로 막지는 않습니다. 다만 조용히 넘어가지도 않습니다.
+            Systems.WorldBakeManifest manifest = Systems.WorldBakeManifest.Instance;
+
+            if (!manifest.MatchesTileCount(tiles.Count))
+            {
+                GameLog.Warn(GameLog.Channel.World,
+                    "WorldStreamer: 타일이 " + tiles.Count + "장인데 베이크 기록에는 " + manifest.tileCount +
+                    "장으로 적혀 있습니다. 월드가 구운 뒤에 바뀌었다면 WorldBakeManifest 의 " +
+                    "밀도·한 변 길이도 지금 월드의 값이 아닐 수 있습니다.", this);
             }
         }
 
@@ -661,7 +706,8 @@ namespace CarDrive.Gameplay
             Vector3 origin = tile.transform.position;
 
             // 타일은 원점에서 한 변만큼 +X, +Z 로 뻗은 정사각형입니다.
-            float size = fallbackTileSize;
+            // 그 한 변은 구운 월드에서는 기록이, 절차적 경로에서는 보폭이 정합니다.
+            float size = tileSpan;
 
             float dx = Mathf.Max(0f, Mathf.Max(origin.x - point.x, point.x - (origin.x + size)));
             float dz = Mathf.Max(0f, Mathf.Max(origin.z - point.z, point.z - (origin.z + size)));

@@ -87,6 +87,19 @@ namespace CarDrive.Systems
         /// <summary>아직 한 번도 자리를 기록하지 않았는지 여부입니다.</summary>
         private bool hasPrevious;
 
+        /// <summary>
+        /// 부모에서 한 번 찾아 둔 무게(kg)입니다. 0이면 아직 찾지 않았다는 뜻입니다.
+        ///
+        /// <b>왜 기억해 두는가.</b> <see cref="MarkSeconds"/> 는 게터인데 그 안에서
+        /// <c>GetComponentInParent</c> 로 계층을 훑습니다. 그리고 그 게터를
+        /// <see cref="GrassTrampleMap"/> 이 자국을 남기는 누르개마다 <b>매 프레임</b> 읽습니다.
+        /// 차 한 대면 바퀴 넷이라 프레임당 네 번입니다.
+        ///
+        /// 무게는 바뀌지 않습니다. 부모가 달라질 수 있는 유일한 순간이 껐다 켜는 때라,
+        /// <see cref="OnEnable"/> 에서 비워 다시 찾게 합니다.
+        /// </summary>
+        private float resolvedMass;
+
         // --- Unity Event Functions ---
 
         /// <summary>목록에 자기를 올립니다.</summary>
@@ -95,6 +108,9 @@ namespace CarDrive.Systems
             if (!all.Contains(this)) all.Add(this);
 
             hasPrevious = false;
+
+            // 부모가 달라졌을 수 있으므로 무게를 다시 찾게 합니다.
+            resolvedMass = 0f;
         }
 
         /// <summary>목록에서 자기를 뺍니다.</summary>
@@ -131,17 +147,25 @@ namespace CarDrive.Systems
 
         /// <summary>
         /// 쓸 무게를 정합니다. 직접 적어 두지 않았으면 Rigidbody에서 읽어 옵니다.
+        ///
+        /// <b>계층은 한 번만 훑습니다.</b> 이 값을 읽는 쪽이 매 프레임 읽기 때문입니다.
+        /// (<see cref="resolvedMass"/> 를 보세요)
         /// </summary>
         /// <returns>무게(kg)</returns>
         private float ResolveMass()
         {
             if (mass > 0.01f) return mass;
+            if (resolvedMass > 0f) return resolvedMass;
 
             // 바퀴에 붙은 경우 무게는 차 전체에 있습니다. 바퀴 수로 나눠 몫을 봅니다.
+            //
+            // Rigidbody 가 없으면 사람으로 봅니다. 예전에는 이 70kg 이 월드 설정의
+            // playerMass 와 값만 같고 서로를 모르는 <b>두 벌</b>이었는데, 그쪽은 읽는 코드가
+            // 없어 지웠습니다. 이제 사람의 무게는 여기 하나뿐입니다.
             Rigidbody body = GetComponentInParent<Rigidbody>();
-            if (body == null) return 70f;
+            resolvedMass = body != null ? body.mass * 0.25f : 70f;
 
-            return body.mass * 0.25f;
+            return resolvedMass;
         }
 
         /// <summary>

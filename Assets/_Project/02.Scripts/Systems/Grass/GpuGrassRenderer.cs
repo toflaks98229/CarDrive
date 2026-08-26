@@ -82,17 +82,55 @@ namespace CarDrive.Systems
             /// <summary>이번 프레임에 그릴 색인입니다. 매 프레임 컴퓨트가 채웁니다.</summary>
             public GraphicsBuffer Visible;
 
-            /// <summary>간접 드로우 인자입니다. 보이는 수를 여기에 복사해 넣습니다.</summary>
+            /// <summary>
+            /// 간접 드로우 인자입니다. 보이는 수를 여기에 복사해 넣습니다.
+            ///
+            /// <b>다섯 칸 중 넷은 만들 때 한 번 채우면 끝입니다.</b> 색인 수·시작 색인·기준
+            /// 정점·시작 인스턴스는 메시가 바뀌지 않는 한 그대로이고, 매 프레임 달라지는 것은
+            /// <c>instanceCount</c> 하나뿐인데 그 칸은 <see cref="GraphicsBuffer.CopyCount"/> 가
+            /// GPU 안에서 직접 덮어씁니다.
+            /// </summary>
             public GraphicsBuffer Args;
 
             /// <summary>실제 포기 수입니다.</summary>
             public int Count;
 
-            /// <summary>이 종이 덮는 월드 경계입니다. 간접 드로우에 넘길 값입니다.</summary>
-            public Bounds Bounds;
+            /// <summary>
+            /// 그릴 때 넘길 값 한 벌입니다. <b>만들 때 한 번 채웁니다.</b>
+            ///
+            /// 경계·재질·그림자 설정이 전부 상수라 매 프레임 다시 만들 이유가 없습니다.
+            /// </summary>
+            public RenderParams Params;
 
-            /// <summary>재질 인스턴스에 값을 넘길 때 씁니다.</summary>
+            /// <summary>
+            /// 재질 인스턴스에 값을 넘길 때 씁니다. <b>내용도 만들 때 한 번만 채웁니다.</b>
+            ///
+            /// 물리는 버퍼 둘과 크기 범위 모두 만든 뒤로 바뀌지 않는데, 예전에는 종마다
+            /// 매 프레임 다시 물렸습니다. <c>SetBuffer</c> 는 관리 영역에서 네이티브로 넘어가는
+            /// 호출이라 공짜가 아니고, 이 경로가 없애려는 것이 바로 그런 <b>포기 수와 무관한
+            /// 프레임당 CPU 비용</b>입니다.
+            /// </summary>
             public MaterialPropertyBlock Properties;
+        }
+
+        /// <summary>
+        /// 종 하나에서 훑어 낸 것입니다. <b>그릴 수 없는 종도 여기 담깁니다.</b>
+        ///
+        /// <see cref="Positions"/> 가 null 이면 그릴 수 없다는 뜻이고, 그때는 그 종의
+        /// 디테일맵을 <b>아예 읽지 않습니다.</b> 예전에는 못 그리는 종도 103장 내내 훑어
+        /// 자리를 백만 개 담아 두고, 다 끝난 뒤 <see cref="FinishScan"/> 이 통째로 버렸습니다.
+        /// 그 사실은 어느 로그에도 남지 않았습니다.
+        /// </summary>
+        private class ScannedLayer
+        {
+            /// <summary>잎 메시입니다.</summary>
+            public Mesh Mesh;
+
+            /// <summary>잎 재질입니다.</summary>
+            public Material Material;
+
+            /// <summary>모아 둔 포기 자리들입니다. null 이면 그릴 수 없는 종입니다.</summary>
+            public List<Vector4> Positions;
         }
 
         // --- Public Properties ---
@@ -146,6 +184,14 @@ namespace CarDrive.Systems
         /// <summary>풀 크기 범위의 프로퍼티 ID입니다.</summary>
         private static readonly int ScaleRangeId = Shader.PropertyToID("_GrassScaleRange");
 
+        /// <summary>
+        /// 포기마다 곱할 크기의 아래·위 값입니다. 셰이더가 자리 해시로 이 사이를 고릅니다.
+        ///
+        /// 예전에는 렌더 루프 안에 숫자로 박혀 있었습니다. 매 프레임 같은 값을 다시 만들어
+        /// 다시 대입하고 있었고, 무엇보다 <b>어디서 만져야 하는지 알 수 없는 값</b>이었습니다.
+        /// </summary>
+        private static readonly Vector4 ScaleRange = new Vector4(0.85f, 1.25f, 0f, 0f);
+
         /// <summary>절두체 평면을 담아 두는 곳입니다. 매 프레임 새로 잡지 않습니다.</summary>
         private static readonly Plane[] planes = new Plane[6];
 
@@ -181,22 +227,48 @@ namespace CarDrive.Systems
         /// <summary>다음에 훑을 지형의 색인입니다.</summary>
         private int scanIndex;
 
-        /// <summary>훑는 동안 종별로 모아 두는 자리들입니다.</summary>
-        private Dictionary<int, List<Vector4>> scanned;
-
-        /// <summary>종 색인마다의 디테일 프로토타입입니다.</summary>
-        private Dictionary<int, DetailPrototype> scannedPrototypes;
+        /// <summary>훑는 동안 종별로 모아 두는 것들입니다. 종 색인이 열쇠입니다.</summary>
+        private Dictionary<int, ScannedLayer> scanned;
 
         /// <summary>
-        /// 간접 드로우 인자를 담아 두는 곳입니다. <b>매 프레임 새로 잡지 않습니다.</b>
+        /// 간접 드로우 인자를 GPU에 올릴 때 거쳐 가는 배열입니다.
         ///
-        /// 예전에는 <c>RenderAll</c> 안에서 종마다 배열을 새로 만들었습니다.
-        /// 종이 셋이면 초당 180개의 쓰레기가 생기고, 그 자체가 이 경로가 없애려는 CPU 비용입니다.
+        /// <c>SetData</c> 가 배열을 받으므로 한 칸짜리라도 있어야 합니다. <b>이제 이것을 쓰는
+        /// 곳은 <see cref="CreateBatch"/> 뿐입니다</b> — 인자는 만들 때 한 번 채우면 그만이고,
+        /// 매 프레임 달라지는 <c>instanceCount</c> 는 <see cref="GraphicsBuffer.CopyCount"/> 가
+        /// GPU 안에서 직접 덮어씁니다.
+        ///
+        /// (예전에는 <c>RenderAll</c> 안에서 종마다 배열을 새로 만들었다가, 돌려쓰게 바꿨다가,
+        /// 이제는 프레임당 쓰지 않게 되었습니다. 세 번째가 맞는 답입니다)
         /// </summary>
         private readonly GraphicsBuffer.IndirectDrawIndexedArgs[] argsScratch =
             new GraphicsBuffer.IndirectDrawIndexedArgs[1];
 
+        /// <summary>지금 돌고 있는 것입니다. 둘이 되었는지 알아채려고만 둡니다.</summary>
+        private static GpuGrassRenderer active;
+
         // --- Unity Event Functions ---
+
+        /// <summary>
+        /// 둘이 되었으면 알립니다.
+        ///
+        /// <b>여기는 상태가 이미 인스턴스별인데도 위험합니다.</b> 버퍼와 묶음은 각자 갖지만
+        /// <see cref="IsDrawing"/> 은 <c>static</c> 이라 공유합니다. 그래서 둘이면
+        /// 풀이 <b>두 겹으로 그려지고</b>(각자 간접 드로우를 겁니다), 한쪽이 꺼지는 순간
+        /// 아직 그리고 있는 다른 쪽이 있는데도 신호가 내려가 터레인 디테일이 함께 켜집니다.
+        /// 메모리도 두 배입니다 — 포기 백만 개짜리 버퍼가 두 벌이 됩니다.
+        /// </summary>
+        void Awake()
+        {
+            if (active != null && active != this)
+            {
+                GameLog.Error(GameLog.Channel.World,
+                    "GpuGrassRenderer 가 둘입니다. 풀이 두 겹으로 그려지고 GPU 버퍼도 두 벌이 됩니다. " +
+                    "WorldRuntimeInstaller 를 보세요.", this);
+            }
+
+            active = this;
+        }
 
         /// <summary>
         /// 설정이 켜져 있으면 준비하고, 매 프레임 골라내어 그립니다.
@@ -215,7 +287,7 @@ namespace CarDrive.Systems
 
             if (!ready)
             {
-                Scan(settings);
+                Scan();
                 if (!ready) return;
             }
 
@@ -254,18 +326,22 @@ namespace CarDrive.Systems
         /// <b>에셋으로 굽지 않는 이유가 있습니다.</b> 이 월드는 포기가 백만 단위라
         /// 자리만 담아도 수십 MB 입니다. 디테일맵은 이미 지형 안에 있으므로,
         /// 로드할 때 한 번 훑어 만드는 편이 낫습니다.
+        ///
+        /// <b>밀도는 설정이 아니라 기록에서 옵니다.</b> 여기서 솎아내는 비율은 "지금 얼마나
+        /// 그릴까"가 아니라 <b>"심을 때 얼마를 남겼나"</b>이고, 그것은 이미 벌어진 일이라
+        /// 실행 중에 만질 수 있는 값이 아닙니다. (<see cref="WorldBakeManifest.detailDensity"/>)
         /// </summary>
-        /// <param name="settings">밀도를 읽을 설정</param>
-        private void Scan(CarDriveWorldSettings settings)
+        private void Scan()
         {
             if (unsupported) return;
             if (scanTargets == null && !BeginScan()) return;
 
+            float density = WorldBakeManifest.Instance.detailDensity;
             int budget = ScanBudgetPerFrame;
 
             while (budget > 0 && scanIndex < scanTargets.Length)
             {
-                ScanTerrain(scanTargets[scanIndex], settings.detailDensity);
+                ScanTerrain(scanTargets[scanIndex], density);
                 scanIndex++;
                 budget--;
             }
@@ -312,10 +388,39 @@ namespace CarDrive.Systems
             System.Array.Copy(found, scanTargets, found.Length);
 
             scanIndex = 0;
-            scanned = new Dictionary<int, List<Vector4>>();
-            scannedPrototypes = new Dictionary<int, DetailPrototype>();
+            scanned = new Dictionary<int, ScannedLayer>();
 
             return true;
+        }
+
+        /// <summary>
+        /// 종 하나를 훑을 수 있는지 보고, 쓸 수 있으면 담을 자리를 마련합니다.
+        ///
+        /// <b>한 번만 봅니다.</b> 프로토타입은 지형마다 같으므로 첫 지형에서 정해진 답이
+        /// 나머지 102장에도 그대로 적용됩니다.
+        /// </summary>
+        /// <param name="proto">볼 디테일 프로토타입</param>
+        /// <returns>훑은 것을 담을 자리. 그릴 수 없는 종이면 <c>Positions</c> 가 null 입니다.</returns>
+        private static ScannedLayer CreateLayer(DetailPrototype proto)
+        {
+            ScannedLayer layer = new ScannedLayer();
+
+            if (proto.prototype == null) return layer;
+
+            MeshFilter filter = proto.prototype.GetComponentInChildren<MeshFilter>();
+            MeshRenderer renderer = proto.prototype.GetComponentInChildren<MeshRenderer>();
+
+            if (filter == null || filter.sharedMesh == null) return layer;
+
+            // 재질이 없으면 여기서 접습니다. 예전에는 이 확인이 없어서 재질이 빠진 종이
+            // <c>new Material(null)</c> 로 넘어갔습니다.
+            if (renderer == null || renderer.sharedMaterial == null) return layer;
+
+            layer.Mesh = filter.sharedMesh;
+            layer.Material = renderer.sharedMaterial;
+            layer.Positions = new List<Vector4>(1 << 16);
+
+            return layer;
         }
 
         /// <summary>
@@ -323,7 +428,7 @@ namespace CarDrive.Systems
         /// </summary>
         /// <param name="terrain">훑을 지형</param>
         /// <param name="density">
-        /// 밀도 배율. <c>Terrain.detailObjectDensity</c> 와 같은 값이어야 합니다.
+        /// 심을 때 디테일맵에 남긴 비율입니다. <see cref="WorldBakeManifest.detailDensity"/> 에서 옵니다.
         /// </param>
         private void ScanTerrain(Terrain terrain, float density)
         {
@@ -344,6 +449,9 @@ namespace CarDrive.Systems
             // <b>그릴 때</b> 곱하는 값이라 지도에는 심긴 그대로가 남아 있습니다.
             // 여기서 같은 비율로 솎아내지 않으면 GPU 경로만 1/0.55 = 1.8배 촘촘해지고,
             // 그만큼 비싸집니다. 눈으로는 "왜 켜니까 더 무겁지"로만 보입니다.
+            //
+            // 그 "같은 비율"이 곧 <b>심을 때 쓴 비율</b>이므로, 이 값은 설정이 아니라
+            // <see cref="WorldBakeManifest"/> 가 갖고 있습니다.
             float keep = Mathf.Clamp01(density);
 
             // <b>타일마다 다른 씨앗을 섞습니다.</b> 아래 해시는 격자 좌표만 보는데, 그 좌표는
@@ -353,14 +461,20 @@ namespace CarDrive.Systems
 
             for (int layer = 0; layer < protos.Length; layer++)
             {
-                if (!scannedPrototypes.ContainsKey(layer)) scannedPrototypes[layer] = protos[layer];
-
-                List<Vector4> list;
-                if (!scanned.TryGetValue(layer, out list))
+                ScannedLayer target;
+                if (!scanned.TryGetValue(layer, out target))
                 {
-                    list = new List<Vector4>(1 << 16);
-                    scanned[layer] = list;
+                    target = CreateLayer(protos[layer]);
+                    scanned[layer] = target;
                 }
+
+                // <b>그릴 수 없는 종은 훑지 않습니다.</b> 아래 <c>GetDetailLayer</c> 는 한 번에
+                // res × res 짜리 배열을 새로 잡고(256이면 256KB), 그 뒤로 칸마다 해시와
+                // <c>SampleHeight</c> 를 돌립니다. 그렇게 만든 자리를 FinishScan 이 버리는 것이
+                // 예전 동작이었습니다.
+                if (target.Positions == null) continue;
+
+                List<Vector4> list = target.Positions;
 
                 int[,] map = data.GetDetailLayer(0, 0, res, res, layer);
 
@@ -400,25 +514,19 @@ namespace CarDrive.Systems
         /// </summary>
         private void FinishScan()
         {
-            foreach (KeyValuePair<int, List<Vector4>> entry in scanned)
+            // 쓸 수 있는지는 <see cref="CreateLayer"/> 가 훑기 전에 이미 가려 두었습니다.
+            foreach (KeyValuePair<int, ScannedLayer> entry in scanned)
             {
-                if (entry.Value.Count == 0) continue;
+                ScannedLayer layer = entry.Value;
+                if (layer.Positions == null || layer.Positions.Count == 0) continue;
 
-                DetailPrototype proto = scannedPrototypes[entry.Key];
-                if (proto.prototype == null) continue;
-
-                MeshFilter filter = proto.prototype.GetComponentInChildren<MeshFilter>();
-                MeshRenderer renderer = proto.prototype.GetComponentInChildren<MeshRenderer>();
-                if (filter == null || filter.sharedMesh == null || renderer == null) continue;
-
-                batches.Add(CreateBatch(filter.sharedMesh, renderer.sharedMaterial, entry.Value));
+                batches.Add(CreateBatch(layer.Mesh, layer.Material, layer.Positions));
             }
 
             // 훑는 데 쓴 것은 놓아 줍니다. 백만 개짜리 List 가 그대로 남으면 수십 MB 입니다.
             int scannedTerrains = scanTargets.Length;
             scanTargets = null;
             scanned = null;
-            scannedPrototypes = null;
 
             ready = batches.Count > 0;
 
@@ -470,9 +578,37 @@ namespace CarDrive.Systems
             Bounds bounds = new Bounds(instances[0], Vector3.zero);
             for (int i = 1; i < instances.Count; i++) bounds.Encapsulate(instances[i]);
             bounds.Expand(4f);
-            batch.Bounds = bounds;
 
+            // --- 여기부터는 만든 뒤로 바뀌지 않는 것들입니다. ---
+            //
+            // 예전에는 아래 셋을 <b>매 프레임 종마다</b> 다시 했습니다. 종이 넷이면
+            // 인자 버퍼 업로드 4회, 버퍼 물리기 8회, 크기 범위 대입 4회가 프레임마다 들었습니다.
+            // 전부 같은 값을 다시 쓰는 것이었고, 이 경로의 목적이 <b>포기 수와 무관한
+            // 프레임당 CPU 비용을 없애는 것</b>이라 이런 것이 남아 있으면 앞뒤가 맞지 않습니다.
+
+            // 1. 간접 드로우 인자. 매 프레임 달라지는 것은 instanceCount 하나뿐이고
+            //    그 칸은 CopyCount 가 GPU 안에서 덮어씁니다.
+            argsScratch[0].indexCountPerInstance = batch.Mesh.GetIndexCount(0);
+            argsScratch[0].instanceCount = 0;
+            argsScratch[0].startIndex = batch.Mesh.GetIndexStart(0);
+            argsScratch[0].baseVertexIndex = batch.Mesh.GetBaseVertex(0);
+            argsScratch[0].startInstance = 0;
+            batch.Args.SetData(argsScratch);
+
+            // 2. 재질에 넘길 값들. 버퍼 둘은 이 묶음이 살아 있는 동안 그대로입니다.
             batch.Properties = new MaterialPropertyBlock();
+            batch.Properties.SetBuffer(GrassInstancesId, batch.Instances);
+            batch.Properties.SetBuffer(GrassVisibleId, batch.Visible);
+            batch.Properties.SetVector(ScaleRangeId, ScaleRange);
+
+            // 3. 그리기 설정. 경계도 그림자 설정도 상수입니다.
+            batch.Params = new RenderParams(batch.Material)
+            {
+                worldBounds = bounds,
+                matProps = batch.Properties,
+                shadowCastingMode = ShadowCastingMode.Off,
+                receiveShadows = true
+            };
 
             return batch;
         }
@@ -520,28 +656,12 @@ namespace CarDrive.Systems
                 int groups = Mathf.Max(1, Mathf.CeilToInt(batch.Count / (float)ThreadGroupSize));
                 cullShader.Dispatch(kernel, groups, 1, 1);
 
-                // 인자를 채웁니다. 색인 수는 GPU만 아는 값이라 카운터를 복사해 넣습니다.
-                // 배열은 <b>돌려씁니다.</b> 여기서 새로 잡으면 종마다 매 프레임 쓰레기가 생깁니다.
-                argsScratch[0].indexCountPerInstance = batch.Mesh.GetIndexCount(0);
-                argsScratch[0].instanceCount = 0;
-                argsScratch[0].startIndex = batch.Mesh.GetIndexStart(0);
-                argsScratch[0].baseVertexIndex = batch.Mesh.GetBaseVertex(0);
-                argsScratch[0].startInstance = 0;
-                batch.Args.SetData(argsScratch);
-
+                // <b>보이는 수만 GPU 안에서 갈아 끼웁니다.</b> 인자 버퍼의 나머지 네 칸은
+                // 만들 때 채워 둔 그대로이고, 이 복사는 그중 instanceCount 한 칸만 덮어씁니다.
+                // 재질에 넘길 값과 그리기 설정도 만들 때 한 번 채워 두었습니다.
                 GraphicsBuffer.CopyCount(batch.Visible, batch.Args, sizeof(uint));
 
-                batch.Properties.SetBuffer(GrassInstancesId, batch.Instances);
-                batch.Properties.SetBuffer(GrassVisibleId, batch.Visible);
-                batch.Properties.SetVector(ScaleRangeId, new Vector2(0.85f, 1.25f));
-
-                RenderParams rp = new RenderParams(batch.Material);
-                rp.worldBounds = batch.Bounds;
-                rp.matProps = batch.Properties;
-                rp.shadowCastingMode = ShadowCastingMode.Off;
-                rp.receiveShadows = true;
-
-                Graphics.RenderMeshIndirect(rp, batch.Mesh, batch.Args, 1);
+                Graphics.RenderMeshIndirect(batch.Params, batch.Mesh, batch.Args, 1);
             }
         }
 
@@ -571,7 +691,6 @@ namespace CarDrive.Systems
             // <b>unsupported 는 지우지 않습니다.</b> 기기가 컴퓨트를 못 쓴다는 답은 그대로입니다.
             scanTargets = null;
             scanned = null;
-            scannedPrototypes = null;
             scanIndex = 0;
         }
 
@@ -601,6 +720,7 @@ namespace CarDrive.Systems
         private static void ResetStatics()
         {
             IsDrawing = false;
+            active = null;
         }
     }
 }

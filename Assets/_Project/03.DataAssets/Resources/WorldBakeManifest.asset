@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a7c3f81b2e9d4a5c8f6b0d1e2a3c4b5d, type: 3}
+  m_Name: WorldBakeManifest
+  m_EditorClassIdentifier:
+  detailDensity: 0.55
+  tileSize: 100
+  tileCount: 103
+  layoutSeed: 20260817
+  maxPerCell: 1
+  grassThreshold: 0.4
+  bladesPerTuft: 18

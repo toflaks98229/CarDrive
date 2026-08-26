@@ -11,8 +11,15 @@ namespace CarDrive.Systems
     /// 땅을 밟는 것은 차 한 대와 플레이어, 유령 몇뿐이라 <b>좌표를 그대로 넘기는 편</b>이
     /// 훨씬 싸고, 렌더 타깃도 카메라도 더 필요하지 않습니다.
     ///
-    /// 씬에 무언가를 놓아 둘 필요가 없습니다. 게임이 시작될 때 스스로 생겨납니다.
-    /// 씬에 둔 오브젝트는 언젠가 실수로 지워지지만 이건 그럴 일이 없습니다.
+    /// 씬에 무언가를 놓아 둘 필요가 없습니다. <c>WorldRuntimeInstaller</c> 가 하나만 만들어 붙입니다.
+    ///
+    /// <b>스스로 생겨나지 않습니다.</b> 예전에는 <c>[RuntimeInitializeOnLoadMethod]</c> 로
+    /// 자기를 만들었는데, 그러면 값을 보려고 씬에 하나 얹는 순간 <b>둘이 됩니다.</b>
+    /// 무엇이 존재하는지는 이제 컴포지션 루트 한 곳에서만 정합니다.
+    ///
+    /// <b>상태는 인스턴스가 들고 있습니다.</b> 예전에는 자국 지도까지 static 이라,
+    /// 둘이 되면 한 장을 번갈아 굴리고 먼저 사라지는 쪽이 <b>남의 것을 반납</b>했습니다.
+    /// 지금은 둘이 되어도 각자 자기 지도를 굴리고, <c>Awake</c> 가 그 사실을 알립니다.
     /// </summary>
     [DefaultExecutionOrder(500)]
     public class GrassPushField : MonoBehaviour
@@ -28,10 +35,10 @@ namespace CarDrive.Systems
         // --- Private Member Variables ---
 
         /// <summary>셰이더에 넘길 자리들입니다. xyz가 위치, w가 반경입니다.</summary>
-        private static readonly Vector4[] buffer = new Vector4[MaxPushers];
+        private readonly Vector4[] buffer = new Vector4[MaxPushers];
 
         /// <summary>가까운 것부터 고르기 위해 거리와 함께 담아 두는 임시 목록입니다.</summary>
-        private static readonly List<Entry> sorted = new List<Entry>(MaxPushers * 2);
+        private readonly List<Entry> sorted = new List<Entry>(MaxPushers * 2);
 
         /// <summary>
         /// 가까운 것이 앞에 오도록 하는 비교자입니다.
@@ -43,8 +50,17 @@ namespace CarDrive.Systems
         /// </summary>
         private static readonly System.Comparison<Entry> ByDistance = CompareByDistance;
 
-        /// <summary>지나간 길에 남는 자국을 담아 두는 지도입니다.</summary>
-        private static GrassTrampleMap trample;
+        /// <summary>
+        /// 지나간 길에 남는 자국을 담아 두는 지도입니다.
+        ///
+        /// <b>인스턴스가 들고 있습니다.</b> 예전에는 static 이라, 둘이 되면 한 장을 두 컴포넌트가
+        /// 번갈아 굴리고 <c>OnDestroy</c> 에서 <b>남의 것을 반납</b>했습니다.
+        /// RenderTexture 두 장이 걸린 자리라 그 실수가 조용히 지나가지 않습니다.
+        /// </summary>
+        private GrassTrampleMap trample;
+
+        /// <summary>지금 돌고 있는 것입니다. 둘이 되었는지 알아채려고만 둡니다.</summary>
+        private static GrassPushField active;
 
         private static readonly int PushersId = Shader.PropertyToID("_GrassPushers");
         private static readonly int CountId = Shader.PropertyToID("_GrassPusherCount");
@@ -57,6 +73,21 @@ namespace CarDrive.Systems
         }
 
         // --- Unity Event Functions ---
+
+        /// <summary>
+        /// 둘이 되었으면 알립니다. 자국 지도가 걸린 자리라 조용히 두면 안 됩니다.
+        /// </summary>
+        void Awake()
+        {
+            if (active != null && active != this)
+            {
+                GameLog.Error(GameLog.Channel.World,
+                    "GrassPushField 가 둘입니다. 자국 지도가 한 프레임에 두 번 굴러 " +
+                    "자국이 예상보다 빨리 옅어집니다. WorldRuntimeInstaller 를 보세요.", this);
+            }
+
+            active = this;
+        }
 
         /// <summary>
         /// 움직임이 모두 끝난 뒤에 자리를 넘깁니다.
@@ -85,12 +116,8 @@ namespace CarDrive.Systems
         /// 지금 있는 것들 중 <b>카메라에 가까운 것부터</b> 골라 셰이더에 넘깁니다.
         ///
         /// 멀리 있는 것은 어차피 풀이 눕는 게 보이지 않고, 넘길 수 있는 자리는 한정되어 있습니다.
-        ///
-        /// 밖에서도 부를 수 있게 열어 두었습니다. 편집 중에는 이 컴포넌트가 돌지 않아
-        /// 풀이 눕는 모습을 확인할 수 없는데, 확인 도구가 <b>이 코드를 그대로</b> 부르면
-        /// 게임에서 도는 것과 같은 결과를 볼 수 있습니다.
         /// </summary>
-        public static void UploadNow()
+        private void UploadNow()
         {
             IReadOnlyList<GrassPusher> pushers = GrassPusher.All;
 
@@ -164,27 +191,13 @@ namespace CarDrive.Systems
         /// 차체처럼 <b>자국을 남기면 안 되는 것</b>은 앞쪽만 타고, 바퀴처럼 남겨야 하는 것은
         /// 양쪽을 다 탑니다. 차체까지 자국을 남기면 차 폭만큼 넓은 띠가 생겨
         /// 바퀴 자국이 아니라 불도저가 지나간 자리처럼 보입니다.
-        ///
-        /// 밖에서도 부를 수 있게 열어 두었습니다. 확인 도구가 이 코드를 그대로 부릅니다.
         /// </summary>
         /// <param name="deltaTime">지난 프레임에서 흐른 시간(초)</param>
-        public static void StepMapNow(float deltaTime)
-        {
-            StepMapNow(deltaTime, GameContext.MainCameraPosition);
-        }
-
-        /// <summary>
-        /// 지도가 따라갈 자리를 직접 정해 한 장 갱신합니다.
-        ///
-        /// 편집 중에는 Camera.main 이 없을 수 있어, 확인 도구가 자리를 직접 넘깁니다.
-        /// </summary>
-        /// <param name="deltaTime">지난 프레임에서 흐른 시간(초)</param>
-        /// <param name="eye">지도가 덮을 땅의 한가운데</param>
-        public static void StepMapNow(float deltaTime, Vector3 eye)
+        private void StepMapNow(float deltaTime)
         {
             if (trample == null) trample = new GrassTrampleMap();
 
-            trample.Step(GrassPusher.All, eye, deltaTime);
+            trample.Step(GrassPusher.All, GameContext.MainCameraPosition, deltaTime);
         }
 
         /// <summary>가까운 것이 앞에 오도록 견줍니다.</summary>
