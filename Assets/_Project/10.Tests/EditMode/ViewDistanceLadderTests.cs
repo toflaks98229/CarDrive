@@ -298,17 +298,23 @@ namespace CarDrive.Tests
         }
 
         /// <summary>
-        /// 안개는 <b>어떤 경우에도</b> 시야 거리를 덮을 만큼은 짙어야 합니다.
+        /// 안개는 <b>어떤 경우에도</b> 맑은 날의 바닥값보다 옅어지지 않아야 합니다.
         /// 날씨가 더 옅게 요청해도 그 요청이 이기면 지형이 끝나는 자리가 그대로 보입니다.
+        ///
+        /// <b>왜 숫자를 직접 적지 않는가.</b> 예전에는 <c>짙기 × 시야 &gt;= 1.7</c> 로 적어 두었는데,
+        /// 그 1.7 은 <c>FogReachFactor</c> 상수를 손으로 베낀 값이라 상수를 조정하는 순간
+        /// <b>의도는 그대로인데 테스트만 깨졌습니다.</b> 실제로 그렇게 한 번 깨졌습니다.
+        /// 이 테스트가 지키려던 것은 특정 숫자가 아니라 "날씨의 옅은 요청이 바닥을 밀어내지 못한다"
+        /// 는 규칙이므로, 맑은 날과 비교하는 쪽으로 바꿉니다. 상수를 바꿔도 규칙은 계속 지켜집니다.
         /// </summary>
         [Test]
-        public void 날씨가_옅게_요청해도_안개가_시야를_덮는다()
+        public void 날씨가_옅게_요청해도_안개가_바닥값을_지킨다()
         {
-            ViewDistances.Ladder l = Build(1f, weatherFog: 0.0001f);
+            ViewDistances.Ladder clear = Build(1f);
+            ViewDistances.Ladder thin = Build(1f, weatherFog: 0.0001f);
 
-            // 시야 거리에서 약 95% 를 덮으려면 (거리 × 짙기) 가 1.73 이어야 합니다.
-            Assert.GreaterOrEqual(l.FogDensity * l.View, 1.7f,
-                "날씨의 옅은 안개 요청이 시야를 덮는 최소 짙기를 밀어냈습니다.");
+            Assert.AreEqual(clear.FogDensity, thin.FogDensity, 1e-6f,
+                "날씨의 옅은 안개 요청이 맑은 날의 최소 짙기를 밀어냈습니다.");
         }
 
         /// <summary>

@@ -39,8 +39,13 @@ namespace CarDrive.Systems
         ///
         /// 가려짐은 1 - exp(-(거리 × 짙기)²) 이고, (거리 × 짙기)가 1.73 이면 약 95% 입니다.
         /// 100% 를 기다리면 짙기가 지나치게 올라가 가까운 곳까지 뿌예집니다.
+        ///
+        /// <b>1.73 에서 1.5 로 낮췄습니다.</b> 시야 끝에서 89% 를 덮어 그리는 거리를 가리는 일은
+        /// 그대로 하면서, 중간 거리의 뿌연 기를 덜어 냅니다. 1.73 일 때는 100m 앞 나무가
+        /// 이미 안개색에 씻겨 숲이 평평한 판처럼 보였습니다. 시야 거리와 나무 수는 그대로라
+        /// 그리기 비용은 변하지 않습니다 — 짙기 값만 달라집니다.
         /// </summary>
-        private const float FogReachFactor = 1.73f;
+        private const float FogReachFactor = 1.5f;
 
         /// <summary>나무 디더가 <b>시작</b>되는 지점입니다. 시야 거리에 대한 비율입니다.</summary>
         private const float FadeStartRatio = 0.70f;

@@ -8,13 +8,17 @@ namespace CarDrive.Systems
     /// 하늘과 주변광을 시간·날씨에 맞춰 몰아 줍니다.
     ///
     /// <see cref="TimeSystem"/>은 태양을 돌리고 밝기(DaylightFactor)를 계산하지만,
-    /// 그 값을 <b>하늘에 반영하는 곳이 없었습니다.</b> 그래서 기본 프로시저럴 스카이박스가
-    /// 그대로 보였고 밤에도 별이 없었습니다.
+    /// 그 값을 <b>하늘에 반영하는 곳이 없었습니다.</b> 그래서 하늘이 시각과 따로 놀았습니다.
     ///
-    /// 이 컴포넌트가 하는 일은 셋입니다.
-    ///  1. 하늘 머티리얼에 낮 정도·해 방향·구름 가림을 넣습니다. (CarDrive/Sky 셰이더)
-    ///  2. 주변광을 하늘색에서 뽑아 밤에는 어둡고 낮에는 밝게 맞춥니다.
-    ///  3. 해의 색과 세기를 시간대에 맞춰 바꿉니다. 밤에는 달빛으로 넘깁니다.
+    /// 이 컴포넌트가 하는 일은 넷입니다.
+    ///  1. 밤이 되면 별이 찍힌 하늘로 갈아 끼우고, 노출로 별을 끌어올립니다.
+    ///  2. 하늘의 노출과 색을 시각에 맞춥니다. 절차적 하늘이면 낮 정도·해 방향도 넣습니다.
+    ///  3. 주변광을 하늘색에서 뽑아 밤에는 어둡고 낮에는 밝게 맞춥니다.
+    ///  4. 해의 색과 세기를 시간대에 맞춰 바꿉니다. 밤에는 달빛으로 넘깁니다.
+    ///
+    /// <b>사진 하늘과 절차적 하늘을 모두 받습니다.</b> 어느 쪽인지는 셰이더 이름이 아니라
+    /// 프로퍼티 유무로 가립니다 — <c>_Exposure</c>가 있으면 사진, <c>_DayFactor</c>가 있으면
+    /// 절차적입니다. 그래서 하늘을 갈아 끼워도 이 코드는 바뀌지 않습니다.
     ///
     /// 밤에 태양광을 완전히 끄면 지형이 새까매져 아무것도 보이지 않습니다.
     /// 그래서 <b>밤에는 방향을 유지한 채 차갑고 약한 달빛으로 바꿉니다.</b>
@@ -24,9 +28,9 @@ namespace CarDrive.Systems
     {
         // --- Public Member Variables ---
 
-        /// <summary>하늘에 쓸 머티리얼입니다. 비워두면 RenderSettings의 스카이박스를 씁니다.</summary>
+        /// <summary>낮에 쓸 하늘 머티리얼입니다. 비워두면 RenderSettings의 스카이박스를 씁니다.</summary>
         [Header("하늘")]
-        [Tooltip("CarDrive/Sky 셰이더를 쓰는 머티리얼. 비워두면 RenderSettings의 스카이박스를 씁니다.")]
+        [Tooltip("낮에 쓸 하늘 머티리얼. 비워두면 RenderSettings의 스카이박스를 씁니다.")]
         public Material skyMaterial;
 
         /// <summary>해 방향을 읽어 올 조명입니다. 비워두면 TimeSystem의 태양광을 씁니다.</summary>
@@ -49,6 +53,42 @@ namespace CarDrive.Systems
         /// <summary>한밤에 하늘에 씌울 색입니다. 푸른 기를 남기면 달빛 아래처럼 보입니다.</summary>
         [Tooltip("한밤에 하늘에 씌울 색. 푸른 기를 남기면 달빛 아래처럼 보입니다.")]
         public Color nightSkyTint = new Color(0.30f, 0.38f, 0.62f);
+
+        /// <summary>
+        /// 밤에 갈아 끼울 하늘입니다. 비워 두면 낮 하늘을 어둡게만 하고 별은 나오지 않습니다.
+        ///
+        /// <b>왜 하늘을 통째로 바꾸는가.</b> 낮 사진 한 장을 어둡게 해 봐야 별은 생기지 않습니다.
+        /// 사진에 없는 것은 노출을 어떻게 만져도 나오지 않기 때문입니다. 그래서 별이 찍힌
+        /// 밤 사진을 따로 두고 갈아 끼웁니다.
+        /// </summary>
+        [Tooltip("밤에 쓸 하늘 머티리얼. 비워 두면 낮 하늘을 어둡게만 합니다(별 없음).")]
+        public Material nightSkyMaterial;
+
+        /// <summary>
+        /// 한밤의 밤 하늘 노출입니다. <b>별을 끌어올리는 손잡이가 이것입니다.</b>
+        ///
+        /// 밤 HDRI 에는 은하수와 별이 밝기 값으로 이미 들어 있습니다. 노출을 올리면
+        /// 없던 것을 그리는 게 아니라 있는 것이 드러납니다.
+        ///
+        /// <b>값이 아주 작습니다.</b> 낮 하늘에 쓰는 1.1 같은 값을 주면 사진 속 달이
+        /// 통째로 하얗게 번져 별이 오히려 묻힙니다. 노출을 훑어 재 보니 0.04~0.10 이
+        /// 별이 살아 있는 구간이었고, 0.25 부터는 바탕이 떠올라 못 씁니다.
+        /// 다른 밤 사진으로 바꾸면 적정값도 달라집니다 —
+        /// 그때는 <c>NightSkyExposureSweep.Run</c> 을 돌려 다시 재십시오.
+        /// </summary>
+        [Tooltip("한밤의 밤 하늘 노출. 0.04~0.10 권장. 크게 주면 달빛에 별이 묻힙니다.")]
+        public float nightSkyExposure = 0.04f;
+
+        /// <summary>
+        /// 이 밝기 아래에서 밤 하늘로 갈아탑니다.
+        ///
+        /// <b>왜 팝이 안 보이는가.</b> 낮 곡선과 밤 곡선이 이 지점에서 <b>둘 다 노출 0</b>으로
+        /// 만나도록 짜여 있습니다. 갈아 끼우는 순간 양쪽 화면이 똑같이 캄캄하므로
+        /// 바뀌는 것이 보이지 않습니다.
+        /// </summary>
+        [Tooltip("이 밝기 아래에서 밤 하늘로 갈아탑니다. 양쪽 노출이 여기서 0으로 만나 팝이 없습니다.")]
+        [Range(0.01f, 0.3f)]
+        public float swapDaylight = 0.05f;
 
         /// <summary>주변광(Ambient)을 시간에 맞춰 조절할지 여부입니다.</summary>
         [Header("주변광")]
@@ -110,8 +150,14 @@ namespace CarDrive.Systems
 
         // --- Private Member Variables ---
 
-        /// <summary>지금 조작 중인 하늘 머티리얼입니다.</summary>
+        /// <summary>지금 조작 중인 하늘 머티리얼입니다. 재생 중에는 에셋이 아니라 복제본입니다.</summary>
         private Material activeSky;
+
+        /// <summary><see cref="activeSky"/>를 뜬 원본 에셋입니다. 원본이 바뀔 때만 다시 복제합니다.</summary>
+        private Material skySource;
+
+        /// <summary>재생을 시작할 때의 스카이박스입니다. 끝날 때 이것으로 되돌립니다.</summary>
+        private Material skyboxBeforePlay;
 
         /// <summary>
         /// 시각을 묻는 시계입니다. 주입되지 않으면 대낮으로 봅니다.
@@ -174,6 +220,24 @@ namespace CarDrive.Systems
         }
 
         /// <summary>
+        /// 복제해 둔 하늘을 버리고 스카이박스를 재생 전 상태로 되돌립니다.
+        ///
+        /// <b>되돌리지 않으면</b> 재생이 끝난 뒤 <c>RenderSettings.skybox</c> 가 파괴된 복제본을
+        /// 가리켜 씬이 더러워지고, 그 상태로 저장하면 씬 파일의 스카이박스 참조가 깨집니다.
+        /// </summary>
+        void OnDisable()
+        {
+            if (!Application.isPlaying) return;
+
+            if (skyboxBeforePlay != null) RenderSettings.skybox = skyboxBeforePlay;
+
+            ReleaseClone();
+
+            skySource = null;
+            skyboxBeforePlay = null;
+        }
+
+        /// <summary>
         /// 매 프레임 하늘·주변광·해를 지금 시각에 맞춥니다.
         /// 편집 중에도 돌게 두어 인스펙터에서 값을 바꾸면 바로 보이게 합니다.
         /// </summary>
@@ -196,10 +260,60 @@ namespace CarDrive.Systems
         /// </summary>
         private void ResolveReferences()
         {
-            activeSky = skyMaterial != null ? skyMaterial : RenderSettings.skybox;
+            UseSky(skyMaterial != null ? skyMaterial : RenderSettings.skybox);
 
             if (sun == null && sunSource != null) sun = sunSource.Sun;
             if (sun == null) sun = RenderSettings.sun;
+        }
+
+        /// <summary>
+        /// 조작할 하늘을 정합니다. 원본이 그대로면 아무 일도 하지 않습니다.
+        ///
+        /// <b>재생 중에는 에셋이 아니라 복제본에 씁니다.</b> 에셋에 직접 쓰면 재생을 끝내도
+        /// 값이 되돌아가지 않아 <c>.mat</c> 이 밤값으로 굳습니다. 실제로 그렇게 굳은 적이
+        /// 있습니다 — 절차 하늘 재질에 한밤의 <c>_DayFactor</c> 가 저장돼 git 에 잡혔습니다.
+        ///
+        /// 편집 중에는 복제하지 않습니다. 그래야 인스펙터에서 값을 만지면 바로 보입니다.
+        /// 대신 편집 중에는 시계가 <see cref="NullGameClock"/>(한낮)이라 낮값만 쓰이므로
+        /// 밤값이 에셋에 남지 않습니다.
+        /// </summary>
+        /// <param name="source">쓰려는 하늘 머티리얼 에셋</param>
+        private void UseSky(Material source)
+        {
+            if (source == null)
+            {
+                activeSky = null;
+                return;
+            }
+
+            if (!Application.isPlaying)
+            {
+                skySource = source;
+                activeSky = source;
+                return;
+            }
+
+            if (activeSky != null && skySource == source) return;
+
+            if (skyboxBeforePlay == null) skyboxBeforePlay = RenderSettings.skybox;
+
+            ReleaseClone();
+
+            skySource = source;
+            activeSky = new Material(source) { hideFlags = HideFlags.HideAndDontSave };
+            RenderSettings.skybox = activeSky;
+        }
+
+        /// <summary>복제해 둔 하늘을 버립니다.</summary>
+        private void ReleaseClone()
+        {
+            if (activeSky == null) return;
+            if (activeSky.hideFlags != HideFlags.HideAndDontSave) return;
+
+            if (Application.isPlaying) Destroy(activeSky);
+            else DestroyImmediate(activeSky);
+
+            activeSky = null;
         }
 
         /// <summary>
@@ -208,10 +322,13 @@ namespace CarDrive.Systems
         /// <param name="daylight">0이면 한밤, 1이면 한낮</param>
         private void ApplySky(float daylight)
         {
+            // 밤이면 별이 찍힌 하늘로, 낮이면 원래 하늘로 갈아 끼웁니다.
+            // 갈아 끼우는 것은 원본이 바뀔 때뿐이라 매 프레임 비용은 없습니다.
+            UseSky(SelectSkySource(daylight));
+
             if (activeSky == null) return;
 
-            // 사진 기반 하늘이면 노출과 색으로 밤을 만듭니다.
-            // 절차적 하늘과 달리 그림이 정해져 있으므로 <b>어둡게 하는 것 말고는</b> 방법이 없습니다.
+            // 사진 기반 하늘이면 노출과 색으로 밤낮을 만듭니다.
             ApplyPhotoSky(daylight);
 
             if (!activeSky.HasProperty(DayFactorId)) return;
@@ -231,24 +348,77 @@ namespace CarDrive.Systems
         }
 
         /// <summary>
-        /// 사진 기반 하늘(Skybox/Cubemap · Panoramic)을 시각에 맞춰 어둡게 합니다.
+        /// 지금 시각에 쓸 하늘 <b>에셋</b>을 고릅니다.
         ///
-        /// <b>이런 하늘은 낮 사진 한 장입니다.</b> 그냥 두면 한밤중에도 파랗게 빛나서
-        /// 밤길 주행이 성립하지 않습니다. 노출을 낮추고 푸른 색을 씌워 밤을 만듭니다.
+        /// 밤 하늘이 지정돼 있고 충분히 어두우면 밤 하늘을, 아니면 낮 하늘을 돌려줍니다.
+        /// </summary>
+        /// <param name="daylight">0이면 한밤, 1이면 한낮</param>
+        /// <returns>쓸 하늘 머티리얼 에셋</returns>
+        private Material SelectSkySource(float daylight)
+        {
+            Material day = skyMaterial != null ? skyMaterial : skyboxBeforePlay;
+            if (day == null) day = skySource != null ? skySource : RenderSettings.skybox;
+
+            if (nightSkyMaterial != null && daylight < swapDaylight) return nightSkyMaterial;
+
+            return day;
+        }
+
+        /// <summary>
+        /// 사진 기반 하늘(Skybox/Cubemap · Panoramic)의 노출과 색을 시각에 맞춥니다.
         ///
-        /// 별은 사진에 없으므로 나오지 않습니다. 별이 필요하면 절차적 하늘
-        /// (CarDrive/Sky · CarDrive/Toon Sky)로 돌아가야 합니다.
+        /// <b>낮과 밤이 서로 다른 사진입니다.</b> 낮 사진을 어둡게 해 봐야 별은 생기지 않습니다.
+        /// 사진에 없는 것은 노출로 꺼낼 수 없기 때문입니다. 그래서 밤에는
+        /// <see cref="nightSkyMaterial"/>로 갈아 끼우고, 거기 이미 밝기 값으로 들어 있는
+        /// 은하수와 별을 <see cref="nightSkyExposure"/>로 끌어올립니다.
+        ///
+        /// 두 곡선은 <see cref="swapDaylight"/>에서 <b>둘 다 노출 0</b>으로 만납니다.
+        /// 그래서 갈아 끼우는 프레임에 양쪽이 똑같이 캄캄해 팝이 보이지 않습니다.
         /// </summary>
         /// <param name="daylight">0이면 한밤, 1이면 한낮</param>
         private void ApplyPhotoSky(float daylight)
         {
             if (!activeSky.HasProperty(ExposureId)) return;
 
-            // 해가 지평선 근처일 때 급격히 어두워지는 편이 자연스럽습니다.
-            // 선형으로 낮추면 초저녁 내내 어중간하게 밝습니다.
-            float curve = daylight * daylight;
+            bool night = nightSkyMaterial != null && daylight < swapDaylight;
 
-            activeSky.SetFloat(ExposureId, Mathf.Lerp(nightExposure, dayExposure, curve));
+            if (night)
+            {
+                // 깊어질수록 별이 밝아집니다. 교체 지점에서 0 이라 낮 곡선과 이어집니다.
+                float depth = 1f - Mathf.InverseLerp(0f, swapDaylight, daylight);
+                float exposure = Mathf.Lerp(0f, nightSkyExposure, depth);
+
+                // 구름이 짙으면 별을 지웁니다. 절차 하늘의 _StarFade 가 하던 일을
+                // 사진 하늘에서는 노출을 깎아 잇습니다.
+                if (cloudsHideStars)
+                {
+                    float clouds = Mathf.Clamp01(skyConditions.GetCloudCover(0f));
+                    exposure *= Mathf.Lerp(1f, 0.15f, clouds);
+                }
+
+                activeSky.SetFloat(ExposureId, exposure);
+
+                // ⚠ 밤 하늘에는 푸른 색을 씌우지 않습니다. 씌우면 별빛까지 물들어 탁해집니다.
+                // 밤 분위기는 주변광과 안개색이 이미 만들고 있습니다.
+                if (activeSky.HasProperty(TintId)) activeSky.SetColor(TintId, Color.white);
+
+                return;
+            }
+
+            // 해가 낮을수록 어두워지되, <b>제곱은 너무 가팔랐습니다.</b>
+            // 제곱을 쓰면 해가 아직 떠 있는 노을 무렵에 하늘만 새까맣게 죽어서,
+            // 들판은 노을빛으로 물들었는데 그 위가 한밤인 이상한 그림이 나왔습니다.
+            // 0.75 제곱은 한낮을 그대로 두면서 저녁 하늘을 살려 둡니다.
+            float dayDepth = nightSkyMaterial != null
+                ? Mathf.InverseLerp(swapDaylight, 1f, daylight)
+                : daylight;
+            float curve = Mathf.Pow(dayDepth, 0.75f);
+
+            // 밤 하늘이 있으면 교체 지점에서 0 으로 만나야 팝이 없습니다.
+            // 없으면 예전처럼 nightExposure 까지만 어두워집니다.
+            float floorExposure = nightSkyMaterial != null ? 0f : nightExposure;
+
+            activeSky.SetFloat(ExposureId, Mathf.Lerp(floorExposure, dayExposure, curve));
 
             if (!activeSky.HasProperty(TintId)) return;
 
