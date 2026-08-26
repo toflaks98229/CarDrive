@@ -40,6 +40,15 @@ namespace CarDrive.Systems
 
         // --- Private Member Variables ---
 
+        /// <summary>
+        /// 나무 디더가 <b>시작</b>되는 거리를 담은 셰이더 전역의 이름입니다.
+        /// <see cref="ViewRangeScaler"/> 가 쓰는 것과 같은 이름이어야 합니다.
+        /// </summary>
+        private static readonly int FadeStartId = Shader.PropertyToID("_CarDriveFadeStart");
+
+        /// <summary>나무 디더가 <b>끝나는</b> 거리를 담은 셰이더 전역의 이름입니다.</summary>
+        private static readonly int FadeEndId = Shader.PropertyToID("_CarDriveFadeEnd");
+
         /// <summary>본문 글자 모양입니다. GUI.skin 은 OnGUI 안에서만 읽을 수 있어 늦게 만듭니다.</summary>
         private GUIStyle labelStyle;
 
@@ -73,7 +82,7 @@ namespace CarDrive.Systems
             float x = margin.x;
             float y = margin.y;
 
-            GUI.Box(new Rect(x - 8f, y - 8f, width + 16f, line * 16f + 16f), GUIContent.none);
+            GUI.Box(new Rect(x - 8f, y - 8f, width + 16f, line * 22f + 16f), GUIContent.none);
 
             GUI.Label(new Rect(x, y, width, line),
                 "월드 계측  (" + toggleKey + " 로 표시 전환)", titleStyle);
@@ -146,6 +155,12 @@ namespace CarDrive.Systems
             y = Row(x, y, width, line, "지면 enabled", WorldProfiler.Counter.SurfaceToggled, 5f);
             y = Row(x, y, width, line, "나무·풀 접기", WorldProfiler.Counter.FoliageToggled, 200f);
             y = Row(x, y, width, line, "풀 거리 재대입", WorldProfiler.Counter.DetailDistanceWritten, 20f);
+
+            // <b>평소에는 0 이어야 합니다.</b> 이 값이 오르는 것은 날씨가 시야를 움직이는
+            // 동안(최소 15초)뿐입니다. 그때도 여유(TreeCutSlack) 덕분에 열 번 남짓이라,
+            // 지형 103장 × 몇 번이면 초당 200 언저리가 상한입니다.
+            // 계속 세 자리로 붙어 있으면 여유가 너무 좁다는 뜻입니다.
+            y = Row(x, y, width, line, "나무 거리 재대입", WorldProfiler.Counter.TreeDistanceWritten, 250f);
             y = Row(x, y, width, line, "지형 목록 재탐색", WorldProfiler.Counter.TerrainScanned, 2f);
 
             y += line * 1.5f;
@@ -175,6 +190,46 @@ namespace CarDrive.Systems
             GUI.Label(new Rect(x, y, width, line),
                 GpuGrassRenderer.IsDrawing ? "그리는 쪽: GPU 간접 드로우" : "그리는 쪽: 터레인 디테일",
                 labelStyle);
+            y += line * 1.4f;
+
+            // --- 지금의 나무 거리 ---
+            //
+            // <b>여기는 값이 세 군데에 있고, 셋이 어긋나면 디더가 안 보입니다.</b>
+            // 사다리가 낸 값 / 지형에 실제로 적어 넣은 값 / 셰이더가 실제로 받은 전역.
+            // 풀 쪽은 이미 위에 나란히 놓여 있는데 나무 쪽은 볼 창구가 없었습니다.
+            //
+            // 셋을 나란히 놓으면 어디가 끊겼는지 한 줄로 드러납니다.
+            //   전역이 0        → ViewRangeScaler 가 돌지 않는다
+            //   지형 ≠ 사다리   → 재대입 조건이 막고 있다
+            //   셋 다 맞는데 안 보임 → 재질 키워드(_DITHER_FADE)나 셰이더 쪽 문제
+            GUI.Label(new Rect(x, y, width, line), "── 지금의 나무 거리 ──", labelStyle);
+            y += line;
+
+            GUI.Label(new Rect(x, y, width, line),
+                "사다리   컷 " + ladder.TreeCut.ToString("0") + "m   " +
+                "디더 " + ladder.FadeStart.ToString("0") + "~" + ladder.FadeEnd.ToString("0") + "m",
+                ladder.FadeEnd < ladder.TreeCut ? labelStyle : warnStyle);
+            y += line;
+
+            // 지형이 실제로 들고 있는 값입니다. 사다리와 다르면 재대입이 막힌 것입니다.
+            float applied = FirstTreeDistance();
+
+            GUI.Label(new Rect(x, y, width, line),
+                applied < 0f
+                    ? "지형     (지형을 찾지 못했습니다)"
+                    : "지형     treeDistance " + applied.ToString("0") + "m",
+                applied >= ladder.FadeEnd ? labelStyle : warnStyle);
+            y += line;
+
+            // <b>셰이더가 실제로 받은 값입니다.</b> 0 이면 셰이더는 재질에 구워진
+            // 창(240~330m)으로 물러서고, 그 창은 지금 그리는 거리를 모릅니다.
+            float globalEnd = Shader.GetGlobalFloat(FadeEndId);
+
+            GUI.Label(new Rect(x, y, width, line),
+                globalEnd > 0.001f
+                    ? "셰이더   전역 " + Shader.GetGlobalFloat(FadeStartId).ToString("0") + "~" + globalEnd.ToString("0") + "m"
+                    : "셰이더   전역이 없습니다 — 재질 값으로 물러섭니다",
+                globalEnd > 0.001f ? labelStyle : warnStyle);
             y += line * 1.4f;
 
             if (GUI.Button(new Rect(x, y, 110f, 22f), "숫자 초기화"))
@@ -209,6 +264,25 @@ namespace CarDrive.Systems
                 perSecond > warnAbove ? warnStyle : labelStyle);
 
             return y + line;
+        }
+
+        /// <summary>
+        /// 지형이 실제로 들고 있는 나무 거리를 하나 읽어 옵니다.
+        ///
+        /// <b>한 장만 봅니다.</b> 대입은 103장에 한 번에 하므로 전부 같은 값이고,
+        /// 다르다면 그것 자체가 대입이 도중에 끊겼다는 뜻이라 한 장으로도 드러납니다.
+        /// </summary>
+        /// <returns>첫 지형의 <c>treeDistance</c>. 지형이 없으면 -1</returns>
+        private static float FirstTreeDistance()
+        {
+            Terrain[] all = TerrainRegistry.All;
+
+            for (int i = 0; i < all.Length; i++)
+            {
+                if (all[i] != null) return all[i].treeDistance;
+            }
+
+            return -1f;
         }
 
         /// <summary>

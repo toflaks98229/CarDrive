@@ -16,11 +16,12 @@ Material:
   - _DITHER_FADE
   m_InvalidKeywords: []
   m_LightmapFlags: 4
-  m_EnableInstancingVariants: 0
+  m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: 2450
   stringTagMap: {}
-  disabledShaderPasses: []
+  disabledShaderPasses:
+  - SRPDEFAULTUNLIT
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
@@ -39,8 +40,8 @@ Material:
     - _Ambient: 0.85
     - _Cull: 2
     - _Cutoff: 0.5
-    - _FadeEnd: 330
-    - _FadeStart: 240
+    - _FadeEnd: 120
+    - _FadeStart: 80
     - _HeightBottom: 0
     - _HeightStrength: 0
     - _HeightTop: 20
@@ -54,6 +55,7 @@ Material:
     - _SpecularStrength: 0
     - _Steps: 0
     - _UseDitherFade: 1
+    - _UseHatching: 0
     - _UseRamp: 0
     m_Colors:
     - _BaseColor: {r: 0.9063317, g: 0.9063317, b: 0.9063317, a: 1}

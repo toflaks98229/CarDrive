@@ -31,6 +31,11 @@ namespace CarDrive.Systems
     /// 자기를 만들었는데, 그러면 씬에 하나 얹어 둔 경우 <b>둘이 되어</b> 예산이 두 배가 됩니다.
     /// 이제 <c>WorldRuntimeInstaller</c>가 하나만 만들어 붙입니다.
     /// (<see cref="TerrainChunkCuller"/> 와 같은 방식입니다)
+    ///
+    /// <b>단계와 대기열은 인스턴스가 들고 있습니다.</b> 예전에는 <c>static</c> 이라 둘이 되면
+    /// 서로의 <c>pending</c> 을 덮어쓰고 <b>다른 거리를 번갈아 대입</b>할 수 있었습니다.
+    /// 밖에서 꽂아 주는 <see cref="SpeedSource"/> 만 정적으로 남습니다 — 그것은 상태가 아니라
+    /// <b>Composition 이 정하는 배선</b>이기 때문입니다.
     /// </summary>
     [DefaultExecutionOrder(-99)]
     public class TerrainDetailLod : MonoBehaviour
@@ -53,22 +58,22 @@ namespace CarDrive.Systems
         // --- Private Member Variables ---
 
         /// <summary>지금 적용 중인 단계입니다. 0이 가장 멀리, 2가 가장 가깝게 그립니다.</summary>
-        private static int currentLevel;
+        private int currentLevel;
 
         /// <summary>다음 판정 시각입니다.</summary>
-        private static float nextCheck;
+        private float nextCheck;
 
         /// <summary>아직 새 거리를 대입하지 못한 지형들입니다. 매 프레임 예산만큼 덜어냅니다.</summary>
-        private static readonly List<Terrain> pending = new List<Terrain>(128);
+        private readonly List<Terrain> pending = new List<Terrain>(128);
 
         /// <summary>대기 중인 지형에 대입할 거리입니다.</summary>
-        private static float pendingDistance;
+        private float pendingDistance;
 
         /// <summary>마지막으로 반영한 전체 거리 배율입니다. 이것이 바뀌면 단계가 그대로여도 다시 대입합니다.</summary>
-        private static float appliedRangeScale = -1f;
+        private float appliedRangeScale = -1f;
 
         /// <summary>이번 단계가 <b>목표로 하는</b> 속도 배율입니다.</summary>
-        private static float targetSpeedScale = 1f;
+        private float targetSpeedScale = 1f;
 
         /// <summary>
         /// <see cref="ViewDistances"/> 에 <b>실제로 알린</b> 속도 배율입니다.
@@ -77,7 +82,7 @@ namespace CarDrive.Systems
         /// 옛 거리와 새 거리를 안은 타일이 섞여 있고, 그때 알려야 하는 것은
         /// <b>둘 중 짧은 쪽</b>이기 때문입니다.
         /// </summary>
-        private static float reportedSpeedScale = 1f;
+        private float reportedSpeedScale = 1f;
 
         /// <summary>
         /// 마지막으로 반영한 <see cref="GpuGrassRenderer.IsDrawing"/> 값입니다.
@@ -85,9 +90,27 @@ namespace CarDrive.Systems
         /// GPU 풀이 그리기 시작하거나 물러나는 것은 단계·배율과 무관하게 대입을 다시 해야
         /// 하는 사건이라, 따로 기억해 두고 견줍니다.
         /// </summary>
-        private static bool appliedHandOff;
+        private bool appliedHandOff;
+
+        /// <summary>지금 돌고 있는 것입니다. 둘이 되었는지 알아채려고만 둡니다.</summary>
+        private static TerrainDetailLod active;
 
         // --- Unity Event Functions ---
+
+        /// <summary>
+        /// 둘이 되었으면 알립니다. 예산제가 두 배로 헐거워지는 자리라 조용히 두면 안 됩니다.
+        /// </summary>
+        void Awake()
+        {
+            if (active != null && active != this)
+            {
+                GameLog.Error(GameLog.Channel.World,
+                    "TerrainDetailLod 가 둘입니다. 프레임당 대입 예산이 두 배가 되고 " +
+                    "서로 다른 거리를 번갈아 대입할 수 있습니다. WorldRuntimeInstaller 를 보세요.", this);
+            }
+
+            active = this;
+        }
 
         /// <summary>주기가 되면 단계를 다시 정하고, 매 프레임 대입을 조금씩 진행합니다.</summary>
         void Update()
@@ -140,7 +163,7 @@ namespace CarDrive.Systems
         /// <param name="settings">임계 속도와 간격을 읽을 설정</param>
         /// <param name="level">지금 단계</param>
         /// <returns>이번에 적용할 단계 (0 = 원래 거리, 2 = 가장 가깝게)</returns>
-        private static int DecideLevel(CarDriveWorldSettings settings, int level)
+        private int DecideLevel(CarDriveWorldSettings settings, int level)
         {
             float speed = CurrentSpeed();
             float gap = Mathf.Max(0f, settings.speedLodHysteresisKmh);
@@ -176,7 +199,7 @@ namespace CarDrive.Systems
         /// </summary>
         /// <param name="settings">기준 거리와 배율을 읽을 설정</param>
         /// <param name="level">적용할 단계</param>
-        private static void Retarget(CarDriveWorldSettings settings, int level)
+        private void Retarget(CarDriveWorldSettings settings, int level)
         {
             currentLevel = level;
 
@@ -253,7 +276,7 @@ namespace CarDrive.Systems
         /// 나눠 대입하면 몇 프레임에 걸쳐 서서히 바뀌어 전환도 덜 보입니다.
         /// </summary>
         /// <param name="budget">이번 프레임에 대입할 최대 수</param>
-        private static void DrainPending(int budget)
+        private void DrainPending(int budget)
         {
             if (pending.Count == 0)
             {
@@ -282,20 +305,18 @@ namespace CarDrive.Systems
         }
 
         /// <summary>
-        /// 플레이 모드에 들어갈 때 정적 상태를 비웁니다.
-        /// 도메인 리로드를 꺼 두면 지난 실행의 단계가 그대로 남기 때문입니다.
+        /// 플레이 모드에 들어갈 때 남은 정적 상태를 비웁니다.
+        ///
+        /// <b>단계와 대기열은 이제 인스턴스가 들고 있어서 비울 필요가 없습니다.</b>
+        /// 남는 것은 밖에서 꽂아 주는 <see cref="SpeedSource"/> 와 중복 감시용 참조뿐입니다.
+        /// 속도원을 비우지 않으면 도메인 리로드를 꺼 둔 채 다시 플레이할 때
+        /// <b>지난 실행에서 파괴된 차</b>를 계속 물어보게 됩니다.
         /// </summary>
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
-            currentLevel = 0;
-            nextCheck = 0f;
-            pendingDistance = 0f;
-            appliedRangeScale = -1f;
-            targetSpeedScale = 1f;
-            reportedSpeedScale = 1f;
-            appliedHandOff = false;
-            pending.Clear();
+            SpeedSource = null;
+            active = null;
         }
     }
 }

@@ -64,6 +64,18 @@ namespace CarDrive.Systems
             /// <summary>풀 그리기 거리를 다시 대입한 횟수입니다. 디테일 패치가 다시 짜입니다.</summary>
             DetailDistanceWritten,
 
+            /// <summary>
+            /// 나무 그리기 거리를 다시 대입한 횟수입니다. (<c>Terrain.treeDistance</c>)
+            ///
+            /// <b>이 항목이 없어서 못 본 것이 있었습니다.</b> 이 값은 날씨가 시야를 줄이면
+            /// 함께 줄어야 하는데, 재대입 조건이 <c>rangeScale</c> 만 보고 있어서
+            /// <b>기동 직후 한 번 쓰고 그대로 굳어 있었습니다.</b> 초당 0 이 정상인지
+            /// 고장인지 구분할 창구가 없었던 셈입니다.
+            ///
+            /// 지금은 날씨가 바뀌는 동안에만 오르고 평소에는 0 이어야 합니다.
+            /// </summary>
+            TreeDistanceWritten,
+
             /// <summary>지형 목록을 다시 찾은 횟수입니다. 씬 전체를 훑고 배열을 할당합니다.</summary>
             TerrainScanned
         }
