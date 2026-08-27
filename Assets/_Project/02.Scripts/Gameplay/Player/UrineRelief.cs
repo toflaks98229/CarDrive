@@ -379,7 +379,8 @@ namespace CarDrive.Gameplay
             Transform nozzle = _view.Nozzle;
             if (nozzle == null) return;
 
-            _splatter.Mark(nozzle.position, nozzle.forward, _view.CurrentSpeed, flow, deltaTime);
+            _splatter.Mark(nozzle.position, nozzle.forward,
+                           _view.CurrentSpeed, _view.GravityScale, flow, deltaTime);
         }
 
         /// <summary>

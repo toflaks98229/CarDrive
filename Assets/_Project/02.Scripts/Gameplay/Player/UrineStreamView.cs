@@ -98,6 +98,19 @@ namespace CarDrive.Gameplay
         /// </summary>
         public float CurrentSpeed { get { return _currentSpeed; } }
 
+        /// <summary>
+        /// 입자에 걸린 중력 배율입니다. 자국을 남기는 쪽이 <b>같은 포물선</b>을 그리려면
+        /// 속도만으로는 부족합니다 — 이 씬의 물줄기는 1.1 이라 10.79m/s^2 로 떨어지는데,
+        /// 받는 쪽이 9.81 을 쓰면 레이가 10% 덜 처져 자국이 물이 실제로 떨어지는 자리보다
+        /// 앞쪽에 찍힙니다.
+        ///
+        /// 파티클이 없으면 1 입니다 — 중력을 안 쓰는 것이 아니라, 배율이 없다는 뜻입니다.
+        /// </summary>
+        public float GravityScale
+        {
+            get { return _stream != null ? _stream.main.gravityModifierMultiplier : 1f; }
+        }
+
         // --- Public Methods ---
 
         /// <summary>

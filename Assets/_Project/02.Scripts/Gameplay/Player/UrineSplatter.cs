@@ -19,6 +19,14 @@ namespace CarDrive.Gameplay
     /// <b>벽에서는 흘러내립니다.</b> 닿은 면이 서 있을수록 셰이더의 흘러내림을 올립니다.
     /// 판은 언제나 월드 위쪽을 위로 두고 눕히므로, 셰이더가 아래로만 뻗는 줄기가
     /// 중력 방향과 맞습니다.
+    ///
+    /// <b>자국 판은 이 컴포넌트의 자식이 아닙니다.</b> 처음에는 자식으로 만들었는데,
+    /// 이 컴포넌트는 플레이어 몸통(Player_OnFoot)에 붙어 있고 그 몸통은 마우스 좌우에 따라
+    /// 통째로 돕니다(PlayerCameraController 가 playerBody.localRotation 을 씁니다).
+    /// <c>Transform.position</c>·<c>rotation</c> 은 <b>그 순간의</b> 월드 자세를 로컬로 환산해
+    /// 저장할 뿐이라, 부모가 움직이면 자식은 그대로 끌려갑니다. 그래서 벽에 붙어야 할 자국이
+    /// <b>카메라를 따라다녔습니다.</b> 지금은 씬 루트에 움직이지 않는 통을 하나 만들어
+    /// 거기에 담습니다.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class UrineSplatter : MonoBehaviour
@@ -70,6 +78,14 @@ namespace CarDrive.Gameplay
         [Tooltip("자국이 붙을 수 있는 레이어")]
         private LayerMask _surfaceMask = ~0;
 
+        /// <summary>
+        /// 자국 판들을 담아 두는 <b>움직이지 않는 통</b>입니다. 씬 루트에 있습니다.
+        ///
+        /// 이 컴포넌트를 부모로 쓰면 안 됩니다 — 플레이어 몸통에 붙어 있어 마우스를 돌릴 때마다
+        /// 함께 돌고, 차에 타서 몸통이 꺼지면 자국까지 통째로 사라집니다.
+        /// </summary>
+        private Transform _world;
+
         /// <summary>돌려 쓰는 자국 판들입니다.</summary>
         private Splat[] _pool;
 
@@ -115,6 +131,12 @@ namespace CarDrive.Gameplay
             /// <summary>물줄기가 실제로 닿은 자리입니다. 판이 커져도 여기는 안 움직입니다.</summary>
             public Vector3 Anchor;
 
+            /// <summary>
+            /// 닿은 면의 법선입니다. <b>자세를 다시 잡을 때마다 여기서 새로 계산합니다.</b>
+            /// 트랜스폼에서 되읽으면 그 트랜스폼이 이미 틀어져 있을 때 틀어진 채로 굳습니다.
+            /// </summary>
+            public Vector3 Normal;
+
             public bool Alive;
         }
 
@@ -130,6 +152,12 @@ namespace CarDrive.Gameplay
             AgeAll(Time.deltaTime);
         }
 
+        void OnDestroy()
+        {
+            // 통은 씬 루트에 따로 서 있으므로 이 컴포넌트가 사라져도 저절로 없어지지 않습니다.
+            if (_world != null) Destroy(_world.gameObject);
+        }
+
         // --- Public Methods ---
 
         /// <summary>
@@ -138,15 +166,17 @@ namespace CarDrive.Gameplay
         /// <param name="origin">노즐 위치</param>
         /// <param name="direction">노즐이 향한 방향</param>
         /// <param name="speed">입자 초기 속도(m/s)</param>
+        /// <param name="gravityScale">입자에 걸린 중력 배율. 파티클의 gravityModifier 와 같아야 합니다.</param>
         /// <param name="flow">출력 비율(0~1)</param>
         /// <param name="deltaTime">이번 프레임의 시간</param>
-        public void Mark(Vector3 origin, Vector3 direction, float speed, float flow, float deltaTime)
+        public void Mark(Vector3 origin, Vector3 direction, float speed, float gravityScale,
+                         float flow, float deltaTime)
         {
             if (_pool == null || splatMaterial == null) return;
             if (flow <= 0.001f) { _active = -1; return; }
 
             RaycastHit hit;
-            if (!TraceArc(origin, direction, speed, out hit)) { _active = -1; return; }
+            if (!TraceArc(origin, direction, speed, gravityScale, out hit)) { _active = -1; return; }
 
             Vector3 at = hit.point + hit.normal * _surfaceOffset;
 
@@ -172,23 +202,41 @@ namespace CarDrive.Gameplay
         // --- Private Methods ---
 
         /// <summary>
-        /// 포물선을 몇 토막으로 끊어 레이캐스트합니다.
+        /// 포물선을 토막으로 끊어 레이캐스트합니다.
         ///
         /// <b>직선 하나로는 안 됩니다.</b> 줄기는 중력을 받아 휘므로 직선으로 재면
         /// 실제로 떨어지는 자리보다 훨씬 멀리 찍힙니다.
+        ///
+        /// <b>시간이 아니라 거리로 끊습니다.</b> 예전에는 0.09초씩 여섯 토막, 곧 0.54초만
+        /// 훑었습니다. 그런데 이 씬의 입자는 최대 15m/s 로 2~3초를 날아갑니다. 그래서
+        /// 조금만 위로 겨누거나 먼 벽에 쏘면 여섯 번째 레이가 아직 <b>허공</b>에서 끝나
+        /// 물줄기는 눈에 보이게 벽에 부딪히는데 자국은 하나도 안 남았습니다.
+        /// 토막 길이를 미터로 고정하면 빠르든 느리든 같은 정밀도로 같은 사거리를 훑습니다.
+        ///
+        /// <b>중력은 파티클과 같아야 합니다.</b> 이 씬의 물줄기는 gravityModifier 가 1.1 이라
+        /// 10.79m/s^2 로 떨어집니다. 여기서 9.81 을 쓰면 레이가 10% 덜 처져 자국이
+        /// 물이 실제로 떨어지는 자리보다 <b>앞쪽</b>에 찍힙니다.
         /// </summary>
-        private bool TraceArc(Vector3 origin, Vector3 direction, float speed, out RaycastHit hit)
+        private bool TraceArc(Vector3 origin, Vector3 direction, float speed, float gravityScale,
+                              out RaycastHit hit)
         {
-            const int Steps = 6;
-            const float StepTime = 0.09f;
+            const int MaxSteps = 32;
+
+            /// 한 토막의 목표 길이(m). 짧을수록 곡선을 잘 따라가지만 레이가 늘어납니다.
+            const float SegmentLength = 0.75f;
+
+            /// 노즐보다 이만큼 아래로 떨어지면 포기합니다. 절벽 아래로 무한히 쫓지 않습니다.
+            const float MaxDrop = 20f;
 
             Vector3 p = origin;
             Vector3 v = direction.normalized * Mathf.Max(speed, 0.1f);
-            Vector3 g = Physics.gravity;
+            Vector3 g = Physics.gravity * Mathf.Max(gravityScale, 0.01f);
 
-            for (int i = 0; i < Steps; i++)
+            float stepTime = SegmentLength / Mathf.Max(speed, 0.5f);
+
+            for (int i = 0; i < MaxSteps; i++)
             {
-                Vector3 next = p + v * StepTime + 0.5f * g * StepTime * StepTime;
+                Vector3 next = p + v * stepTime + 0.5f * g * stepTime * stepTime;
 
                 Vector3 seg = next - p;
                 float len = seg.magnitude;
@@ -196,8 +244,10 @@ namespace CarDrive.Gameplay
                     Physics.Raycast(p, seg / len, out hit, len, _surfaceMask, QueryTriggerInteraction.Ignore))
                     return true;
 
-                v += g * StepTime;
+                v += g * stepTime;
                 p = next;
+
+                if (origin.y - p.y > MaxDrop) break;
             }
 
             hit = default(RaycastHit);
@@ -219,12 +269,6 @@ namespace CarDrive.Gameplay
             // 바닥이면 1 이라 정사각 그대로입니다.
             s.Aspect = Mathf.Lerp(1f, WallAspect, drip);
 
-            // 판의 앞면이 면을 보게 눕히되 <b>위쪽은 언제나 월드 위</b>로 둡니다.
-            // 그래야 셰이더가 아래로 뻗는 줄기가 중력 방향과 맞습니다.
-            // 바닥처럼 법선이 위와 나란하면 LookRotation 이 풀 수 없으므로 다른 축을 줍니다.
-            Vector3 up = Mathf.Abs(Vector3.Dot(normal, Vector3.up)) > 0.98f ? Vector3.forward : Vector3.up;
-            s.Root.rotation = Quaternion.LookRotation(-normal, up);
-
             s.Renderer.enabled = true;
 
             s.Block.SetFloat(GrowId, 0.45f);
@@ -236,6 +280,7 @@ namespace CarDrive.Gameplay
             s.Renderer.SetPropertyBlock(s.Block);
 
             s.Anchor = at;
+            s.Normal = normal;
             Place(ref s);
 
             _pool[i] = s;
@@ -265,20 +310,35 @@ namespace CarDrive.Gameplay
         }
 
         /// <summary>
-        /// 판의 크기와 자리를 다시 잡습니다.
+        /// 판의 자세와 크기를 통째로 다시 잡습니다.
         ///
         /// <b>얼룩의 한가운데가 늘 앵커에 있어야 합니다.</b> 벽에서는 판을 세로로 늘이고
         /// 그 안에서 몸통을 위로 올리므로, 판 한가운데는 앵커보다 아래에 놓입니다.
         /// 그만큼 내려 두지 않으면 자국이 실제로 닿은 자리보다 위에 찍힙니다.
+        ///
+        /// <b>회전도 여기서 같이 잡습니다.</b> 예전에는 회전을 Stamp 에서 한 번만 쓰고
+        /// Place 는 위치만 다시 잡았습니다. 그러면 자세를 정하는 곳이 둘로 갈려, 한쪽만
+        /// 다시 불리는 상황에서 판이 면에서 비스듬히 떨어져 나갑니다.
+        ///
+        /// <b>트랜스폼에서 되읽지 않습니다.</b> 위쪽 축을 <c>Root.up</c> 으로 읽으면
+        /// 이미 틀어진 트랜스폼의 값을 그대로 믿게 됩니다. 보관해 둔 법선에서 매번 새로 셉니다.
         /// </summary>
         private void Place(ref Splat s)
         {
             float height = s.Diameter * s.Aspect;
-            s.Root.localScale = new Vector3(s.Diameter, height, 1f);
+
+            // 판의 앞면이 면을 보게 눕히되 <b>위쪽은 언제나 월드 위</b>로 둡니다.
+            // 그래야 셰이더가 아래로 뻗는 줄기가 중력 방향과 맞습니다.
+            // 바닥처럼 법선이 위와 나란하면 LookRotation 이 풀 수 없으므로 다른 축을 줍니다.
+            Vector3 up = Mathf.Abs(Vector3.Dot(s.Normal, Vector3.up)) > 0.98f ? Vector3.forward : Vector3.up;
+            Quaternion rotation = Quaternion.LookRotation(-s.Normal, up);
 
             // 판 좌표 -1~1 이 높이 전체를 덮으므로, 올린 정도에 반높이를 곱한 만큼 내립니다.
             float lift = Mathf.Lerp(0f, WallBodyOffsetY, Mathf.InverseLerp(1f, WallAspect, s.Aspect));
-            s.Root.position = s.Anchor - s.Root.up * (lift * height * 0.5f);
+            Vector3 quadUp = rotation * Vector3.up;
+
+            s.Root.SetPositionAndRotation(s.Anchor - quadUp * (lift * height * 0.5f), rotation);
+            s.Root.localScale = new Vector3(s.Diameter, height, 1f);
         }
 
         /// <summary>모든 자국을 조금씩 말립니다.</summary>
@@ -311,16 +371,25 @@ namespace CarDrive.Gameplay
             }
         }
 
-        /// <summary>자국 판들을 미리 만들어 둡니다.</summary>
+        /// <summary>
+        /// 자국 판들을 미리 만들어 둡니다.
+        ///
+        /// <b>판은 이 컴포넌트의 자식이 아닙니다.</b> 이 컴포넌트는 플레이어 몸통에 붙어 있고
+        /// 그 몸통은 걸을 때 움직이고 마우스 좌우에 따라 돕니다. 자식으로 두면 월드 자세를
+        /// 아무리 정확히 넣어도 부모를 따라 끌려가, 자국이 <b>카메라를 따라다닙니다.</b>
+        /// 씬 루트에 움직이지 않는 통을 하나 세우고 거기에 담습니다.
+        /// </summary>
         private void BuildPool()
         {
+            _world = new GameObject("UrineSplats (World)").transform;
+
             Mesh quad = BuildQuad();
             _pool = new Splat[Mathf.Max(4, maxSplats)];
 
             for (int i = 0; i < _pool.Length; i++)
             {
                 GameObject go = new GameObject("Splat_" + i);
-                go.transform.SetParent(transform, false);
+                go.transform.SetParent(_world, false);
 
                 MeshFilter mf = go.AddComponent<MeshFilter>();
                 mf.sharedMesh = quad;
