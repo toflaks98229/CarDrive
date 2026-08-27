@@ -68,6 +68,9 @@ namespace CarDrive.Gameplay
         /// <summary>씬에 배치된 각도입니다. "정면을 볼 때 노즐이 숙이는 정도"로 삼습니다.</summary>
         private float _basePitch;
 
+        /// <summary>마지막으로 뿜은 입자의 초기 속도입니다.</summary>
+        private float _currentSpeed;
+
         // --- Public Properties ---
 
         /// <summary>그릴 파티클이 준비되었는지 여부입니다.</summary>
@@ -78,6 +81,22 @@ namespace CarDrive.Gameplay
         /// 조준 각도를 계산하는 쪽이 이 값을 기준으로 삼습니다.
         /// </summary>
         public float BasePitch { get { return _basePitch; } }
+
+        /// <summary>
+        /// 물줄기가 나오는 자리입니다. 파티클이 원뿔을 <b>제 앞쪽(+Z)</b>으로 뿜으므로
+        /// 이 트랜스폼의 <c>forward</c>가 곧 줄기가 향한 방향입니다.
+        ///
+        /// 자국을 남기는 쪽이 어디를 적시는지 알려면 이 둘이 필요합니다.
+        /// 파티클 자체를 넘기지 않는 것은, 받는 쪽이 방출을 건드릴 수 있게 되면
+        /// 이 클래스가 물줄기의 주인인 것이 무너지기 때문입니다.
+        /// </summary>
+        public Transform Nozzle { get { return _stream != null ? _stream.transform : null; } }
+
+        /// <summary>
+        /// 마지막으로 뿜은 입자의 초기 속도(m/s)입니다.
+        /// 자국을 남기는 쪽이 <b>같은 포물선</b>을 그려야 실제로 떨어지는 자리에 찍힙니다.
+        /// </summary>
+        public float CurrentSpeed { get { return _currentSpeed; } }
 
         // --- Public Methods ---
 
@@ -134,7 +153,8 @@ namespace CarDrive.Gameplay
             if (_stream == null) return;
 
             ParticleSystem.MainModule main = _stream.main;
-            main.startSpeed = Mathf.Lerp(_range.MinSpeed, _range.MaxSpeed, flow);
+            _currentSpeed = Mathf.Lerp(_range.MinSpeed, _range.MaxSpeed, flow);
+            main.startSpeed = _currentSpeed;
             main.startLifetime = Mathf.Lerp(_range.MinLifetime, _range.MaxLifetime, flow);
 
             // 소수점 이하 방출량은 누적해 두었다가 1이 넘을 때 내보냅니다.

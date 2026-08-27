@@ -9,33 +9,7 @@
 
 // --- 잡음 ---
 
-/// <summary>격자점 하나에 대응하는 난수 하나를 만듭니다.</summary>
-float Hash21(float2 p)
-{
-    p = frac(p * float2(123.34, 456.21));
-    p += dot(p, p + 45.32);
-    return frac(p.x * p.y);
-}
-
-/// <summary>
-/// 값 잡음입니다. 격자마다 난수를 두고 사이를 부드럽게 이어 붙입니다.
-/// 텍스처가 아니라 좌표에서 바로 뽑기 때문에 <b>반복 이음매가 없습니다.</b>
-/// </summary>
-float ValueNoise(float2 p)
-{
-    float2 i = floor(p);
-    float2 f = frac(p);
-
-    // 직선으로 이으면 격자 자국이 보입니다. 양 끝의 기울기를 0으로 눕혀 줍니다.
-    float2 u = f * f * (3.0 - 2.0 * f);
-
-    float a = Hash21(i);
-    float b = Hash21(i + float2(1, 0));
-    float c = Hash21(i + float2(0, 1));
-    float d = Hash21(i + float2(1, 1));
-
-    return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
-}
+#include "CarDriveNoise.hlsl"
 
 /// <summary>큰 얼룩과 잔 얼룩을 겹쳐 자연스러운 색 흔들림을 만듭니다.</summary>
 float GroundNoise(float2 worldXZ, float scale)

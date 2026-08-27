@@ -44,6 +44,14 @@ namespace CarDrive.Gameplay
         [SerializeField, FormerlySerializedAs("stream")]
         private ParticleSystem _stream;
 
+        /// <summary>
+        /// 젖은 자국을 남기는 쪽입니다. 비워두면 자식에서 찾고, 없으면 자국만 안 남습니다.
+        /// <b>없어도 배뇨는 그대로 돕니다.</b> 연출이 시뮬레이션을 막아서는 안 됩니다.
+        /// </summary>
+        [Tooltip("젖은 자국을 남길 UrineSplatter. 비워두면 자식에서 찾습니다.")]
+        [SerializeField]
+        private UrineSplatter _splatter;
+
         /// <summary>니즈를 반영할 시스템입니다. 비워두면 실행 중에 찾습니다.</summary>
         [Tooltip("니즈 시스템. 비워두면 씬에서 자동으로 찾습니다.")]
         [SerializeField, FormerlySerializedAs("needsSystem")]
@@ -290,6 +298,7 @@ namespace CarDrive.Gameplay
             if (_needsSystem == null) GameLog.Warn(GameLog.Channel.Player, "UrineRelief: NeedsSystem이 주입되지 않았습니다.", this);
 
             if (_stream == null) _stream = GetComponentInChildren<ParticleSystem>(true);
+            if (_splatter == null) _splatter = GetComponentInChildren<UrineSplatter>(true);
             if (!_view.Configure(_stream, _coneAngle, BuildEmissionRange()))
             {
                 GameLog.Warn(GameLog.Channel.Player, "UrineRelief: 파티클이 없어 물줄기가 보이지 않습니다.", this);
@@ -332,6 +341,7 @@ namespace CarDrive.Gameplay
             BeginStreamIfNeeded();
 
             _view.Emit(flow, deltaTime);
+            MarkSurface(flow, deltaTime);
             ApplyDrain(flow, deltaTime);
         }
 
@@ -344,6 +354,7 @@ namespace CarDrive.Gameplay
         {
             CurrentOutput = 0f;
             _view.ResetEmission();
+            if (_splatter != null) _splatter.StopMarking();
 
             if (!IsStreaming) return;
 
@@ -352,6 +363,24 @@ namespace CarDrive.Gameplay
         }
 
         // --- Private Methods : 한 프레임의 단계들 ---
+
+        /// <summary>
+        /// 물줄기가 닿는 자리에 젖은 자국을 남깁니다.
+        ///
+        /// <b>여기서는 어디에 닿는지 계산하지 않습니다.</b> 노즐과 속도만 넘기고,
+        /// 포물선을 그려 면을 찾고 자국을 키우고 말리는 일은
+        /// <see cref="UrineSplatter"/>가 전부 맡습니다. 뷰가 파티클을 맡는 것과 같은 경계입니다 —
+        /// 이 클래스는 여전히 압력·잔뇨·역류만 압니다.
+        /// </summary>
+        private void MarkSurface(float flow, float deltaTime)
+        {
+            if (_splatter == null) return;
+
+            Transform nozzle = _view.Nozzle;
+            if (nozzle == null) return;
+
+            _splatter.Mark(nozzle.position, nozzle.forward, _view.CurrentSpeed, flow, deltaTime);
+        }
 
         /// <summary>
         /// 시선의 상하 각도를 노즐 각도로 바꿔 뷰에 넘깁니다.

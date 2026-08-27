@@ -62844,6 +62844,61 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 957807775}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &958323239
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 958323240}
+  - component: {fileID: 958323241}
+  m_Layer: 0
+  m_Name: UrineSplats
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &958323240
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 958323239}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1978431798}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &958323241
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 958323239}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a7a611fab2fb6cc428522f4b20c5faa9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Gameplay::CarDrive.Gameplay.UrineSplatter
+  splatMaterial: {fileID: 2100000, guid: 8054abc04c1f1114689dbc63fdb4de3d, type: 2}
+  maxSplats: 24
+  dryDuration: 26
+  startDiameter: 0.3
+  maxDiameter: 1.4
+  growPerSecond: 0.5
+  _stampDistance: 0.24
+  _surfaceOffset: 0.012
+  _surfaceMask:
+    serializedVersion: 2
+    m_Bits: 2881
 --- !u!1001 &961785451
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -131678,6 +131733,7 @@ Transform:
   m_Children:
   - {fileID: 268630499}
   - {fileID: 1839924930}
+  - {fileID: 958323240}
   m_Father: {fileID: 1990000008}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1978431799
@@ -131771,6 +131827,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UrineRelief
   _stream: {fileID: 1839924932}
+  _splatter: {fileID: 958323241}
   _needsSystem: {fileID: 443595865}
   _aimSource: {fileID: 900000102}
   _pitchInfluence: 1

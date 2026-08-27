@@ -23,6 +23,7 @@ public static class ShaderReimportCheck
         "Assets/_Project/04.Art/03.Shaders/LowPoly/LowPolyGrass.shader",
         "Assets/_Project/04.Art/03.Shaders/Toon/CarDriveToonTerrain.shader",
         "Assets/_Project/04.Art/03.Shaders/Toon/CarDriveNeedGauge.shader",
+        "Assets/_Project/04.Art/03.Shaders/Toon/CarDriveSplat.shader",
     };
 
     /// <summary>강제 재임포트하고 오류 여부를 찍습니다. 하나라도 오류면 1로 끝냅니다.</summary>
