@@ -46,7 +46,7 @@ namespace CarDrive.Gameplay
 
         /// <summary>동시에 남아 있을 수 있는 자국 수입니다.</summary>
         [Tooltip("동시에 남는 자국 수. 넘으면 가장 오래된 것부터 덮어씁니다.")]
-        [Range(4, 64)]
+        [Range(4, 128)]
         public int maxSplats = 24;
 
         /// <summary>자국 하나가 다 마르는 데 걸리는 시간(초)입니다.</summary>
@@ -118,9 +118,6 @@ namespace CarDrive.Gameplay
         /// <summary>돌려 쓰는 자국 판들입니다.</summary>
         private Splat[] _pool;
 
-        /// <summary>다음에 꺼내 쓸 자리입니다.</summary>
-        private int _next;
-
         /// <summary>지금 키우고 있는 자국입니다. 없으면 -1 입니다.</summary>
         private int _active = -1;
 
@@ -149,6 +146,15 @@ namespace CarDrive.Gameplay
             public float Flow;
             public float DeltaTime;
         }
+
+        /// <summary>
+        /// 자리를 고를 때 크기가 나이를 얼마나 이기는가.
+        ///
+        /// 0 이면 순수하게 마른 순서대로, 1 이면 다 자란 웅덩이가 "완전히 마름" 만큼의
+        /// 보호를 받습니다. 0.6 이면 <b>절반쯤 마른 작은 자국</b>과 <b>안 마른 큰 웅덩이</b>
+        /// 중 작은 쪽을 지웁니다.
+        /// </summary>
+        private const float SizeWeight = 0.6f;
 
         /// <summary>
         /// 재질에서 읽어 둔 테두리 갉기 값입니다. 판이 몸통을 통째로 담으려면
@@ -425,8 +431,7 @@ namespace CarDrive.Gameplay
         /// <summary>새 자국을 찍고 그 자리를 돌려줍니다.</summary>
         private int Stamp(Vector3 at, Vector3 normal, float drip)
         {
-            int i = _next;
-            _next = (_next + 1) % _pool.Length;
+            int i = PickSlot();
 
             Splat s = _pool[i];
             s.Alive = true;
@@ -450,6 +455,43 @@ namespace CarDrive.Gameplay
 
             _pool[i] = s;
             return i;
+        }
+
+        /// <summary>
+        /// 새 자국을 넣을 자리를 고릅니다. <b>지워도 가장 덜 티 나는 것</b>을 고릅니다.
+        ///
+        /// 예전에는 찍힌 순서대로 돌려썼습니다. 대개는 순번이 곧 나이라 그럭저럭 맞았지만,
+        /// 어긋나는 자리가 있습니다 — 한자리에 오래 눠 <b>크게 고인 웅덩이</b>와 스쳐 지나가며
+        /// 찍힌 <b>작은 자국</b>의 나이가 비슷할 때, 순번만 보고 큰 쪽을 지웁니다.
+        /// 사라졌을 때 눈에 띄는 정도는 정반대인데 말입니다.
+        ///
+        /// 그래서 <b>얼마나 말랐는가</b>를 먼저 보고, 비슷하면 <b>작은 것</b>을 고릅니다.
+        /// 많이 마른 자국은 이미 획이 성겨 반쯤 지워진 상태라 사라져도 티가 안 납니다.
+        ///
+        /// 지금 적셔지고 있는 자국(<c>_active</c>)은 고르지 않습니다.
+        /// </summary>
+        private int PickSlot()
+        {
+            // 빈 자리가 있으면 그것부터. 아무것도 안 지웁니다.
+            for (int i = 0; i < _pool.Length; i++)
+                if (!_pool[i].Alive) return i;
+
+            int best = -1;
+            float bestScore = float.NegativeInfinity;
+            float fullRadius = Mathf.Max(maxBodyDiameter * 0.5f, 0.01f);
+
+            for (int i = 0; i < _pool.Length; i++)
+            {
+                if (i == _active) continue;
+
+                // 나이가 점수를 올리고 크기가 내립니다. 반지름은 최대치로 정규화해
+                // 두 값의 자릿수를 맞춥니다.
+                float score = _pool[i].Age - (_pool[i].BodyRadius / fullRadius) * SizeWeight;
+                if (score > bestScore) { bestScore = score; best = i; }
+            }
+
+            // 풀이 한 칸이라 _active 말고 후보가 없는 극단이면 어쩔 수 없이 그것을 씁니다.
+            return best >= 0 ? best : Mathf.Max(_active, 0);
         }
 
         /// <summary>

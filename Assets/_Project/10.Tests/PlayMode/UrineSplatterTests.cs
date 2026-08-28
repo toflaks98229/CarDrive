@@ -222,6 +222,50 @@ namespace CarDrive.Tests
                                   "끊었더니 웅덩이가 작아졌습니다. 새 자국으로 덮인 것입니다.");
         }
 
+        /// <summary>
+        /// 풀이 한 바퀴 돌아도 <b>크게 고인 웅덩이</b>는 살아남아야 합니다.
+        ///
+        /// 예전에는 찍힌 순서대로 자리를 돌려썼습니다. 그러면 한자리에 오래 눠 크게 고인
+        /// 웅덩이가 <b>가장 먼저</b> 지워집니다 — 순번이 가장 앞이기 때문입니다.
+        /// 스쳐 지나가며 찍힌 작은 자국들은 멀쩡히 남는데 정작 공들인 것이 사라지니,
+        /// 자국이 갑자기 없어지는 것으로 보였습니다.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator 풀이_돌아도_큰_웅덩이가_먼저_지워지지_않는다()
+        {
+            // 마름은 이 시험의 변수가 아니므로 길게 둡니다.
+            Rebuild(4, 60f);
+            yield return null;
+
+            // 한자리에 눠서 웅덩이를 크게 만듭니다.
+            for (int i = 0; i < 25; i++)
+            {
+                splatter.Mark(Nozzle, Vector3.down, 3f, 1f, 1f, 0.05f);
+                yield return null;
+            }
+            yield return WaitForMarks(1);
+
+            float bigWidth = WidestQuad();
+            Assert.Greater(bigWidth, 0.2f, "웅덩이가 자라지 않아 시험할 것이 없습니다.");
+
+            splatter.StopMarking();
+            yield return WaitForMarks(1);
+
+            // 이제 훑고 지나가며 작은 자국을 풀 크기보다 많이 찍습니다.
+            for (int i = 1; i <= 6; i++)
+            {
+                Vector3 dir = Quaternion.Euler(0f, 0f, i * 9f) * Vector3.down;
+                splatter.Mark(Nozzle, dir, 3f, 1f, 1f, 0.05f);
+                splatter.StopMarking();
+                yield return WaitForMarks(1);
+            }
+
+            // 큰 웅덩이가 아직 있어야 합니다. 작은 자국들이 대신 지워졌어야 합니다.
+            Assert.GreaterOrEqual(WidestQuad(), bigWidth - 0.001f,
+                "풀이 도는 동안 크게 고인 웅덩이가 지워졌습니다. " +
+                "작은 자국을 먼저 지워야 사라지는 것이 눈에 덜 띕니다.");
+        }
+
         /// <summary>흐름이 0 이면 아무것도 찍지 않습니다.</summary>
         [UnityTest]
         public IEnumerator 흐름이_없으면_자국도_없다()
@@ -342,6 +386,29 @@ namespace CarDrive.Tests
 
             if (VisibleCount() < atLeast)
                 Debug.Log("SPLATTEST 자국 " + VisibleCount() + " 장, 대기 " + splatter.PendingCount + " 개");
+        }
+
+        /// <summary>
+        /// 풀 크기를 바꿔 자국판을 다시 세웁니다.
+        ///
+        /// <b>AddComponent 는 그 자리에서 Awake 를 돌립니다.</b> 그래서 컴포넌트를 붙인 뒤에
+        /// maxSplats 를 넣으면 이미 만들어진 풀에는 반영되지 않습니다. 실제로 그 때문에
+        /// 풀이 4칸인 줄 알고 짠 시험이 24칸으로 돌아 아무것도 검사하지 못했습니다
+        /// (자국이 7장까지 늘어나는데도 통과했습니다).
+        /// 꺼 둔 채로 값을 넣고 켜야 합니다.
+        /// </summary>
+        private void Rebuild(int maxSplats, float dryDuration)
+        {
+            if (splatter != null && splatter.SplatRoot != null)
+                Object.DestroyImmediate(splatter.SplatRoot.gameObject);
+            if (splatter != null) Object.DestroyImmediate(splatter);
+
+            rig.SetActive(false);
+            splatter = rig.AddComponent<UrineSplatter>();
+            splatter.splatMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+            splatter.maxSplats = maxSplats;
+            splatter.dryDuration = dryDuration;
+            rig.SetActive(true);
         }
 
         // --- 도우미 ---
