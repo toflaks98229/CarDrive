@@ -99,6 +99,79 @@ namespace CarDrive.Tests
             return peak;
         }
 
+        /// <summary>젖은(0.05 넘는) 텍셀 수를 셉니다.</summary>
+        private static int WetTexels()
+        {
+            Texture map = Shader.GetGlobalTexture("_GlobalSplatMap");
+            RenderTexture rt = map as RenderTexture;
+            if (rt == null) return -1;
+
+            Texture2D read = new Texture2D(rt.width, rt.height, TextureFormat.RGBAFloat, false);
+            RenderTexture prev = RenderTexture.active;
+            RenderTexture.active = rt;
+            read.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+            read.Apply();
+            RenderTexture.active = prev;
+
+            int n = 0;
+            Color[] px = read.GetPixels();
+            for (int i = 0; i < px.Length; i++) if (px[i].r > 0.05f) n++;
+
+            Object.DestroyImmediate(read);
+            return n;
+        }
+
+        /// <summary>
+        /// 브러시 반경이 <b>미터로</b> 먹히는지 봅니다.
+        ///
+        /// 처음에는 반경을 UV 로 넘겼는데, 창 128m / 2048 텍셀에서 7cm 는 텍셀 1.1개라
+        /// 아무리 오래 눠도 <b>점 하나만 젖었습니다.</b> 사용자가 "아주 적은 부분만 젖는다" 고
+        /// 보고한 것이 이것입니다. 넓이를 재면 눈으로 보지 않고도 잡힙니다.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator 반경이_미터로_먹힌다()
+        {
+            yield return null;
+            if (!manager.IsReady) yield break;
+
+            // 시험 지도는 100m 를 256 텍셀로 덮으므로 2.56 텍셀/m.
+            // 반경 5m 면 지름 10m = 25.6 텍셀, 넓이는 대략 파이 x 12.8² ≒ 515 텍셀.
+            manager.Paint(new Vector3(50f, 0f, 50f), 5f, 1f);
+            yield return null;
+
+            int wet = WetTexels();
+            Debug.Log("SPLATMAP 반경 5m -> 젖은 텍셀 " + wet + " 개");
+
+            // 감쇠가 반경의 45% 부터 시작하므로 온전한 원보다 작습니다. 넉넉히 잡아 둡니다.
+            Assert.Greater(wet, 200, "반경 5m 를 칠했는데 " + wet + " 텍셀뿐입니다. " +
+                                     "반경이 미터가 아니라 UV 로 먹히고 있습니다.");
+            Assert.Less(wet, 900, "반경 5m 인데 " + wet + " 텍셀이나 젖었습니다. 너무 넓습니다.");
+        }
+
+        /// <summary>반경을 키우면 젖는 넓이도 함께 커져야 합니다.</summary>
+        [UnityTest]
+        public IEnumerator 반경을_키우면_넓이도_커진다()
+        {
+            yield return null;
+            if (!manager.IsReady) yield break;
+
+            manager.Paint(new Vector3(25f, 0f, 25f), 2f, 1f);
+            yield return null;
+            int small = WetTexels();
+
+            manager.Paint(new Vector3(75f, 0f, 75f), 8f, 1f);
+            yield return null;
+            int both = WetTexels();
+
+            int big = both - small;
+            Debug.Log("SPLATMAP 2m -> " + small + " 텍셀, 8m -> " + big + " 텍셀");
+
+            // 넓이는 반경의 제곱에 비례하므로 4배 반경이면 대략 16배여야 합니다.
+            Assert.Greater(big, small * 8, "반경을 4배로 했는데 넓이가 " +
+                                           ((float)big / Mathf.Max(small, 1)).ToString("0.0") +
+                                           "배밖에 안 늘었습니다.");
+        }
+
         [UnityTest]
         public IEnumerator 칠하면_지도가_젖는다()
         {

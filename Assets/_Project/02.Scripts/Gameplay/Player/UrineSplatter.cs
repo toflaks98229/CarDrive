@@ -133,6 +133,17 @@ namespace CarDrive.Gameplay
         /// <summary>지도를 한 번이라도 찾아봤는지입니다. 매 프레임 찾지 않으려는 표시입니다.</summary>
         private bool _lookedForSplatMap;
 
+        /// <summary>
+        /// 지도 쪽에서 지금 키우고 있는 웅덩이의 자리와 반경(m)입니다.
+        ///
+        /// <b>지도에는 자국마다의 정체성이 없습니다.</b> 판은 하나하나가 오브젝트라 제 크기를
+        /// 들고 있었지만, 지도는 그냥 값이 쌓인 텍스처입니다. 그래서 "지금 키우는 웅덩이" 를
+        /// 여기서 따로 기억합니다 — 이게 없으면 반경이 갓 찍힌 크기에 <b>영원히 묶입니다.</b>
+        /// </summary>
+        private Vector3 _mapAnchor;
+        private float _mapRadius;
+        private bool _mapGrowing;
+
         /// <summary>돌려 쓰는 자국 판들입니다.</summary>
         private Splat[] _pool;
 
@@ -349,6 +360,9 @@ namespace CarDrive.Gameplay
         /// </summary>
         public void StopMarking()
         {
+            // 지도 쪽 웅덩이도 놓습니다. 다음에 다시 누면 갓 찍힌 크기부터입니다.
+            _mapGrowing = false;
+
             if (_pending.Count == 0) { _active = -1; return; }
             _streamEnded = true;
         }
@@ -507,13 +521,29 @@ namespace CarDrive.Gameplay
 
             if (_splatMap == null || !_splatMap.IsReady) return false;
 
-            // 갓 찍힌 자국의 반지름과, 이번 프레임에 더할 젖음입니다.
-            // 판 쪽이 시간에 따라 키우는 것과 달리 지도는 <b>덧칠이 곧 성장</b>이라
-            // 반경은 고정이고 양만 쌓입니다.
-            float radius = startBodyDiameter * 0.5f;
+            // ── 웅덩이를 키웁니다 ──
+            //
+            // 처음에는 "덧칠이 곧 성장" 이라 보고 반경을 갓 찍힌 크기(7cm)에 고정했습니다.
+            // <b>그게 틀렸습니다.</b> 덧칠은 같은 자리를 진하게 만들 뿐 넓히지 않습니다.
+            // 창 128m / 2048 텍셀에서 7cm 는 <b>텍셀 1.1개</b>라, 아무리 오래 눠도
+            // 점 하나만 젖었습니다. 판 쪽이 0.14m 에서 1.4m 까지 자라던 것을 그대로 옮깁니다.
+            if (_mapGrowing && (p.At - _mapAnchor).sqrMagnitude <= _stampDistance * _stampDistance)
+            {
+                _mapRadius = Mathf.Min(maxBodyDiameter * 0.5f,
+                                       _mapRadius + bodyGrowPerSecond * 0.5f * p.Flow * p.DeltaTime);
+            }
+            else
+            {
+                // 조준을 옮겼으면 그 자리에서 다시 시작합니다. 판 쪽의 _stampDistance 와
+                // 같은 기준을 씁니다 — 두 시스템이 같은 손놀림에 같게 반응해야 합니다.
+                _mapAnchor = p.At;
+                _mapRadius = startBodyDiameter * 0.5f;
+                _mapGrowing = true;
+            }
+
             float amount = p.Flow * p.DeltaTime / Mathf.Max(wetPerSecond, 0.01f);
 
-            _splatMap.Paint(p.At, radius, amount);
+            _splatMap.Paint(p.At, _mapRadius, amount);
             return true;
         }
 

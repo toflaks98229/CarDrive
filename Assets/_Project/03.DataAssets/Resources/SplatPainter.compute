@@ -23,9 +23,9 @@
 /// 칠할 자리 하나입니다. C# 의 SplatManager.SplatRequest 와 <b>같은 순서·같은 크기</b>(16바이트)여야 합니다.
 struct SplatRequest
 {
-    float2 uv;        // 0~1 지도 좌표
-    float  radiusUV;  // UV 단위 반경
-    float  amount;    // 이번에 더할 양 (0~1)
+    float2 uv;       // 0~1 지도 좌표
+    float  radius;   // <b>미터</b>. UV 로 넘기지 않습니다 — 아래 참고
+    float  amount;   // 이번에 더할 양 (0~1)
 };
 
 StructuredBuffer<SplatRequest> _Requests;
@@ -34,6 +34,14 @@ StructuredBuffer<SplatRequest> _Requests;
 int _RequestCount;
 
 RWTexture2D<float> _SplatMap;
+
+/// 지도가 덮는 월드 크기(m)입니다.
+///
+/// <b>거리를 미터로 잽니다.</b> 처음에는 반경을 UV 로 받아 UV 거리와 견줬는데,
+/// 그러면 덮는 사각형이 정사각이 아닐 때(전체 커버는 1100 x 1200) 가로세로 눈금이 달라
+/// <b>브러시가 타원</b>이 됩니다. 텍스처 비율로 보정하는 길도 있지만 그건 텍스처가
+/// 정사각인지에 또 기대게 됩니다. 미터로 재면 둘 다 신경 쓸 것이 없습니다.
+float2 _WorldSize;
 
 /// 지도의 텍셀 크기입니다. <b>셰이더가 해상도를 가정하지 않습니다</b> —
 /// 해상도는 인스펙터에서 바뀌는 값이라, 여기에 상수로 적어 두면 조용히 어긋납니다.
@@ -73,16 +81,14 @@ void PaintSplat(uint3 id : SV_DispatchThreadID)
     {
         SplatRequest r = _Requests[i];
 
-        // 지도가 정사각이 아니면 UV 거리도 찌그러집니다. 가로세로 비를 곱해 되돌리지 않으면
-        // 브러시가 타원이 됩니다. C# 이 반경을 <b>가로 기준 UV</b> 로 넘기므로 세로만 맞춥니다.
-        float2 d = uv - r.uv;
-        d.y *= (float)_MapSize.y / max((float)_MapSize.x, 1.0);
-
+        // UV 차이를 <b>미터로</b> 되돌려 잽니다. 그러면 덮는 사각형이 정사각이든 아니든
+        // 브러시가 늘 동그랗습니다.
+        float2 d = (uv - r.uv) * _WorldSize;
         float dist = length(d);
 
         // 가운데는 꽉 차고 가장자리로 갈수록 부드럽게 빠집니다.
         // 안쪽 45% 는 평평하게 두어 한가운데가 뾰족해지지 않게 합니다.
-        float falloff = 1.0 - smoothstep(r.radiusUV * 0.45, r.radiusUV, dist);
+        float falloff = 1.0 - smoothstep(r.radius * 0.45, r.radius, dist);
 
         added += r.amount * falloff;
     }

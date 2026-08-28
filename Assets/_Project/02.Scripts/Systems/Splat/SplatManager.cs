@@ -60,7 +60,10 @@ namespace CarDrive.Systems
         private struct SplatRequest
         {
             public Vector2 Uv;
-            public float RadiusUV;
+
+            /// <summary><b>미터</b>입니다. UV 로 넘기면 덮는 사각형이 정사각이 아닐 때 타원이 됩니다.</summary>
+            public float Radius;
+
             public float Amount;
         }
 
@@ -171,6 +174,7 @@ namespace CarDrive.Systems
         private static readonly int RequestCountId = Shader.PropertyToID("_RequestCount");
         private static readonly int SplatMapId = Shader.PropertyToID("_SplatMap");
         private static readonly int MapSizeId = Shader.PropertyToID("_MapSize");
+        private static readonly int WorldSizeId = Shader.PropertyToID("_WorldSize");
         private static readonly int PaintRectId = Shader.PropertyToID("_PaintRect");
         private static readonly int FadeRectId = Shader.PropertyToID("_FadeRect");
         private static readonly int FadeAmountId = Shader.PropertyToID("_FadeAmount");
@@ -241,15 +245,12 @@ namespace CarDrive.Systems
                 return;
             }
 
-            // 반경은 <b>가로 기준</b> UV 로 넘깁니다. 컴퓨트가 세로만 비율로 되돌립니다.
-            float radiusUV = radiusMeters / Mathf.Max(_size.x, 0.001f);
-
             _requests[_requestCount].Uv = uv;
-            _requests[_requestCount].RadiusUV = radiusUV;
+            _requests[_requestCount].Radius = radiusMeters;
             _requests[_requestCount].Amount = Mathf.Clamp01(amount);
             _requestCount++;
 
-            AccumulateBounds(uv, radiusUV);
+            AccumulateBounds(uv, radiusMeters);
         }
 
         // --- Public Static Methods : 순수 계산 ---
@@ -439,11 +440,11 @@ namespace CarDrive.Systems
         }
 
         /// <summary>이번 요청이 걸치는 텍셀 범위를 모읍니다.</summary>
-        private void AccumulateBounds(Vector2 uv, float radiusUV)
+        private void AccumulateBounds(Vector2 uv, float radiusMeters)
         {
-            // 세로는 가로 기준 반경을 비율로 되돌려야 합니다(컴퓨트와 같은 셈).
-            float rx = radiusUV;
-            float ry = radiusUV;   // 지도가 정사각이라 같습니다. 정사각이 아니면 여기도 갈라야 합니다.
+            // 미터 반경을 축마다 UV 로 되돌립니다. 덮는 사각형이 정사각이 아니어도 맞습니다.
+            float rx = radiusMeters / Mathf.Max(_size.x, 0.001f);
+            float ry = radiusMeters / Mathf.Max(_size.y, 0.001f);
 
             int x0 = Mathf.FloorToInt((uv.x - rx) * resolution) - 1;
             int y0 = Mathf.FloorToInt((uv.y - ry) * resolution) - 1;
@@ -485,6 +486,7 @@ namespace CarDrive.Systems
             _shader.SetTexture(_paintKernel, SplatMapId, _map);
             _shader.SetInt(RequestCountId, _requestCount);
             _shader.SetInts(MapSizeId, resolution, resolution);
+            _shader.SetVector(WorldSizeId, new Vector4(_size.x, _size.y, 0f, 0f));
             _shader.SetInts(PaintRectId,
                 _paintBounds.xMin, _paintBounds.yMin, _paintBounds.width, _paintBounds.height);
 
