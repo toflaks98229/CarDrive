@@ -185,6 +185,43 @@ namespace CarDrive.Tests
                             "끊었다고 이미 날아간 물의 자국까지 사라졌습니다.");
         }
 
+        /// <summary>
+        /// 끊는 순간 <b>고인 웅덩이가 작은 자국 여러 장으로 바뀌면 안 됩니다.</b>
+        ///
+        /// 끊을 때 곧바로 "지금 키우던 자국" 을 놓았더니, 아직 날아오던 물이 그 웅덩이를
+        /// 키우는 대신 <b>새 자국을 계속 찍어</b> 24칸 풀을 갈아엎었습니다. 공들여 고인
+        /// 웅덩이가 키를 떼는 순간 작은 자국들로 바뀌고 그것들이 곧 말라 사라지니,
+        /// <b>급작스럽게 마르는</b> 것으로 보였습니다.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator 끊어도_고인_웅덩이가_흩어지지_않는다()
+        {
+            yield return null;
+
+            // 한자리에 계속 눠서 웅덩이를 키웁니다.
+            for (int i = 0; i < 20; i++)
+            {
+                splatter.Mark(Nozzle, Vector3.down, 3f, 1f, 1f, 0.05f);
+                yield return null;
+            }
+            yield return WaitForMarks(1);
+
+            Assert.AreEqual(1, VisibleCount(), "한자리인데 자국이 여럿입니다.");
+            float wasWide = WidestQuad();
+
+            // 아직 날아오는 물을 남겨 둔 채 끊습니다.
+            for (int i = 0; i < 5; i++)
+                splatter.Mark(Nozzle, Vector3.down, 3f, 1f, 1f, 0.05f);
+            splatter.StopMarking();
+
+            yield return WaitForMarks(1);
+
+            Assert.AreEqual(1, VisibleCount(),
+                            "끊었더니 고인 웅덩이가 자국 여러 장으로 흩어졌습니다.");
+            Assert.GreaterOrEqual(WidestQuad(), wasWide - 0.001f,
+                                  "끊었더니 웅덩이가 작아졌습니다. 새 자국으로 덮인 것입니다.");
+        }
+
         /// <summary>흐름이 0 이면 아무것도 찍지 않습니다.</summary>
         [UnityTest]
         public IEnumerator 흐름이_없으면_자국도_없다()

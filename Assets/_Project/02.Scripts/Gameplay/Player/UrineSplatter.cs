@@ -125,6 +125,12 @@ namespace CarDrive.Gameplay
         private int _active = -1;
 
         /// <summary>
+        /// 줄기는 멈췄지만 아직 날아오는 물이 남아 있음을 뜻합니다.
+        /// 그 물이 다 도착하면 <see cref="_active"/> 를 놓습니다.
+        /// </summary>
+        private bool _streamEnded;
+
+        /// <summary>
         /// 아직 물이 도착하지 않은 자리들입니다.
         ///
         /// 레이캐스트는 한 프레임에 끝나지만 물은 최대 0.8초를 날아갑니다. 그동안
@@ -277,6 +283,9 @@ namespace CarDrive.Gameplay
 
             // <b>바로 찍지 않습니다.</b> 레이캐스트는 한 프레임에 끝나지만 물은 아직
             // 날아가는 중입니다. 도착 시각까지 줄에 세워 둡니다.
+            // 다시 누기 시작했으면 "곧 놓을 자국" 표시를 거둡니다.
+            _streamEnded = false;
+
             _pending.Enqueue(new Pending
             {
                 DueTime = Time.time + flightTime,
@@ -295,10 +304,17 @@ namespace CarDrive.Gameplay
         ///
         /// <b>대기줄은 비우지 않습니다.</b> 이미 날아간 물은 키를 뗐다고 공중에서
         /// 사라지지 않습니다. 그 물이 남길 자국도 마찬가지입니다.
+        ///
+        /// <b>지금 키우던 자국도 곧바로 놓지 않습니다.</b> 여기서 바로 _active 를 비웠더니,
+        /// 아직 날아오던 물이 <b>기존 웅덩이를 키우는 대신 새 자국을 계속 찍어</b>
+        /// 24칸 풀을 갈아엎었습니다. 공들여 고인 웅덩이가 키를 떼는 순간 작은 자국 여러 장으로
+        /// 바뀌고, 그것들이 곧 말라 사라지니 <b>급작스럽게 마르는</b> 것으로 보였습니다.
+        /// 남은 물이 다 도착한 뒤에 놓습니다.
         /// </summary>
         public void StopMarking()
         {
-            _active = -1;
+            if (_pending.Count == 0) { _active = -1; return; }
+            _streamEnded = true;
         }
 
         // --- Private Methods ---
@@ -327,6 +343,13 @@ namespace CarDrive.Gameplay
                 }
 
                 _active = Stamp(p.At, p.Normal, p.Drip);
+            }
+
+            // 남은 물이 다 도착했으면 이제 놓습니다. 다음에 다시 누면 새 자국부터입니다.
+            if (_streamEnded && _pending.Count == 0)
+            {
+                _active = -1;
+                _streamEnded = false;
             }
         }
 
