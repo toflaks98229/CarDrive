@@ -49,6 +49,19 @@ public static class UrineStagingSetup
     }
 
     /// <summary>충돌 지점에서 한 번 튀는 물방울입니다.</summary>
+    /// <summary>
+    /// 물이 부딪히는 면입니다.
+    ///
+    /// <b>젖은 자국이 붙는 면과 같아야 합니다.</b> 물이 젖힐 수 있는 면 = 물이 부딪히는 면이니까요.
+    /// 달랐을 때 벽에는 자국만 남고 튀김은 없는 상태가 됐습니다. 그래서 자국 쪽 값
+    /// (<see cref="UrineSplatSetup.SurfaceMask"/>)을 한 곳에서 가져옵니다 — 숫자를 두 군데
+    /// 적어 두면 다음에 또 어긋납니다.
+    ///
+    /// 적(레이어 7)만 더 봅니다. 걸어 다니는 것에는 <b>자국을 안 붙이지만</b>(판이 제자리에
+    /// 남아 몸에서 떨어져 나갑니다) 물방울이 튀는 것은 맞기 때문입니다.
+    /// </summary>
+    private const int CollisionMask = UrineSplatSetup.SurfaceMask | (1 << 7);
+
     private static ParticleSystem BuildSplash(ParticleSystem stream, Material liquid)
     {
         Transform existing = stream.transform.Find(SplashName);
@@ -66,7 +79,9 @@ public static class UrineStagingSetup
         main.loop = false;
         main.duration = 1f;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
-        main.startLifetime = new ParticleSystem.MinMaxCurve(0.30f, 0.62f);
+        // <b>짧게.</b> 0.30~0.62 였을 때, 오줌이 끊긴 뒤에도 물방울이 눈에 띄게 남았습니다.
+        // 꼬리의 나머지 절반은 아직 날아가던 물이 계속 착지하는 몫입니다(그건 물리적으로 맞습니다).
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.18f, 0.35f);
         main.startSpeed = new ParticleSystem.MinMaxCurve(0.6f, 1.9f);
         // 줄기 알갱이(0.045)보다 잘게. 튀는 물은 원래 더 잘게 부서집니다.
         main.startSize = new ParticleSystem.MinMaxCurve(0.035f, 0.055f);
@@ -101,6 +116,12 @@ public static class UrineStagingSetup
         collision.dampen = 0.6f;
         collision.bounce = 0.15f;
         collision.lifetimeLoss = 0.25f;
+
+        // <b>줄기와 같은 면만 봅니다.</b> 그냥 두면 이 값이 Everything 이라, 줄기는 그대로
+        // 통과하는 벽에 물방울만 부딪혀 튕깁니다 — 물이 벽을 뚫고 지나갔는데 그 벽에서
+        // 물방울이 튀는 앞뒤 안 맞는 그림이 나옵니다.
+        collision.collidesWith = CollisionMask;
+
 
         ParticleSystemRenderer r = go.GetComponent<ParticleSystemRenderer>();
         if (r != null && liquid != null)
@@ -138,7 +159,22 @@ public static class UrineStagingSetup
         c.mode = ParticleSystemCollisionMode.Collision3D;
         c.sendCollisionMessages = false;   // C# 콜백은 쓰지 않습니다.
 
-        Debug.Log("URINE 서브이미터 배선: 충돌, 확률 0.34");
+        // <b>이 두 줄이 없어서 물줄기가 벽을 통과했습니다.</b>
+        //
+        // 씬에 저장돼 있던 마스크는 2944(Enemy·Car·Prop·Ground)라 <b>레이어 0(Default)이
+        // 빠져 있었습니다.</b> 그런데 이 게임의 건물 벽·실내 바닥·바위가 전부 레이어 0 입니다.
+        // 그래서 벽에 누면 젖은 자국은 벽에 즉시 찍히는데 물은 벽을 뚫고 지나가,
+        // 훨씬 뒤의 지면에서 뒤늦게 튀거나 아예 안 튀었습니다.
+        // 사용자가 본 "시작 후 얼마간 지나야 나온다" 의 가장 큰 몫이 이것입니다.
+        c.collidesWith = CollisionMask;
+
+        // <b>닿으면 죽습니다.</b> 예전에는 dampen 1 로 멈추기만 하고 수명(2~3초)을 다 살아서,
+        // 착지 지점에 알갱이가 카펫처럼 쌓인 채 매 프레임 다시 충돌해 서브이미터를 계속
+        // 터뜨렸습니다. 오줌이 끊긴 뒤에도 물방울이 몇 초씩 보글거린 이유입니다.
+        // 1 이면 첫 접촉에서 소멸하므로 입자 하나가 정확히 한 번만 튑니다.
+        c.lifetimeLoss = 1f;
+
+        Debug.Log("URINE 서브이미터 배선: 충돌, 확률 0.34, 마스크 " + CollisionMask);
     }
 
     private static ParticleSystem FindByName(string name)

@@ -20,6 +20,12 @@ namespace CarDrive.Gameplay
     /// 판은 언제나 월드 위쪽을 위로 두고 눕히므로, 셰이더가 아래로만 뻗는 줄기가
     /// 중력 방향과 맞습니다.
     ///
+    /// <b>자국은 물이 도착할 때 찍힙니다.</b> 포물선을 레이캐스트로 훑는 것은 한 프레임에
+    /// 끝나므로, 그냥 찍으면 <b>물보다 자국이 먼저 도착합니다.</b> 정면을 보고 세게 누면
+    /// 10m 앞에 얼룩이 먼저 생기고 물줄기는 아직 허공에 있으며, 튀는 물방울은 0.7초 뒤에야
+    /// 그 얼룩 위에서 터졌습니다 — 셋이 따로 노는 것으로 보입니다.
+    /// 그래서 도달 시간을 함께 재어 그만큼 기다렸다가 찍습니다.
+    ///
     /// <b>자국 판은 이 컴포넌트의 자식이 아닙니다.</b> 처음에는 자식으로 만들었는데,
     /// 이 컴포넌트는 플레이어 몸통(Player_OnFoot)에 붙어 있고 그 몸통은 마우스 좌우에 따라
     /// 통째로 돕니다(PlayerCameraController 가 playerBody.localRotation 을 씁니다).
@@ -119,6 +125,26 @@ namespace CarDrive.Gameplay
         private int _active = -1;
 
         /// <summary>
+        /// 아직 물이 도착하지 않은 자리들입니다.
+        ///
+        /// 레이캐스트는 한 프레임에 끝나지만 물은 최대 0.8초를 날아갑니다. 그동안
+        /// 여기서 기다리다가 도착 시각이 지나면 찍힙니다.
+        /// </summary>
+        private readonly System.Collections.Generic.Queue<Pending> _pending =
+            new System.Collections.Generic.Queue<Pending>();
+
+        /// <summary>도착을 기다리는 한 방울입니다.</summary>
+        private struct Pending
+        {
+            public float DueTime;
+            public Vector3 At;
+            public Vector3 Normal;
+            public float Drip;
+            public float Flow;
+            public float DeltaTime;
+        }
+
+        /// <summary>
         /// 재질에서 읽어 둔 테두리 갉기 값입니다. 판이 몸통을 통째로 담으려면
         /// 갉기가 얼마나 밖으로 밀어내는지 알아야 합니다.
         /// C# 이 이 숫자를 따로 들고 있으면 재질만 고쳤을 때 조용히 어긋납니다.
@@ -198,6 +224,7 @@ namespace CarDrive.Gameplay
 
         void LateUpdate()
         {
+            LandArrivals();
             AgeAll(Time.deltaTime);
         }
 
@@ -218,6 +245,15 @@ namespace CarDrive.Gameplay
         /// </summary>
         public Transform SplatRoot { get { return _world; } }
 
+        /// <summary>
+        /// 아직 물이 도착하지 않아 기다리는 자리 수입니다.
+        ///
+        /// 테스트가 "다 도착했는가" 를 물을 수 있어야 합니다. 자국 수만 보면,
+        /// 이미 한 장이 찍혀 있을 때 <b>뒤이어 쏜 것들이 아직 날아가는 중</b>인 것을
+        /// 구별하지 못해 조용히 이른 판정을 내립니다.
+        /// </summary>
+        public int PendingCount { get { return _pending.Count; } }
+
         // --- Public Methods ---
 
         /// <summary>
@@ -236,30 +272,63 @@ namespace CarDrive.Gameplay
             if (flow <= 0.001f) { _active = -1; return; }
 
             RaycastHit hit;
-            if (!TraceArc(origin, direction, speed, gravityScale, out hit)) { _active = -1; return; }
+            float flightTime;
+            if (!TraceArc(origin, direction, speed, gravityScale, out hit, out flightTime)) return;
 
-            Vector3 at = hit.point + hit.normal * _surfaceOffset;
-
-            // 서 있는 면일수록 흘러내립니다. 바닥(법선이 위)이면 0 입니다.
-            float drip = 1f - Mathf.Clamp01(Mathf.Abs(Vector3.Dot(hit.normal, Vector3.up)));
-
-            if (_active >= 0 && _pool[_active].Alive &&
-                Vector3.Distance(_pool[_active].Anchor, at) <= _stampDistance)
+            // <b>바로 찍지 않습니다.</b> 레이캐스트는 한 프레임에 끝나지만 물은 아직
+            // 날아가는 중입니다. 도착 시각까지 줄에 세워 둡니다.
+            _pending.Enqueue(new Pending
             {
-                Grow(_active, flow, deltaTime);
-                return;
-            }
+                DueTime = Time.time + flightTime,
+                At = hit.point + hit.normal * _surfaceOffset,
+                Normal = hit.normal,
 
-            _active = Stamp(at, hit.normal, drip);
+                // 서 있는 면일수록 흘러내립니다. 바닥(법선이 위)이면 0 입니다.
+                Drip = 1f - Mathf.Clamp01(Mathf.Abs(Vector3.Dot(hit.normal, Vector3.up))),
+                Flow = flow,
+                DeltaTime = deltaTime,
+            });
         }
 
-        /// <summary>줄기가 멈췄음을 알립니다. 다음에 다시 누면 새 자국부터 시작합니다.</summary>
+        /// <summary>
+        /// 줄기가 멈췄음을 알립니다. 다음에 다시 누면 새 자국부터 시작합니다.
+        ///
+        /// <b>대기줄은 비우지 않습니다.</b> 이미 날아간 물은 키를 뗐다고 공중에서
+        /// 사라지지 않습니다. 그 물이 남길 자국도 마찬가지입니다.
+        /// </summary>
         public void StopMarking()
         {
             _active = -1;
         }
 
         // --- Private Methods ---
+
+        /// <summary>
+        /// 도착 시각이 지난 것부터 찍습니다.
+        ///
+        /// 줄은 시간 순으로 들어오므로 앞에서부터 보다가 아직 안 온 것을 만나면 멈춥니다.
+        /// 도착 시각은 <c>Time.time + 비행시간</c> 이고, 비행시간은 조준에 따라 0.06~0.8초입니다.
+        /// </summary>
+        private void LandArrivals()
+        {
+            if (_pool == null || splatMaterial == null) { _pending.Clear(); return; }
+
+            float now = Time.time;
+
+            while (_pending.Count > 0 && _pending.Peek().DueTime <= now)
+            {
+                Pending p = _pending.Dequeue();
+
+                if (_active >= 0 && _pool[_active].Alive &&
+                    Vector3.Distance(_pool[_active].Anchor, p.At) <= _stampDistance)
+                {
+                    Grow(_active, p.Flow, p.DeltaTime);
+                    continue;
+                }
+
+                _active = Stamp(p.At, p.Normal, p.Drip);
+            }
+        }
 
         /// <summary>
         /// 포물선을 토막으로 끊어 레이캐스트합니다.
@@ -278,12 +347,17 @@ namespace CarDrive.Gameplay
         /// 물이 실제로 떨어지는 자리보다 <b>앞쪽</b>에 찍힙니다.
         /// </summary>
         private bool TraceArc(Vector3 origin, Vector3 direction, float speed, float gravityScale,
-                              out RaycastHit hit)
+                              out RaycastHit hit, out float flightTime)
         {
             const int MaxSteps = 32;
 
             /// 한 토막의 목표 길이(m). 짧을수록 곡선을 잘 따라가지만 레이가 늘어납니다.
             const float SegmentLength = 0.75f;
+
+            /// <b>한 토막에서 허용하는 처짐(m).</b> 토막을 길이로만 끊으면 느릴 때 시간이
+            /// 길어져 곡선을 직선으로 가로지릅니다. 실제로 최소 출력(1.1m/s)에서 토막이
+            /// 0.68초가 되어 자국이 진짜 낙하 지점보다 18cm 앞에 찍혔습니다.
+            const float MaxSag = 0.05f;
 
             /// 노즐보다 이만큼 아래로 떨어지면 포기합니다. 절벽 아래로 무한히 쫓지 않습니다.
             const float MaxDrop = 20f;
@@ -292,7 +366,11 @@ namespace CarDrive.Gameplay
             Vector3 v = direction.normalized * Mathf.Max(speed, 0.1f);
             Vector3 g = Physics.gravity * Mathf.Max(gravityScale, 0.01f);
 
-            float stepTime = SegmentLength / Mathf.Max(speed, 0.5f);
+            float gAbs = Mathf.Max(g.magnitude, 0.01f);
+            float stepTime = Mathf.Min(SegmentLength / Mathf.Max(speed, 0.5f),
+                                       Mathf.Sqrt(2f * MaxSag / gAbs));
+
+            flightTime = 0f;
 
             for (int i = 0; i < MaxSteps; i++)
             {
@@ -302,15 +380,22 @@ namespace CarDrive.Gameplay
                 float len = seg.magnitude;
                 if (len > 0.0001f &&
                     Physics.Raycast(p, seg / len, out hit, len, _surfaceMask, QueryTriggerInteraction.Ignore))
+                {
+                    // 토막 안에서 맞은 만큼만 더합니다. 토막 통째로 더하면 최대 한 토막(0.1초)
+                    // 늦게 도착한 것으로 보고돼, 자국이 물보다 뒤에 찍힙니다.
+                    flightTime += stepTime * (hit.distance / len);
                     return true;
+                }
 
                 v += g * stepTime;
                 p = next;
+                flightTime += stepTime;
 
                 if (origin.y - p.y > MaxDrop) break;
             }
 
             hit = default(RaycastHit);
+            flightTime = 0f;
             return false;
         }
 

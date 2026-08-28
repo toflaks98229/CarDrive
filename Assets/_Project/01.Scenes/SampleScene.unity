@@ -46237,8 +46237,8 @@ ParticleSystem:
     startLifetime:
       serializedVersion: 2
       minMaxState: 3
-      scalar: 0.62
-      minScalar: 0.3
+      scalar: 0.35
+      minScalar: 0.18
       maxCurve:
         serializedVersion: 2
         m_Curve:
@@ -49971,7 +49971,7 @@ ParticleSystem:
     radiusScale: 1
     collidesWith:
       serializedVersion: 2
-      m_Bits: 4294967295
+      m_Bits: 3009
     maxCollisionShapes: 256
     quality: 0
     voxelSize: 0.5
@@ -122590,7 +122590,7 @@ ParticleSystem:
     m_EnergyLossOnCollision:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 0
+      scalar: 1
       minScalar: 0
       maxCurve:
         serializedVersion: 2
@@ -122645,7 +122645,7 @@ ParticleSystem:
     radiusScale: 1
     collidesWith:
       serializedVersion: 2
-      m_Bits: 2944
+      m_Bits: 3009
     maxCollisionShapes: 256
     quality: 0
     voxelSize: 0.5

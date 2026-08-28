@@ -28,7 +28,7 @@ public static class UrineSplatSetup
     /// 남아 몸에서 떨어져 나가고, 물 위에 젖은 자국은 뜻이 없습니다.
     /// Ignore Raycast 도 당연히 빠집니다.
     /// </summary>
-    private const int SurfaceMask = (1 << 0) | (1 << 6) | (1 << 8) | (1 << 9) | (1 << 11);
+    public const int SurfaceMask = (1 << 0) | (1 << 6) | (1 << 8) | (1 << 9) | (1 << 11);
 
     public static void Run()
     {

@@ -47,6 +47,11 @@ namespace CarDrive.Tests
             splatter.splatMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
             splatter.maxSplats = 16;
             splatter.dryDuration = 0.4f;
+
+            // <b>물리 씬을 지금 맞춰 둡니다.</b> 방금 만든 바닥의 콜라이더가 아직 반영되기
+            // 전이면 포물선 레이캐스트가 통째로 빗나가, 자국이 하나도 안 생긴 채
+            // "안 찍혔다" 로 잘못 판정합니다. 실제로 테스트 하나가 그렇게 새어 나갔습니다.
+            Physics.SyncTransforms();
         }
 
         [TearDown]
@@ -68,10 +73,12 @@ namespace CarDrive.Tests
             yield return null;   // Awake 로 판을 만들 틈을 줍니다.
 
             splatter.Mark(Nozzle, Vector3.down, 3f, 1f, 1f, 0.05f);
+            yield return WaitForMarks(1);
             float wasWide = WidestQuad();
 
             for (int i = 0; i < 30; i++)
                 splatter.Mark(Nozzle, Vector3.down, 3f, 1f, 1f, 0.05f);
+            yield return WaitForMarks(1);
 
             Assert.AreEqual(1, VisibleCount(), "같은 자리를 계속 적셨는데 자국이 여러 장 찍혔습니다.");
 
@@ -92,6 +99,7 @@ namespace CarDrive.Tests
                 Vector3 dir = Quaternion.Euler(0f, 0f, i * 7f) * Vector3.down;
                 splatter.Mark(Nozzle, dir, 3f, 1f, 1f, 0.05f);
             }
+            yield return WaitForMarks(2);
 
             Assert.Greater(VisibleCount(), 1,
                            "조준을 옮겼는데 자국이 하나뿐입니다. 훑은 자리가 안 남습니다.");
@@ -104,6 +112,7 @@ namespace CarDrive.Tests
             yield return null;
 
             splatter.Mark(Nozzle, Vector3.down, 3f, 1f, 1f, 0.05f);
+            yield return WaitForMarks(1);
             Assert.AreEqual(1, VisibleCount(), "자국이 찍히지 않았습니다.");
 
             // 멈췄다고 알려야 마르기 시작합니다. 알리지 않으면 계속 적셔지는 것으로 봅니다.
@@ -135,6 +144,47 @@ namespace CarDrive.Tests
             Assert.IsFalse(splatter.SplatRoot.IsChildOf(rig.transform), "자국 통이 플레이어 하위에 있습니다.");
         }
 
+        /// <summary>
+        /// 자국은 <b>물이 도착한 뒤에</b> 찍혀야 합니다.
+        ///
+        /// 예전에는 레이캐스트가 한 프레임에 끝나는 대로 곧바로 찍었습니다. 그래서
+        /// 정면을 보고 세게 누면 10m 앞에 얼룩이 먼저 생기고, 물줄기는 아직 허공에 있으며,
+        /// 튀는 물방울은 0.7초 뒤에야 그 얼룩 위에서 터졌습니다 — 셋이 따로 놀았습니다.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator 자국은_물보다_먼저_찍히지_않는다()
+        {
+            yield return null;
+
+            // 위로 20도, 빠르게. 멀리 날아가므로 도착까지 눈에 띄게 걸립니다.
+            Vector3 up20 = Quaternion.Euler(-20f, 0f, 0f) * Vector3.forward;
+            splatter.Mark(Nozzle, up20, 15f, 1f, 1f, 0.05f);
+
+            Assert.AreEqual(0, VisibleCount(),
+                            "물이 아직 날아가는 중인데 자국이 벌써 찍혔습니다.");
+
+            yield return WaitForMarks(1);
+            Assert.AreEqual(1, VisibleCount(), "물이 도착했는데 자국이 안 찍혔습니다.");
+        }
+
+        /// <summary>
+        /// 줄기를 끊어도 <b>이미 날아간 물</b>의 자국은 남아야 합니다.
+        /// 공중의 물이 키를 뗐다고 사라지지는 않습니다.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator 끊어도_이미_날아간_물은_자국을_남긴다()
+        {
+            yield return null;
+
+            Vector3 up20 = Quaternion.Euler(-20f, 0f, 0f) * Vector3.forward;
+            splatter.Mark(Nozzle, up20, 15f, 1f, 1f, 0.05f);
+            splatter.StopMarking();
+
+            yield return WaitForMarks(1);
+            Assert.AreEqual(1, VisibleCount(),
+                            "끊었다고 이미 날아간 물의 자국까지 사라졌습니다.");
+        }
+
         /// <summary>흐름이 0 이면 아무것도 찍지 않습니다.</summary>
         [UnityTest]
         public IEnumerator 흐름이_없으면_자국도_없다()
@@ -142,6 +192,7 @@ namespace CarDrive.Tests
             yield return null;
 
             splatter.Mark(Nozzle, Vector3.down, 3f, 1f, 0f, 0.05f);
+            yield return null;
 
             Assert.AreEqual(0, VisibleCount(), "안 누었는데 자국이 생겼습니다.");
         }
@@ -163,6 +214,7 @@ namespace CarDrive.Tests
             yield return null;
 
             splatter.Mark(Nozzle, Vector3.down, 3f, 1f, 1f, 0.05f);
+            yield return WaitForMarks(1);
             splatter.StopMarking();
 
             var marks = Visible();
@@ -197,6 +249,7 @@ namespace CarDrive.Tests
             yield return null;
 
             splatter.Mark(Nozzle, Vector3.down, 3f, 1f, 1f, 0.05f);
+            yield return WaitForMarks(1);
             var marks = Visible();
             Assert.AreEqual(1, marks.Count, "자국이 찍히지 않았습니다.");
             Quaternion wasFacing = marks[0].rotation;
@@ -204,7 +257,7 @@ namespace CarDrive.Tests
             // 계속 누고 있는 채로 몸을 돌립니다.
             rig.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
             splatter.Mark(Nozzle, Vector3.down, 3f, 1f, 1f, 0.05f);
-            yield return null;
+            yield return WaitForMarks(1);
 
             var after = Visible();
             Assert.AreEqual(1, after.Count, "같은 자리인데 자국이 늘었습니다.");
@@ -227,9 +280,31 @@ namespace CarDrive.Tests
             // 수평보다 20도 위로, 빠르게. 예전 추적 구간(0.54초)으로는 절대 못 닿습니다.
             Vector3 up20 = Quaternion.Euler(-20f, 0f, 0f) * Vector3.forward;
             splatter.Mark(Nozzle, up20, 15f, 1f, 1f, 0.05f);
+            yield return WaitForMarks(1);
 
             Assert.AreEqual(1, VisibleCount(),
                             "멀리 쏘았더니 자국이 안 남았습니다. 포물선 추적이 짧습니다.");
+        }
+
+        /// <summary>
+        /// 자국은 <b>물이 도착해야</b> 찍힙니다. 그때까지 프레임을 돌립니다.
+        ///
+        /// 레이캐스트는 한 프레임에 끝나지만 물은 0.06~0.8초를 날아갑니다.
+        /// 이 기다림이 없으면 테스트가 "안 찍혔다" 고 잘못 판정합니다.
+        /// </summary>
+        private IEnumerator WaitForMarks(int atLeast)
+        {
+            // <b>대기줄이 빌 때까지</b> 기다립니다. 자국 수만 보면, 이미 한 장이 찍혀 있을 때
+            // 뒤이어 쏜 것들이 아직 날아가는 중인 것을 못 알아채고 곧바로 빠져나옵니다.
+            float waited = 0f;
+            while (waited < 3f && (splatter.PendingCount > 0 || VisibleCount() < atLeast))
+            {
+                waited += Time.deltaTime;
+                yield return null;
+            }
+
+            if (VisibleCount() < atLeast)
+                Debug.Log("SPLATTEST 자국 " + VisibleCount() + " 장, 대기 " + splatter.PendingCount + " 개");
         }
 
         // --- 도우미 ---
