@@ -83,4 +83,84 @@ half CarDriveSplatWetness(float3 positionWS)
     return wet * inside;
 }
 
+
+// ── 벽 자국과 같은 손그림 얼룩으로 ──
+//
+// 위의 <c>CarDriveSplatWetness</c> 는 매끈한 0~1 값입니다. 그대로 쓰면 땅에 <b>에어브러시로
+// 뿌린 것 같은</b> 부드러운 얼룩이 생기는데, 벽에 붙는 자국(CarDriveSplat.shader)은
+// 너덜너덜한 테두리에 손그림 획으로 지워집니다. 같은 오줌인데 <b>땅과 벽이 다른 물건</b>으로
+// 보입니다.
+//
+// <b>지도는 낮은 주파수만 담습니다.</b> 텍셀이 6cm 라 얼룩의 잔결을 담을 수 없습니다.
+// 그래서 지도는 "얼마나 젖었나" 만 들고, 너덜너덜함과 획은 여기서 <b>픽셀 해상도로</b>
+// 만듭니다. 벽 자국이 앵커 기준 미터로 하는 것과 같은 생각입니다.
+//
+// <b>자르지 않고 마스크로 씁니다.</b> 벽에서는 획이 문턱을 못 넘으면 <c>clip</c> 으로
+// 픽셀을 버립니다. 땅에서 같은 짓을 하면 <b>지면에 구멍이 뚫립니다</b> — 자국은 얹히는
+// 것이지 도려내는 것이 아닙니다. 그래서 여기서는 획이 "이 픽셀이 얼룩인가" 를 정하고,
+// 얼룩이 아닌 픽셀은 그냥 원래 땅색으로 둡니다. 화면에 보이는 결과는 같습니다.
+#include "CarDriveHatch.hlsl"
+#include "../LowPoly/CarDriveNoise.hlsl"
+
+/// <summary>
+/// 이 자리가 <b>손그림 얼룩</b>인지 봅니다. 0 이면 마른 땅, 1 이면 얼룩입니다.
+///
+/// 값이 중간으로 나오지 않습니다 — 획이 문턱을 넘거나 못 넘거나 둘뿐입니다.
+/// 벽 자국이 남거나 없거나인 것과 같아야 <b>한 사람이 그린 것</b>으로 읽힙니다.
+/// </summary>
+/// <param name="positionWS">월드 위치</param>
+/// <param name="normalWS">월드 법선. 획의 삼중평면이 씁니다.</param>
+/// <param name="noiseScale">테두리 잡음의 잘기(1m 당 주기)</param>
+/// <param name="edgeBite">테두리를 갉는 정도. 벽 자국의 _EdgeBite 와 같은 뜻입니다.</param>
+/// <param name="edgeSharp">덮임의 경사를 세우는 정도. 클수록 얼룩의 테두리가 또렷해집니다.</param>
+/// <param name="hatchScale">획 한 판이 덮는 거리(m)</param>
+/// <param name="hatchBite">획이 얼룩을 갉는 정도</param>
+half CarDriveSplatStain(float3 positionWS, float3 normalWS,
+                        float noiseScale, half edgeBite, half edgeSharp,
+                        float hatchScale, half hatchBite)
+{
+    half w = CarDriveSplatWetness(positionWS);
+    if (w <= 0.0h) return 0.0h;
+
+    // 테두리를 잡음으로 갉습니다. 원 그대로 두면 스프레이 자국이 됩니다.
+    // 좌표는 <b>월드 미터</b>라, 자국이 넓어져도 잔결이 함께 늘어나지 않습니다.
+    float2 np = positionWS.xz * noiseScale;
+    float n = ValueNoise(np) * 0.68 + ValueNoise(np * 2.6) * 0.32;
+
+    // ── 잡음은 <b>가장자리에서만</b> 흔듭니다 ──
+    //
+    // 벽 자국은 <b>거리</b>를 흔든 뒤 감쇠를 먹입니다. 그래서 몸통 밖은 무슨 잡음이 와도
+    // 0 이고, 테두리에서만 너덜너덜해집니다. 여기는 감쇠 <b>결과</b>(w)만 손에 쥐고 있어
+    // 그 순서를 쓸 수 없습니다.
+    //
+    // 그대로 더했더니 완전히 마른 땅(w=0)까지 최대 +0.275 들려 <b>화면 전체에 잉크가
+    // 흩뿌려졌습니다.</b> 그래서 경사를 세워 눌렀더니 이번에는 흔들림까지 같이 눌려
+    // <b>테두리가 매끈한 원</b>이 됐습니다 — 흔들리는 폭은 잡음 세기를 기울기로 나눈 값이라,
+    // 기울기를 5배로 세우면 흔들림도 1/5 이 됩니다. 둘 다 틀렸습니다.
+    //
+    // 답은 흔드는 <b>세기 자체</b>를 가장자리에서만 살리는 것입니다.
+    // w(1-w)x4 는 안팎(0, 1)에서 0 이고 딱 중간(0.5)에서 1 입니다.
+    // 마른 땅은 아무리 잡음이 세도 안 들리고, 다 젖은 가운데는 안 갉히며,
+    // 테두리만 흔들립니다 — 벽 자국이 거리를 흔들 때 얻는 성질과 같습니다.
+    half band = w * (1.0h - w) * 4.0h;
+    half coverage = saturate((w + (half)((n - 0.5) * edgeBite) * band - 0.5h) * edgeSharp + 0.5h);
+
+    [branch] if (_CarDriveHatchParams.w >= 0.5)
+    {
+        // 세계의 그늘을 긋는 그 TAM 입니다. 톤은 한 단계로 고정합니다 —
+        // 위치에 따라 흔들면 마르는 동안 무늬가 바뀌어 획이 기어다녀 보입니다.
+        half pattern = CarDriveHatchValue(0.6h, positionWS, normalWS,
+                                          max(hatchScale, 0.01), 1.0h);
+
+        // 벽 자국의 clip 과 같은 식입니다. 진한 가운데는 어떤 무늬값이라도 넘어 통짜로
+        // 남고, 테두리로 갈수록 짙은 획만 버팁니다.
+        // 0.0001 을 더해 <b>덮임이 0 인 마른 땅</b>이 무늬가 0 인 자리에서 얼룩이 되는 것을 막습니다.
+        return step(pattern * hatchBite + 0.0001h, coverage * (1.0h + hatchBite));
+    }
+
+    // HatchingRig 가 없으면 획을 못 긋습니다. 그냥 두면 테두리가 매끈해져
+    // 이 함수의 이유가 사라지므로, 갉은 덮임을 그대로 문턱으로 씁니다.
+    return step(0.5h, coverage);
+}
+
 #endif // CARDRIVE_SPLAT_MAP_INCLUDED

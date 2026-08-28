@@ -43,8 +43,18 @@ Shader "CarDrive/Toon Terrain"
         _MidPoint ("명암 경계 (낮을수록 밝은 면이 넓음)", Range(0, 1)) = 0.42
         _Softness ("경계 부드러움", Range(0, 0.5)) = 0.06
         _ShadowSoftness ("그림자 경계 부드러움", Range(0, 1)) = 0.25
+        // 벽에 붙는 자국(UrineSplat.mat)과 <b>같은 색</b>이어야 합니다. 다르면 같은 오줌인데
+        // 땅과 벽이 다른 물건으로 보입니다. a 는 땅색을 얼마나 덮을지입니다.
+        _SplatColor ("얼룩 색", Color) = (0.78, 0.68, 0.32, 0.85)
         _SplatDarken ("젖으면 어두워지는 정도", Range(0, 1)) = 0.45
         _SplatGloss ("젖으면 생기는 반짝임", Range(0, 1)) = 0.55
+
+        // 벽 자국과 같은 문법으로 그리기 위한 값들입니다.
+        _SplatNoiseScale ("테두리 잡음 잘기 (1m 당 주기)", Range(0.5, 20)) = 3.5
+        _SplatEdgeBite ("테두리를 갉는 정도", Range(0, 2)) = 1.7
+        _SplatEdgeSharp ("테두리 경사 세우기", Range(1, 12)) = 1.5
+        _SplatHatchScale ("획 한 판이 덮는 거리(m)", Range(0.05, 2)) = 0.6
+        _SplatHatchBite ("획이 얼룩을 갉는 정도", Range(0, 1)) = 1
 
         _StepSoftness ("단계 사이 부드러움", Range(0, 1)) = 0.35
         _Steps ("밝은 쪽 단계 수 (2 미만이면 끊지 않음)", Range(0, 8)) = 3
@@ -104,8 +114,14 @@ Shader "CarDrive/Toon Terrain"
             half   _HeightBottom;
             half   _HeightTop;
             half   _HeightStrength;
+            half4  _SplatColor;
             half   _SplatDarken;
             half   _SplatGloss;
+            float  _SplatNoiseScale;
+            half   _SplatEdgeBite;
+            half   _SplatEdgeSharp;
+            float  _SplatHatchScale;
+            half   _SplatHatchBite;
         CBUFFER_END
 
         TEXTURE2D(_Control); SAMPLER(sampler_Control);
@@ -262,14 +278,22 @@ Shader "CarDrive/Toon Terrain"
                 }
                 #endif
 
-                // ── 젖음 ──
+                // ── 오줌 얼룩 ──
                 //
-                // 지도가 없거나 이 자리가 마르면 wet 이 0 이고, 아래 두 줄은 아무것도 바꾸지
-                // 않습니다(곱하기 1, 세기 0). <b>마른 지면의 그림은 예전과 픽셀 단위로 같습니다.</b>
-                half wet = CarDriveSplatWetness(input.positionWS);
+                // <b>벽에 붙는 자국과 같은 문법으로 그립니다.</b> 지도는 "얼마나 젖었나" 만
+                // 담고(텍셀이 6cm 라 잔결을 못 담습니다), 너덜너덜한 테두리와 손그림 획은
+                // 여기서 픽셀 해상도로 만듭니다.
+                //
+                // 지도가 없거나 이 자리가 마르면 wet 이 0 이라 아래가 전부 사라집니다 —
+                // <b>마른 지면의 그림은 예전과 픽셀 단위로 같습니다.</b>
+                half wet = CarDriveSplatStain(input.positionWS, normalize(input.normalWS),
+                                              _SplatNoiseScale, _SplatEdgeBite, _SplatEdgeSharp,
+                                              _SplatHatchScale, _SplatHatchBite);
 
                 // 젖은 흙은 어둡습니다. 빛을 덜 튕겨 내고 속으로 먹기 때문입니다.
-                albedo *= lerp(1.0h, 1.0h - _SplatDarken, wet);
+                // 그 위에 오줌 색을 얹습니다 — 벽 자국이 하는 것과 같습니다.
+                half3 stained = lerp(albedo * (1.0h - _SplatDarken), _SplatColor.rgb, _SplatColor.a);
+                albedo = lerp(albedo, stained, wet);
 
                 ToonSurface s;
                 s.albedo = albedo;
