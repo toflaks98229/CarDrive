@@ -62891,9 +62891,12 @@ MonoBehaviour:
   splatMaterial: {fileID: 2100000, guid: 8054abc04c1f1114689dbc63fdb4de3d, type: 2}
   maxSplats: 24
   dryDuration: 26
-  startDiameter: 0.3
-  maxDiameter: 1.4
-  growPerSecond: 0.5
+  startBodyDiameter: 0.14
+  maxBodyDiameter: 1.4
+  bodyGrowPerSecond: 0.58
+  startDripReach: 0.05
+  maxDripReach: 1.2
+  dripReachPerSecond: 0.4
   _stampDistance: 0.24
   _surfaceOffset: 0.012
   _surfaceMask:

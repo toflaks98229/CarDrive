@@ -40,18 +40,23 @@ public static class UrineSplatSetup
         {
             Directory.CreateDirectory(Path.GetDirectoryName(MaterialPath));
             mat = new Material(shader);
-
-            // 흙과 아스팔트 위에서 <b>젖었다</b>로 읽히는 값입니다. SplatCapture 에서 골랐습니다.
-            mat.SetColor("_Color", new Color(0.78f, 0.68f, 0.32f, 0.85f));
-            mat.SetFloat("_HatchScale", 0.6f);
-
             AssetDatabase.CreateAsset(mat, MaterialPath);
             Debug.Log("SPLATSETUP 재질을 만듦: " + MaterialPath);
         }
-        else
-        {
-            Debug.Log("SPLATSETUP 재질이 이미 있음: " + MaterialPath);
-        }
+
+        // <b>있든 없든 항상 다시 씁니다.</b> 예전에는 재질이 있으면 건너뛰었는데,
+        // 셰이더 프로퍼티의 <b>뜻이 바뀌었을 때</b> 그러면 옛 뜻의 숫자가 새 셰이더로
+        // 흘러들어갑니다. _NoiseScale 과 _CoreSize 가 정확히 그런 경우입니다 —
+        // 판 단위였던 것이 몸통 반지름 단위가 됐습니다.
+        mat.SetColor("_Color", new Color(0.78f, 0.68f, 0.32f, 0.85f));
+        mat.SetFloat("_HatchScale", 0.6f);
+        mat.SetFloat("_NoiseScale", 3.5f);   // 정의역이 uv(0~1) -> nb(-1~1) 로 바뀌어 주기 두 배
+        mat.SetFloat("_CoreSize", 0.35f);    // 판 단위 -> 몸통 반지름 대비 비율
+        mat.SetFloat("_EdgeBite", 0.55f);
+        mat.SetFloat("_DripPitch", 0.035f);
+        mat.SetFloat("_DripTaper", 0.6f);
+        EditorUtility.SetDirty(mat);
+        Debug.Log("SPLATSETUP 재질 값을 새 뜻으로 다시 씀");
 
         EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
 
@@ -73,8 +78,17 @@ public static class UrineSplatSetup
 
         splatter.splatMaterial = mat;
 
+        // 필드 이름이 바뀌어(판 지름 -> 몸통 지름) 씬 값이 기본값으로 떨어졌습니다.
+        // 옛 값 0.3 은 <b>판</b> 지름이라 그대로 이어받으면 자국이 두 배 넘게 커집니다.
+        // 그래서 [FormerlySerializedAs] 를 일부러 안 붙이고 여기서 새로 써 넣습니다.
         SerializedObject so = new SerializedObject(splatter);
         so.FindProperty("_surfaceMask").intValue = SurfaceMask;
+        so.FindProperty("startBodyDiameter").floatValue = 0.14f;
+        so.FindProperty("maxBodyDiameter").floatValue = 1.4f;
+        so.FindProperty("bodyGrowPerSecond").floatValue = 0.58f;
+        so.FindProperty("startDripReach").floatValue = 0.05f;
+        so.FindProperty("maxDripReach").floatValue = 1.2f;
+        so.FindProperty("dripReachPerSecond").floatValue = 0.4f;
         so.ApplyModifiedPropertiesWithoutUndo();
 
         // UrineRelief 는 자식에서 스스로 찾지만, 씬에 명시로 걸어 두면 나중에 자식 구조가

@@ -34,7 +34,11 @@ namespace CarDrive.Tests
         {
             floor = GameObject.CreatePrimitive(PrimitiveType.Plane);
             floor.transform.position = Vector3.zero;
-            floor.transform.localScale = new Vector3(4f, 1f, 4f);
+
+            // <b>넉넉해야 합니다.</b> 처음엔 4배(반경 20m)로 두었는데, 위로 20도 15m/s 로
+            // 쏘면 17.5m 앞에 떨어져 <b>가장자리에 아슬아슬하게</b> 걸렸습니다.
+            // 그래서 같은 테스트가 돌 때마다 붙었다 떨어졌다 했습니다.
+            floor.transform.localScale = new Vector3(12f, 1f, 12f);
 
             rig = new GameObject("SplatterRig");
             splatter = rig.AddComponent<UrineSplatter>();
@@ -48,12 +52,13 @@ namespace CarDrive.Tests
         [TearDown]
         public void TearDown()
         {
+            // 통은 씬 루트에 따로 서 있어서 리그를 지워도 남습니다.
+            // <b>리그보다 먼저</b> 지웁니다 — 리그가 사라지면 통을 가리키는 참조도 사라집니다.
+            if (splatter != null && splatter.SplatRoot != null)
+                Object.DestroyImmediate(splatter.SplatRoot.gameObject);
+
             if (rig != null) Object.DestroyImmediate(rig);
             if (floor != null) Object.DestroyImmediate(floor);
-
-            // 통은 씬 루트에 따로 서 있어서 리그를 지워도 남습니다.
-            GameObject world = GameObject.Find("UrineSplats (World)");
-            if (world != null) Object.DestroyImmediate(world);
         }
 
         /// <summary>한자리에 계속 누면 자국이 하나로 남고 커집니다.</summary>
@@ -62,11 +67,16 @@ namespace CarDrive.Tests
         {
             yield return null;   // Awake 로 판을 만들 틈을 줍니다.
 
+            splatter.Mark(Nozzle, Vector3.down, 3f, 1f, 1f, 0.05f);
+            float wasWide = WidestQuad();
+
             for (int i = 0; i < 30; i++)
                 splatter.Mark(Nozzle, Vector3.down, 3f, 1f, 1f, 0.05f);
 
             Assert.AreEqual(1, VisibleCount(), "같은 자리를 계속 적셨는데 자국이 여러 장 찍혔습니다.");
-            Assert.Greater(WidestDiameter(), splatter.startDiameter + 0.05f,
+
+            // 판 너비는 몸통 반지름에 비례합니다(SplatQuadLayout). 안 커지면 안 고인 것입니다.
+            Assert.Greater(WidestQuad(), wasWide * 1.5f,
                            "자국이 자라지 않았습니다. 고이는 것으로 안 읽힙니다.");
         }
 
@@ -107,6 +117,22 @@ namespace CarDrive.Tests
             }
 
             Assert.AreEqual(0, VisibleCount(), "다 말랐는데 자국이 남아 있습니다.");
+        }
+
+        /// <summary>
+        /// 자국 통은 <b>플레이어 밖</b>에 있어야 합니다.
+        ///
+        /// 이것이 카메라 추종 결함의 뿌리였습니다. 판이 플레이어 하위에 있으면 월드 좌표를
+        /// 아무리 정확히 넣어도 부모를 따라 끌려갑니다.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator 자국_통은_플레이어_밖에_있다()
+        {
+            yield return null;
+
+            Assert.IsNotNull(splatter.SplatRoot, "자국 통이 없습니다.");
+            Assert.IsNull(splatter.SplatRoot.parent, "자국 통에 부모가 있습니다. 그 부모가 움직이면 자국이 끌려갑니다.");
+            Assert.IsFalse(splatter.SplatRoot.IsChildOf(rig.transform), "자국 통이 플레이어 하위에 있습니다.");
         }
 
         /// <summary>흐름이 0 이면 아무것도 찍지 않습니다.</summary>
@@ -209,16 +235,16 @@ namespace CarDrive.Tests
         // --- 도우미 ---
 
         /// <summary>
-        /// 자국 판들이 담긴 통입니다.
+        /// 자국 판들이 담긴 통입니다. <b>컴포넌트에게 직접 묻습니다.</b>
         ///
-        /// <b>리그의 자식에서 찾으면 안 됩니다.</b> 자국은 일부러 플레이어 밖, 씬 루트의
-        /// 움직이지 않는 통에 담깁니다. 리그 아래를 뒤지는 테스트는 그 규칙이 깨져
-        /// 자국이 다시 플레이어에 매달리는 날 <b>조용히 통과</b>합니다.
+        /// 이름으로 찾으면(GameObject.Find) 앞 테스트의 통이 아직 안 지워졌을 때
+        /// 빈 통을 들여다보고 조용히 틀린 답을 냅니다. 실제로 그렇게 한 번 새어 나갔습니다.
+        ///
+        /// 통이 <b>리그 밖</b>에 있다는 것은 아래에서 따로 못박습니다.
         /// </summary>
         private Transform SplatRoot()
         {
-            GameObject go = GameObject.Find("UrineSplats (World)");
-            return go != null ? go.transform : null;
+            return splatter != null ? splatter.SplatRoot : null;
         }
 
         /// <summary>지금 보이는 자국 판들입니다. 판은 꺼 두는 방식으로 회수됩니다.</summary>
@@ -240,8 +266,13 @@ namespace CarDrive.Tests
             return Visible().Count;
         }
 
-        /// <summary>가장 큰 자국의 지름입니다. 판의 가로 크기가 곧 지름입니다.</summary>
-        private float WidestDiameter()
+        /// <summary>
+        /// 가장 넓은 자국 판의 가로 크기(m)입니다.
+        ///
+        /// <b>몸통 지름이 아닙니다.</b> 판은 갉힌 테두리와 줄기를 담느라 몸통보다 큽니다
+        /// (SplatQuadLayout). 그래서 절대값이 아니라 <b>자랐는지</b>만 봅니다.
+        /// </summary>
+        private float WidestQuad()
         {
             float widest = 0f;
             foreach (Transform t in Visible())

@@ -28,17 +28,22 @@ Material:
     - _Age: 0
     - _Aspect: 1
     - _BodyOffsetY: 0
+    - _BodyRadius: 0.07
     - _CoreBoost: 0.85
-    - _CoreSize: 0.22
+    - _CoreSize: 0.35
     - _DitherPixelSize: 3
     - _DripAmount: 0
     - _DripLength: 1.4
+    - _DripPitch: 0.035
+    - _DripReach: 0
+    - _DripStart: 0.03
+    - _DripTaper: 0.6
     - _DripWidth: 24
     - _EdgeBite: 0.55
     - _Grow: 1
     - _HatchBite: 1
     - _HatchScale: 0.6
-    - _NoiseScale: 7
+    - _NoiseScale: 3.5
     - _Seed: 0
     m_Colors:
     - _Color: {r: 0.78, g: 0.68, b: 0.32, a: 0.85}

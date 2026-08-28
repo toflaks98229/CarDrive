@@ -47,18 +47,41 @@ namespace CarDrive.Gameplay
         [Tooltip("자국이 다 마르는 데 걸리는 시간(초)")]
         public float dryDuration = 26f;
 
-        /// <summary>갓 찍힌 자국의 지름(m)입니다.</summary>
-        [Header("크기")]
-        [Tooltip("갓 찍힌 자국의 지름(m)")]
-        public float startDiameter = 0.3f;
+        /// <summary>
+        /// 갓 찍힌 자국의 <b>몸통</b> 지름(m)입니다.
+        ///
+        /// 예전 필드 이름은 startDiameter 였는데 그것은 <b>판</b> 지름이었습니다 —
+        /// 실제 얼룩은 그 절반도 안 됐습니다. 이름이 거짓말을 하고 있어서
+        /// [FormerlySerializedAs] 로 옛 값을 이어받지 <b>않습니다.</b> 이어받으면
+        /// 자국이 두 배 넘게 커집니다.
+        /// </summary>
+        [Header("몸통 크기")]
+        [Tooltip("갓 찍힌 자국의 몸통 지름(m)")]
+        public float startBodyDiameter = 0.14f;
 
-        /// <summary>한자리에 계속 누었을 때 자랄 수 있는 최대 지름(m)입니다.</summary>
-        [Tooltip("한자리에 계속 누었을 때 자랄 수 있는 최대 지름(m)")]
-        public float maxDiameter = 1.4f;
+        /// <summary>한자리에 계속 누었을 때 자랄 수 있는 <b>몸통</b> 지름(m)입니다.</summary>
+        [Tooltip("한자리에 계속 누었을 때 자랄 수 있는 몸통 지름(m)")]
+        public float maxBodyDiameter = 1.4f;
 
-        /// <summary>초당 자라는 지름(m)입니다. 출력이 셀수록 빨리 자랍니다.</summary>
-        [Tooltip("초당 자라는 지름(m). 출력이 셀수록 빨라집니다.")]
-        public float growPerSecond = 0.5f;
+        /// <summary>초당 자라는 몸통 지름(m)입니다. 출력이 셀수록 빨리 자랍니다.</summary>
+        [Tooltip("초당 자라는 몸통 지름(m). 출력이 셀수록 빨라집니다.")]
+        public float bodyGrowPerSecond = 0.58f;
+
+        /// <summary>갓 찍힌 벽 자국의 줄기 길이(m)입니다.</summary>
+        [Header("흘러내림")]
+        [Tooltip("갓 찍힌 벽 자국의 줄기 길이(m)")]
+        public float startDripReach = 0.05f;
+
+        /// <summary>
+        /// 줄기가 자랄 수 있는 최대 길이(m)입니다.
+        /// <b>판 높이를 정하는 값</b>이라 오버드로에 직접 영향을 줍니다.
+        /// </summary>
+        [Tooltip("줄기가 자랄 수 있는 최대 길이(m). 판 높이를 정하므로 오버드로에 직접 영향")]
+        public float maxDripReach = 1.2f;
+
+        /// <summary>젖은 1초당 자라는 줄기 길이(m)입니다.</summary>
+        [Tooltip("젖은 1초당 자라는 줄기 길이(m)")]
+        public float dripReachPerSecond = 0.4f;
 
         // --- Private Member Variables ---
 
@@ -96,26 +119,19 @@ namespace CarDrive.Gameplay
         private int _active = -1;
 
         /// <summary>
-        /// 벽에서 판을 세로로 늘이는 배수입니다.
-        ///
-        /// <b>왜 늘이는가.</b> 흘러내리는 줄기는 몸통 <b>아래로</b> 뻗어야 보입니다.
-        /// 정사각 판에 그리면 줄기가 자랄 자리가 반쪽밖에 없어 몸통에 묻혀 버립니다.
-        /// 실제로 그렇게 나왔습니다 — 자국 아래가 조금 두꺼워졌을 뿐 줄기로 안 읽혔습니다.
-        ///
-        /// <b>SplatCapture 의 WallAspect 와 같아야 합니다.</b> 다르면 눈으로 골라 둔 값이
-        /// 게임에서 다른 그림이 됩니다.
+        /// 재질에서 읽어 둔 테두리 갉기 값입니다. 판이 몸통을 통째로 담으려면
+        /// 갉기가 얼마나 밖으로 밀어내는지 알아야 합니다.
+        /// C# 이 이 숫자를 따로 들고 있으면 재질만 고쳤을 때 조용히 어긋납니다.
         /// </summary>
-        private const float WallAspect = 2.2f;
-
-        /// <summary>늘인 판 안에서 몸통을 위로 올리는 정도입니다(판 좌표 -1~1 기준).</summary>
-        private const float WallBodyOffsetY = 0.5f;
+        private float _edgeBite = 0.55f;
 
         /// <summary>프로퍼티 이름은 매 프레임 문자열로 찾지 않습니다.</summary>
-        private static readonly int GrowId = Shader.PropertyToID("_Grow");
+        private static readonly int BodyRadiusId = Shader.PropertyToID("_BodyRadius");
         private static readonly int AgeId = Shader.PropertyToID("_Age");
         private static readonly int DripId = Shader.PropertyToID("_DripAmount");
+        private static readonly int DripStartId = Shader.PropertyToID("_DripStart");
+        private static readonly int DripReachId = Shader.PropertyToID("_DripReach");
         private static readonly int SeedId = Shader.PropertyToID("_Seed");
-        private static readonly int AspectId = Shader.PropertyToID("_Aspect");
         private static readonly int BodyOffsetId = Shader.PropertyToID("_BodyOffsetY");
 
         /// <summary>자국 한 장이 들고 있는 것들입니다.</summary>
@@ -125,8 +141,37 @@ namespace CarDrive.Gameplay
             public MeshRenderer Renderer;
             public MaterialPropertyBlock Block;
             public float Age;
-            public float Diameter;
-            public float Aspect;
+
+            /// <summary>몸통 반지름(m). <b>자라기만 합니다.</b></summary>
+            public float BodyRadius;
+
+            /// <summary>흘러내림 정도(0~1). 스탬프 때 정하고 안 바꿉니다.</summary>
+            public float Drip;
+
+            /// <summary>
+            /// 줄기 머리의 깊이(m). <b>스탬프 때 못 박습니다.</b>
+            ///
+            /// 예전에는 셰이더가 매 프레임 몸통 반지름의 40% 로 다시 셈했습니다. 그래서
+            /// 웅덩이가 자랄 때마다 <b>이미 흘러내린 줄기의 머리가 25cm 씩 내려갔습니다.</b>
+            /// (EsProgram/InkPainter 의 줄기가 텍셀에 기록되어 안 움직이는 성질을,
+            ///  버퍼 없이 스칼라 하나로 얻습니다.)
+            /// </summary>
+            public float DripStart;
+
+            /// <summary>줄기 길이(m). <b>젖은 시간으로만</b> 자랍니다 — 몸통과 무관합니다.</summary>
+            public float DripReach;
+
+            /// <summary>
+            /// 누적 젖은 시간(초)입니다. Age 와 달리 <b>절대 되감지 않습니다.</b>
+            /// 되감으면 이미 흘러내린 꼬리가 뒤로 빨려 들어갑니다.
+            /// </summary>
+            public float WetSeconds;
+
+            /// <summary>자국마다 다른 잡음 씨앗입니다.</summary>
+            public float Seed;
+
+            /// <summary>판 좌표에서 앵커가 놓인 y 입니다. Place 가 셉니다.</summary>
+            public float BodyOffsetY;
 
             /// <summary>물줄기가 실제로 닿은 자리입니다. 판이 커져도 여기는 안 움직입니다.</summary>
             public Vector3 Anchor;
@@ -144,6 +189,10 @@ namespace CarDrive.Gameplay
 
         void Awake()
         {
+            // 판이 몸통을 통째로 담으려면 갉기가 얼마나 밖으로 밀어내는지 알아야 합니다.
+            if (splatMaterial != null && splatMaterial.HasFloat("_EdgeBite"))
+                _edgeBite = splatMaterial.GetFloat("_EdgeBite");
+
             BuildPool();
         }
 
@@ -157,6 +206,17 @@ namespace CarDrive.Gameplay
             // 통은 씬 루트에 따로 서 있으므로 이 컴포넌트가 사라져도 저절로 없어지지 않습니다.
             if (_world != null) Destroy(_world.gameObject);
         }
+
+        // --- Public Properties ---
+
+        /// <summary>
+        /// 자국 판들이 담긴 <b>움직이지 않는 통</b>입니다. 씬 루트에 있습니다.
+        ///
+        /// 밖으로 내주는 것은 테스트가 <b>이름으로 찾지 않게</b> 하기 위해서입니다.
+        /// GameObject.Find 로 찾으면 앞 테스트의 통이 아직 안 지워졌을 때 빈 통을
+        /// 들여다보고 조용히 틀린 답을 냅니다.
+        /// </summary>
+        public Transform SplatRoot { get { return _world; } }
 
         // --- Public Methods ---
 
@@ -263,82 +323,109 @@ namespace CarDrive.Gameplay
             Splat s = _pool[i];
             s.Alive = true;
             s.Age = 0f;
-            s.Diameter = startDiameter;
+            s.WetSeconds = 0f;
+            s.Drip = drip;
+            s.Seed = Random.Range(0f, 64f);
 
-            // 서 있는 면일수록 판을 세로로 늘여 줄기가 자랄 자리를 만듭니다.
-            // 바닥이면 1 이라 정사각 그대로입니다.
-            s.Aspect = Mathf.Lerp(1f, WallAspect, drip);
+            s.BodyRadius = startBodyDiameter * 0.5f;
+
+            // <b>줄기 머리를 여기서 못 박습니다.</b> 이 뒤로 다시 계산하지 않습니다.
+            s.DripStart = s.BodyRadius * 0.4f;
+
+            s.DripReach = drip > 0.001f ? startDripReach : 0f;
 
             s.Renderer.enabled = true;
-
-            s.Block.SetFloat(GrowId, 0.45f);
-            s.Block.SetFloat(AgeId, 0f);
-            s.Block.SetFloat(DripId, drip);
-            s.Block.SetFloat(SeedId, Random.Range(0f, 64f));
-            s.Block.SetFloat(AspectId, s.Aspect);
-            s.Block.SetFloat(BodyOffsetId, Mathf.Lerp(0f, WallBodyOffsetY, drip));
-            s.Renderer.SetPropertyBlock(s.Block);
-
             s.Anchor = at;
             s.Normal = normal;
-            Place(ref s);
+
+            Push(ref s);
 
             _pool[i] = s;
             return i;
         }
 
-        /// <summary>한자리에 계속 누고 있는 자국을 키웁니다.</summary>
+        /// <summary>
+        /// 한자리에 계속 누고 있는 자국을 키웁니다.
+        ///
+        /// <b>몸통과 줄기는 서로를 참조하지 않습니다.</b> 각자 시간만 봅니다.
+        /// 예전에는 줄기 길이가 몸통 반지름의 배수였기 때문에, 웅덩이가 넓어질 때마다
+        /// 이미 흘러내린 줄기가 함께 길어지고 굵어지고 자리까지 옮겼습니다.
+        /// </summary>
         private void Grow(int i, float flow, float deltaTime)
         {
             Splat s = _pool[i];
 
-            s.Diameter = Mathf.Min(maxDiameter, s.Diameter + growPerSecond * flow * deltaTime);
+            s.BodyRadius = Mathf.Min(maxBodyDiameter * 0.5f,
+                                     s.BodyRadius + bodyGrowPerSecond * 0.5f * flow * deltaTime);
+
+            // <b>젖은 시간은 되감지 않습니다.</b> 나이는 되감아도(계속 적셔지므로)
+            // 줄기 길이는 절대 줄면 안 됩니다 — 줄면 이미 흘러내린 꼬리가 뒤로 빨려 들어갑니다.
+            s.WetSeconds += flow * deltaTime;
+            s.DripReach = s.Drip > 0.001f
+                ? Mathf.Min(maxDripReach, startDripReach + dripReachPerSecond * s.WetSeconds)
+                : 0f;
 
             // 키우는 동안은 오히려 되젖습니다. 계속 적셔지고 있으니까요.
             s.Age = Mathf.Max(0f, s.Age - deltaTime / Mathf.Max(dryDuration, 0.01f));
 
-            Place(ref s);
-
-            // 판이 커지는 것만으로는 부족합니다. 셰이더의 반지름도 함께 열어야
-            // 자국이 판 안에서도 차오릅니다.
-            s.Block.SetFloat(GrowId,
-                Mathf.Lerp(0.45f, 1f, Mathf.InverseLerp(startDiameter, maxDiameter, s.Diameter)));
-            s.Block.SetFloat(AgeId, s.Age);
-            s.Renderer.SetPropertyBlock(s.Block);
+            Push(ref s);
 
             _pool[i] = s;
         }
 
         /// <summary>
+        /// 자세를 잡고, <b>그 자세에서 나온 값까지</b> 함께 셰이더로 밀어 넣습니다.
+        ///
+        /// 순서가 중요합니다. _BodyOffsetY 는 판 크기에서 나오므로 Place 가 먼저 돌아야
+        /// 하고, 그 값을 같은 프레임에 넘겨야 합니다. 블록을 먼저 채우고 나중에 Place 를
+        /// 부르면 앵커가 <b>한 프레임 어긋납니다.</b>
+        /// </summary>
+        private void Push(ref Splat s)
+        {
+            Place(ref s);
+
+            s.Block.SetFloat(BodyRadiusId, s.BodyRadius);
+            s.Block.SetFloat(AgeId, s.Age);
+            s.Block.SetFloat(DripId, s.Drip);
+            s.Block.SetFloat(DripStartId, s.DripStart);
+            s.Block.SetFloat(DripReachId, s.DripReach);
+            s.Block.SetFloat(SeedId, s.Seed);
+            s.Block.SetFloat(BodyOffsetId, s.BodyOffsetY);
+            s.Renderer.SetPropertyBlock(s.Block);
+        }
+
+        /// <summary>
         /// 판의 자세와 크기를 통째로 다시 잡습니다.
         ///
-        /// <b>얼룩의 한가운데가 늘 앵커에 있어야 합니다.</b> 벽에서는 판을 세로로 늘이고
-        /// 그 안에서 몸통을 위로 올리므로, 판 한가운데는 앵커보다 아래에 놓입니다.
-        /// 그만큼 내려 두지 않으면 자국이 실제로 닿은 자리보다 위에 찍힙니다.
+        /// <b>판은 종이일 뿐입니다.</b> 여기서 정하는 것은 그릴 자리가 얼마나 필요한가 뿐이고,
+        /// 무엇을 어떻게 그릴지는 셰이더가 앵커 기준 미터로 정합니다. 그래서 판이 커져도
+        /// 이미 그려진 것은 한 픽셀도 안 움직입니다.
         ///
-        /// <b>회전도 여기서 같이 잡습니다.</b> 예전에는 회전을 Stamp 에서 한 번만 쓰고
-        /// Place 는 위치만 다시 잡았습니다. 그러면 자세를 정하는 곳이 둘로 갈려, 한쪽만
-        /// 다시 불리는 상황에서 판이 면에서 비스듬히 떨어져 나갑니다.
+        /// <b>크기 계산은 SplatQuadLayout 이 합니다.</b> 예전에는 이 클래스와 SplatCapture 가
+        /// 늘이는 비율을 각자 적어 두고 주석으로만 묶여 있었습니다.
         ///
-        /// <b>트랜스폼에서 되읽지 않습니다.</b> 위쪽 축을 <c>Root.up</c> 으로 읽으면
-        /// 이미 틀어진 트랜스폼의 값을 그대로 믿게 됩니다. 보관해 둔 법선에서 매번 새로 셉니다.
+        /// <b>트랜스폼에서 되읽지 않습니다.</b> 위쪽 축을 Root.up 으로 읽으면 이미 틀어진
+        /// 트랜스폼의 값을 그대로 믿게 됩니다. 보관해 둔 법선에서 매번 새로 셉니다.
         /// </summary>
         private void Place(ref Splat s)
         {
-            float height = s.Diameter * s.Aspect;
-
             // 판의 앞면이 면을 보게 눕히되 <b>위쪽은 언제나 월드 위</b>로 둡니다.
             // 그래야 셰이더가 아래로 뻗는 줄기가 중력 방향과 맞습니다.
             // 바닥처럼 법선이 위와 나란하면 LookRotation 이 풀 수 없으므로 다른 축을 줍니다.
             Vector3 up = Mathf.Abs(Vector3.Dot(s.Normal, Vector3.up)) > 0.98f ? Vector3.forward : Vector3.up;
             Quaternion rotation = Quaternion.LookRotation(-s.Normal, up);
 
-            // 판 좌표 -1~1 이 높이 전체를 덮으므로, 올린 정도에 반높이를 곱한 만큼 내립니다.
-            float lift = Mathf.Lerp(0f, WallBodyOffsetY, Mathf.InverseLerp(1f, WallAspect, s.Aspect));
-            Vector3 quadUp = rotation * Vector3.up;
+            Vector2 size;
+            float centerLift;
+            float bodyOffsetY;
+            SplatQuadLayout.Resolve(s.BodyRadius, _edgeBite, s.DripStart, s.DripReach, s.Drip,
+                                    out size, out centerLift, out bodyOffsetY);
 
-            s.Root.SetPositionAndRotation(s.Anchor - quadUp * (lift * height * 0.5f), rotation);
-            s.Root.localScale = new Vector3(s.Diameter, height, 1f);
+            s.BodyOffsetY = bodyOffsetY;
+
+            Vector3 quadUp = rotation * Vector3.up;
+            s.Root.SetPositionAndRotation(s.Anchor + quadUp * centerLift, rotation);
+            s.Root.localScale = new Vector3(size.x, size.y, 1f);
         }
 
         /// <summary>모든 자국을 조금씩 말립니다.</summary>
