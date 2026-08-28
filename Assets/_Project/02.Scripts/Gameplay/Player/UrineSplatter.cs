@@ -1,4 +1,6 @@
 using UnityEngine;
+using CarDrive.Common;
+using CarDrive.Systems;
 
 namespace CarDrive.Gameplay
 {
@@ -73,6 +75,13 @@ namespace CarDrive.Gameplay
         [Tooltip("초당 자라는 몸통 지름(m). 출력이 셀수록 빨라집니다.")]
         public float bodyGrowPerSecond = 0.58f;
 
+        /// <summary>
+        /// 전역 지도에서 한 자리가 흠뻑 젖는 데 걸리는 시간(초)입니다.
+        /// 작을수록 빨리 진해집니다. 판 쪽의 성장과는 별개 값입니다.
+        /// </summary>
+        [Tooltip("전역 지도에서 한 자리가 흠뻑 젖는 데 걸리는 시간(초)")]
+        public float wetPerSecond = 0.6f;
+
         /// <summary>갓 찍힌 벽 자국의 줄기 길이(m)입니다.</summary>
         [Header("흘러내림")]
         [Tooltip("갓 찍힌 벽 자국의 줄기 길이(m)")]
@@ -115,6 +124,15 @@ namespace CarDrive.Gameplay
         /// </summary>
         private Transform _world;
 
+        /// <summary>
+        /// 전역 젖음 지도입니다. 없으면 전부 판으로 찍습니다 —
+        /// <b>이 시스템이 없어도 게임은 그대로 돌아야 합니다.</b>
+        /// </summary>
+        private SplatManager _splatMap;
+
+        /// <summary>지도를 한 번이라도 찾아봤는지입니다. 매 프레임 찾지 않으려는 표시입니다.</summary>
+        private bool _lookedForSplatMap;
+
         /// <summary>돌려 쓰는 자국 판들입니다.</summary>
         private Splat[] _pool;
 
@@ -146,6 +164,18 @@ namespace CarDrive.Gameplay
             public float Flow;
             public float DeltaTime;
         }
+
+        /// <summary>
+        /// 이보다 평평하면 전역 젖음 지도에 맡기고, 아니면 판을 찍습니다.
+        ///
+        /// <b>지도는 위에서 내려다본 투영이라 벽을 못 덮습니다.</b> 세워진 면에 칠하면
+        /// 그 위아래 기둥 전체가 같은 UV 를 가리켜 통째로 젖습니다. 그래서 갈라 둡니다 —
+        /// 바닥은 지도(상한 없음, 굽은 땅에 그대로 얹힘), 벽은 판(흘러내림까지 그림).
+        ///
+        /// 0.75 는 약 41도입니다. 그보다 가파른 비탈은 걸어 오르기 어렵고 시선에서도
+        /// 벽처럼 읽히므로 판 쪽에 둡니다.
+        /// </summary>
+        private const float GroundNormalDot = 0.75f;
 
         /// <summary>
         /// 자리를 고를 때 크기가 나이를 얼마나 이기는가.
@@ -341,6 +371,9 @@ namespace CarDrive.Gameplay
             {
                 Pending p = _pending.Dequeue();
 
+                // <b>바닥은 지도가 맡습니다.</b> 판을 쓰지 않으므로 풀도 안 먹고 상한도 없습니다.
+                if (p.Drip <= 1f - GroundNormalDot && PaintToMap(p)) continue;
+
                 if (_active >= 0 && _pool[_active].Alive &&
                     Vector3.Distance(_pool[_active].Anchor, p.At) <= _stampDistance)
                 {
@@ -455,6 +488,33 @@ namespace CarDrive.Gameplay
 
             _pool[i] = s;
             return i;
+        }
+
+        /// <summary>
+        /// 전역 젖음 지도에 칠합니다. 지도가 없으면 false 를 돌려주어 판으로 넘깁니다.
+        ///
+        /// <b>지도는 Awake 순서를 보장할 수 없습니다.</b> 이 컴포넌트가 먼저 깨어날 수도
+        /// 있어서 한 번 찾아보고 없으면 그 뒤로 다시 찾지 않습니다 — 매 프레임 찾으면
+        /// 없는 경우에 그 탐색이 그대로 프레임 비용이 됩니다.
+        /// </summary>
+        private bool PaintToMap(Pending p)
+        {
+            if (!_lookedForSplatMap)
+            {
+                _lookedForSplatMap = true;
+                _splatMap = GameContext.Get<SplatManager>();
+            }
+
+            if (_splatMap == null || !_splatMap.IsReady) return false;
+
+            // 갓 찍힌 자국의 반지름과, 이번 프레임에 더할 젖음입니다.
+            // 판 쪽이 시간에 따라 키우는 것과 달리 지도는 <b>덧칠이 곧 성장</b>이라
+            // 반경은 고정이고 양만 쌓입니다.
+            float radius = startBodyDiameter * 0.5f;
+            float amount = p.Flow * p.DeltaTime / Mathf.Max(wetPerSecond, 0.01f);
+
+            _splatMap.Paint(p.At, radius, amount);
+            return true;
         }
 
         /// <summary>

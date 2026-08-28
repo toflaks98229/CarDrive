@@ -1,0 +1,110 @@
+// 세계의 <b>젖음 지도</b>에 칠하고, 서서히 지우는 컴퓨트 셰이더입니다.
+//
+// <b>무엇을 대신하는가.</b> 지금까지 오줌 자국은 닿는 자리마다 판(quad)을 하나씩 눕혀
+// 그렸습니다. 그 방식은 자국 수만큼 드로우가 늘고, 고정 크기 풀을 돌려 쓰므로 한 바퀴가
+// 돌면 <b>살아 있는 자국이 그대로 사라집니다.</b> 그리고 판은 평평한데 터레인은 굽어 있어
+// 비탈에서 모서리가 땅을 파고듭니다.
+//
+// 여기서는 지도 한 장에 값을 <b>더해</b> 둡니다. 자국 수가 몇이든 드로우는 늘지 않고,
+// 상한이 없으니 사라지지도 않으며, 지형 셰이더가 제 표면 위에서 읽으므로 굽은 땅에도
+// 그대로 얹힙니다.
+//
+// ── 좌표 규칙은 C# · HLSL 과 <b>글자 그대로</b> 같아야 합니다 ──
+//
+//   uv.x = (worldX - originX) * invSizeX
+//   uv.y = (worldZ - originZ) * invSizeZ
+//
+// 다만 이 파일은 UV 를 직접 만들지 않습니다. <b>C# 이 텍셀 좌표로 바꿔 넘깁니다.</b>
+// 여기서 월드 좌표를 다시 환산하면 규칙이 세 군데로 늘어나고, 한 곳만 어긋나는 날이 옵니다.
+
+#pragma kernel PaintSplat
+#pragma kernel FadeSplat
+
+/// 칠할 자리 하나입니다. C# 의 SplatManager.SplatRequest 와 <b>같은 순서·같은 크기</b>(16바이트)여야 합니다.
+struct SplatRequest
+{
+    float2 uv;        // 0~1 지도 좌표
+    float  radiusUV;  // UV 단위 반경
+    float  amount;    // 이번에 더할 양 (0~1)
+};
+
+StructuredBuffer<SplatRequest> _Requests;
+
+/// 이번에 실제로 쓸 요청 수입니다. 버퍼는 최대치로 잡아 두고 앞부분만 채웁니다.
+int _RequestCount;
+
+RWTexture2D<float> _SplatMap;
+
+/// 지도의 텍셀 크기입니다. <b>셰이더가 해상도를 가정하지 않습니다</b> —
+/// 해상도는 인스펙터에서 바뀌는 값이라, 여기에 상수로 적어 두면 조용히 어긋납니다.
+int2 _MapSize;
+
+/// 이번에 건드릴 텍셀 사각형입니다. xy = 시작, zw = 크기.
+/// 지도 전체를 도는 대신 이 안만 돕니다.
+int4 _PaintRect;
+int4 _FadeRect;
+
+/// 한 번에 깎아 낼 양입니다. C# 이 경과 시간에 비례해 넘깁니다.
+float _FadeAmount;
+
+/// <summary>
+/// 요청들을 지도에 <b>더합니다.</b>
+///
+/// <b>왜 픽셀마다 요청을 순회하는가.</b> 반대로 요청마다 그 주변 픽셀을 도는 방식도 있지만,
+/// 그러면 여러 요청이 겹칠 때 같은 픽셀에 여러 스레드가 동시에 쓰게 되어 경합이 납니다.
+/// 픽셀 하나를 한 스레드가 맡고 그 픽셀이 받을 몫을 전부 모으면 <b>원자적 연산이 필요 없습니다.</b>
+/// 요청 수가 프레임당 한 자리 수라 순회 비용은 사실상 없습니다.
+/// </summary>
+[numthreads(8, 8, 1)]
+void PaintSplat(uint3 id : SV_DispatchThreadID)
+{
+    int2 texel = _PaintRect.xy + int2(id.xy);
+
+    // 사각형은 8의 배수로 올림해 디스패치하므로 끝에서 넘칩니다. 지도 밖도 함께 막습니다.
+    if (any(texel >= _PaintRect.xy + _PaintRect.zw)) return;
+    if (any(texel < 0) || any(texel >= _MapSize)) return;
+
+    // 텍셀의 <b>가운데</b>를 씁니다. 모서리를 쓰면 브러시가 반 텍셀 치우칩니다.
+    float2 uv = (float2(texel) + 0.5) / float2(_MapSize);
+
+    float added = 0.0;
+
+    for (int i = 0; i < _RequestCount; i++)
+    {
+        SplatRequest r = _Requests[i];
+
+        // 지도가 정사각이 아니면 UV 거리도 찌그러집니다. 가로세로 비를 곱해 되돌리지 않으면
+        // 브러시가 타원이 됩니다. C# 이 반경을 <b>가로 기준 UV</b> 로 넘기므로 세로만 맞춥니다.
+        float2 d = uv - r.uv;
+        d.y *= (float)_MapSize.y / max((float)_MapSize.x, 1.0);
+
+        float dist = length(d);
+
+        // 가운데는 꽉 차고 가장자리로 갈수록 부드럽게 빠집니다.
+        // 안쪽 45% 는 평평하게 두어 한가운데가 뾰족해지지 않게 합니다.
+        float falloff = 1.0 - smoothstep(r.radiusUV * 0.45, r.radiusUV, dist);
+
+        added += r.amount * falloff;
+    }
+
+    if (added <= 0.0) return;
+
+    _SplatMap[texel] = saturate(_SplatMap[texel] + added);
+}
+
+/// <summary>
+/// 지도를 조금씩 지웁니다. 젖은 자국이 마르는 것입니다.
+///
+/// <b>지도 전체를 돌지 않습니다.</b> C# 이 칠한 적 있는 영역만 사각형으로 넘깁니다.
+/// 4096제곱을 0.1초마다 도는 것은 초당 1억 6천만 텍셀인데, 그중 젖은 곳은 대개 한 뼘입니다.
+/// </summary>
+[numthreads(8, 8, 1)]
+void FadeSplat(uint3 id : SV_DispatchThreadID)
+{
+    int2 texel = _FadeRect.xy + int2(id.xy);
+
+    if (any(texel >= _FadeRect.xy + _FadeRect.zw)) return;
+    if (any(texel < 0) || any(texel >= _MapSize)) return;
+
+    _SplatMap[texel] = max(0.0, _SplatMap[texel] - _FadeAmount);
+}

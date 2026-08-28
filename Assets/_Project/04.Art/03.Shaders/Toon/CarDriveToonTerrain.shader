@@ -43,6 +43,9 @@ Shader "CarDrive/Toon Terrain"
         _MidPoint ("명암 경계 (낮을수록 밝은 면이 넓음)", Range(0, 1)) = 0.42
         _Softness ("경계 부드러움", Range(0, 0.5)) = 0.06
         _ShadowSoftness ("그림자 경계 부드러움", Range(0, 1)) = 0.25
+        _SplatDarken ("젖으면 어두워지는 정도", Range(0, 1)) = 0.45
+        _SplatGloss ("젖으면 생기는 반짝임", Range(0, 1)) = 0.55
+
         _StepSoftness ("단계 사이 부드러움", Range(0, 1)) = 0.35
         _Steps ("밝은 쪽 단계 수 (2 미만이면 끊지 않음)", Range(0, 8)) = 3
         _ShadowTint ("그림자 색", Color) = (0.40, 0.46, 0.62, 1)
@@ -101,6 +104,8 @@ Shader "CarDrive/Toon Terrain"
             half   _HeightBottom;
             half   _HeightTop;
             half   _HeightStrength;
+            half   _SplatDarken;
+            half   _SplatGloss;
         CBUFFER_END
 
         TEXTURE2D(_Control); SAMPLER(sampler_Control);
@@ -124,6 +129,10 @@ Shader "CarDrive/Toon Terrain"
         }
 
         /// <summary>인스펙터 값을 툰 설정 묶음으로 모읍니다.</summary>
+        // 세계 전체의 젖음 지도입니다. SplatManager 가 전역으로 올립니다.
+        // 지도가 없으면 CarDriveSplatWetness 가 0 을 돌려주므로 아래 계산이 전부 사라집니다.
+        #include "CarDriveSplatMap.hlsl"
+
         ToonParams BuildToonParams()
         {
             ToonParams p = DefaultToonParams();
@@ -144,6 +153,27 @@ Shader "CarDrive/Toon Terrain"
             // 넓은 면에 얹으면 얼룩으로 보이고, 픽셀화를 거치면 더 지저분해집니다.
             p.specularStrength = 0.0h;
             p.rimStrength = 0.0h;
+            return p;
+        }
+
+        /// <summary>
+        /// 젖은 만큼 하이라이트를 <b>되살립니다.</b>
+        ///
+        /// 마른 지면은 위에서 보듯 하이라이트를 끕니다. 그런데 젖은 흙은 물막이 생겨
+        /// 실제로 번들거립니다 — 이 파이프라인에는 Smoothness 가 없으므로,
+        /// 그 뜻을 <c>specularStrength</c> 와 <c>specularSize</c> 로 옮깁니다.
+        ///
+        /// <b>wet 이 0 이면 위와 완전히 같은 값이 나옵니다.</b> 곱하기뿐이라 마른 지면의
+        /// 그림은 한 픽셀도 안 바뀝니다.
+        /// </summary>
+        ToonParams BuildToonParamsWet(half wet)
+        {
+            ToonParams p = BuildToonParams();
+
+            p.specularStrength = _SplatGloss * wet;
+
+            // 젖은 반짝임은 좁고 또렷합니다. 넓게 퍼지면 안개처럼 보여 물로 안 읽힙니다.
+            p.specularSize = max(p.specularSize, 48.0h);
             return p;
         }
         ENDHLSL
@@ -232,6 +262,15 @@ Shader "CarDrive/Toon Terrain"
                 }
                 #endif
 
+                // ── 젖음 ──
+                //
+                // 지도가 없거나 이 자리가 마르면 wet 이 0 이고, 아래 두 줄은 아무것도 바꾸지
+                // 않습니다(곱하기 1, 세기 0). <b>마른 지면의 그림은 예전과 픽셀 단위로 같습니다.</b>
+                half wet = CarDriveSplatWetness(input.positionWS);
+
+                // 젖은 흙은 어둡습니다. 빛을 덜 튕겨 내고 속으로 먹기 때문입니다.
+                albedo *= lerp(1.0h, 1.0h - _SplatDarken, wet);
+
                 ToonSurface s;
                 s.albedo = albedo;
                 s.normalWS = normalize(input.normalWS);
@@ -239,7 +278,7 @@ Shader "CarDrive/Toon Terrain"
                 s.viewDirWS = SafeNormalize(GetWorldSpaceViewDir(input.positionWS));
 
                 float4 shadowCoord = TransformWorldToShadowCoord(input.positionWS);
-                half3 color = ToonShade(s, BuildToonParams(), shadowCoord);
+                half3 color = ToonShade(s, BuildToonParamsWet(wet), shadowCoord);
 
                 color = MixFog(color, input.fogFactor);
                 return half4(color, 1);
