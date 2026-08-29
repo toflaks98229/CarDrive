@@ -19,6 +19,15 @@ Shader "CarDrive/Toon Lit"
         _BaseMap ("바탕 텍스처", 2D) = "white" {}
         _BaseColor ("바탕색", Color) = (1, 1, 1, 1)
 
+        // <b>얼룩은 켠 머티리얼만 받습니다.</b> 이 셰이더는 35개 머티리얼이 함께 쓰는데,
+        // 하늘·차 내부·UI 처럼 오줌이 닿을 수 없는 것까지 전부 얼룩 코드를 컴파일하면
+        // 배리언트가 늘고 셰이더를 고칠 때마다 재컴파일 범위가 그만큼 넓어집니다.
+        // 앞으로 벽을 여러 에셋으로 바꿔 나갈 예정이라면 그 마찰이 실제 비용이 됩니다.
+        //
+        // 새 에셋은 이 체크 하나로 참여합니다. 다른 셰이더라면 CarDriveSplatMap.hlsl 을
+        // 포함하고 세 줄만 쓰면 됩니다 — 벽마다가 아니라 <b>셰이더 종류마다 한 번</b>입니다.
+        [Toggle(_SPLAT_ON)] _SplatOn ("오줌 얼룩을 받는가", Float) = 0
+
         // 땅 얼룩(CarDriveToonTerrain)과 <b>같은 이름·같은 기본값</b>입니다.
         // 다르면 같은 오줌인데 땅과 벽이 다른 물건으로 보입니다.
         _SplatColor ("얼룩 색", Color) = (0.78, 0.68, 0.32, 0.85)
@@ -91,9 +100,10 @@ Shader "CarDrive/Toon Lit"
         HLSLINCLUDE
         #include "CarDriveToonLighting.hlsl"
 
-        // 세운 면까지 덮는 전역 젖음 지도입니다.
-        // 지도가 없으면 CarDriveSplatWetnessTriplanar 가 0 을 돌려주므로 아래가 전부 사라집니다.
+        // 세운 면까지 덮는 전역 젖음 지도입니다. <b>켠 머티리얼만</b> 포함합니다.
+        #ifdef _SPLAT_ON
         #include "CarDriveSplatMap.hlsl"
+        #endif
 
         CBUFFER_START(UnityPerMaterial)
             float4 _BaseMap_ST;
@@ -289,6 +299,7 @@ Shader "CarDrive/Toon Lit"
             #pragma shader_feature_local_fragment _HATCHING
             #pragma shader_feature_local_fragment _ALPHATEST_ON
             #pragma shader_feature_local_fragment _DITHER_FADE
+            #pragma shader_feature_local_fragment _SPLAT_ON
             #pragma multi_compile_fragment _ LOD_FADE_CROSSFADE
 
             struct Attributes
@@ -331,7 +342,9 @@ Shader "CarDrive/Toon Lit"
                 CARDRIVE_LOD_CROSSFADE(input.positionCS);
 
                 float3 nrm = normalize(input.normalWS);
+                half3 albedo = baseSample.rgb * _BaseColor.rgb;
 
+                #ifdef _SPLAT_ON
                 // ── 오줌 얼룩 ──
                 //
                 // <b>판(quad)을 소환하지 않습니다.</b> 예전에는 벽에 자국이 튈 때마다 판을 하나씩
@@ -349,9 +362,9 @@ Shader "CarDrive/Toon Lit"
                                                        _SplatNoiseScale, _SplatEdgeBite, _SplatEdgeSharp,
                                                        _SplatHatchScale, _SplatHatchBite);
 
-                half3 albedo = baseSample.rgb * _BaseColor.rgb;
                 half3 stained = lerp(albedo * (1.0h - _SplatDarken), _SplatColor.rgb, _SplatColor.a);
                 albedo = lerp(albedo, stained, wet);
+                #endif
 
                 ToonSurface s;
                 s.albedo = albedo;
@@ -360,7 +373,9 @@ Shader "CarDrive/Toon Lit"
                 s.viewDirWS = SafeNormalize(GetWorldSpaceViewDir(input.positionWS));
 
                 ToonParams tp = BuildToonParams();
+                #ifdef _SPLAT_ON
                 tp.specularStrength = max(tp.specularStrength, _SplatGloss * wet);
+                #endif
 
                 float4 shadowCoord = TransformWorldToShadowCoord(input.positionWS);
                 half3 color = ToonShade(s, tp, shadowCoord);

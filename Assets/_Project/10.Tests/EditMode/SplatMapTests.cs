@@ -124,6 +124,44 @@ namespace CarDrive.Tests
                 "지도가 없을 때 일찍 빠져나가는 길이 없습니다. 세상이 통째로 젖어 보입니다.");
         }
 
+        /// <summary>
+        /// 얼룩이 <b>켠 머티리얼만</b> 컴파일되는지 못박습니다.
+        ///
+        /// CarDriveToonLit 은 머티리얼 35개가 함께 씁니다. 무조건 컴파일하면 하늘·차 내부처럼
+        /// 오줌이 닿을 수 없는 것까지 배리언트가 생기고, 셰이더를 고칠 때마다 재컴파일 범위가
+        /// 그만큼 넓어집니다. 앞으로 벽을 여러 에셋으로 바꿔 나갈 때 그 마찰이 실제 비용입니다.
+        ///
+        /// 누가 <c>#ifdef</c> 를 지우면 컴파일도 되고 화면도 그대로라 <b>조용히 되돌아갑니다.</b>
+        /// 그래서 셰이더 원문을 글자 그대로 읽어 봅니다.
+        /// </summary>
+        [Test]
+        public void 벽_얼룩은_켠_머티리얼만_컴파일된다()
+        {
+            const string LitPath = "Assets/_Project/04.Art/03.Shaders/Toon/CarDriveToonLit.shader";
+            string src = Read(LitPath);
+
+            Assert.IsTrue(src.Contains("#pragma shader_feature_local_fragment _SPLAT_ON"),
+                "옵트인 키워드가 없습니다. 35개 머티리얼이 전부 얼룩을 컴파일하게 됩니다.");
+
+            Assert.IsTrue(Regex.IsMatch(src, @"\[Toggle\(_SPLAT_ON\)\]"),
+                "인스펙터 토글이 없습니다. 새 에셋이 체크로 참여할 수 없습니다.");
+
+            // 인클루드까지 가려야 켜지 않은 머티리얼이 그 파일을 아예 안 봅니다.
+            Assert.IsTrue(Regex.IsMatch(src, @"#ifdef _SPLAT_ON\s+#include ""CarDriveSplatMap\.hlsl"""),
+                "얼룩 인클루드가 키워드로 안 가려져 있습니다.");
+
+            // 프래그먼트 본문도 가려야 합니다.
+            Assert.IsTrue(src.Contains("CarDriveSplatStainTriplanar"),
+                "벽이 삼중평면 얼룩을 안 읽습니다.");
+
+            int stainAt = src.IndexOf("CarDriveSplatStainTriplanar");
+            string before = src.Substring(0, stainAt);
+            int lastIf = before.LastIndexOf("#ifdef _SPLAT_ON");
+            int lastEnd = before.LastIndexOf("#endif");
+            Assert.Greater(lastIf, lastEnd,
+                "얼룩 계산이 키워드 밖에 있습니다. 켜지 않은 머티리얼도 컴파일합니다.");
+        }
+
         [Test]
         public void 컴퓨트가_해상도를_스스로_가정하지_않는다()
         {

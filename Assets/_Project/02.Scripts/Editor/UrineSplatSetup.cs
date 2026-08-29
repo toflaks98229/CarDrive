@@ -58,6 +58,8 @@ public static class UrineSplatSetup
         EditorUtility.SetDirty(mat);
         Debug.Log("SPLATSETUP 재질 값을 새 뜻으로 다시 씀");
 
+        EnableStainOnSurfaces();
+
         EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
 
         UrineRelief relief = Object.FindAnyObjectByType<UrineRelief>(FindObjectsInactive.Include);
@@ -105,6 +107,49 @@ public static class UrineSplatSetup
 
         Debug.Log("SPLATSETUP 끝.");
         EditorApplication.Exit(0);
+    }
+
+    /// <summary>
+    /// 오줌이 닿을 수 있는 표면 머티리얼에 얼룩을 켭니다.
+    ///
+    /// <b>왜 도구가 켜는가.</b> CarDriveToonLit 은 머티리얼 35개가 함께 쓰는데, 하늘·차 내부처럼
+    /// 오줌이 닿을 수 없는 것까지 얼룩 코드를 컴파일하면 배리언트가 늘고 셰이더를 고칠 때마다
+    /// 재컴파일 범위가 그만큼 넓어집니다. 그래서 <b>기본은 꺼짐</b>이고 켤 것만 여기 적어 둡니다.
+    ///
+    /// 새 벽 에셋을 넣으면 이 목록에 이름을 더하거나, 인스펙터에서 "오줌 얼룩을 받는가" 를
+    /// 체크하면 됩니다.
+    /// </summary>
+    private static void EnableStainOnSurfaces()
+    {
+        string[] names = { "MartWall", "HomeWall", "MartFloor", "HomeFloor" };
+
+        foreach (string name in names)
+        {
+            string[] guids = AssetDatabase.FindAssets("t:Material " + name);
+            bool found = false;
+
+            foreach (string guid in guids)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                if (System.IO.Path.GetFileNameWithoutExtension(path) != name) continue;
+
+                Material m = AssetDatabase.LoadAssetAtPath<Material>(path);
+                if (m == null) continue;
+
+                // 토글 프로퍼티와 키워드를 <b>함께</b> 세웁니다. 하나만 세우면 인스펙터와
+                // 실제 컴파일이 어긋나 다음 사람이 "체크했는데 안 된다" 를 겪습니다.
+                if (m.HasFloat("_SplatOn")) m.SetFloat("_SplatOn", 1f);
+                m.EnableKeyword("_SPLAT_ON");
+                EditorUtility.SetDirty(m);
+
+                Debug.Log("SPLATSETUP 얼룩 켬: " + path);
+                found = true;
+            }
+
+            if (!found) Debug.Log("SPLATSETUP 머티리얼을 못 찾음: " + name);
+        }
+
+        AssetDatabase.SaveAssets();
     }
 
     private static void Fail(string message)
