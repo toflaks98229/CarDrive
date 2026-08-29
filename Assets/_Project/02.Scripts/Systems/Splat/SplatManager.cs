@@ -542,10 +542,16 @@ namespace CarDrive.Systems
                 _origin = new Vector2(at.x - windowMeters * 0.5f, at.z - windowMeters * 0.5f);
             }
 
-            // 높이 창도 함께 놓습니다. 대상보다 조금 아래에서 시작해 위로 뻗습니다 —
-            // 벽은 발밑에서 시작하고, 아래로는 비탈 정도만 담으면 됩니다.
+            // ── 높이 창 ──
+            //
+            // 옆면 지도의 세로는 <b>높이</b>입니다. 대상보다 조금 아래에서 시작해 위로 뻗습니다 —
+            // 벽은 발밑에서 시작하므로 아래로는 비탈 정도만 담으면 되고, 위로는 건물 높이가
+            // 들어와야 합니다. 24m 중 6m 를 아래에 줍니다.
+            //
+            // 고정 모드는 월드 y=0 에서 시작합니다. 창이 안 움직이므로 대상 높이를 따라갈
+            // 이유가 없고, 그 편이 값을 예측할 수 있습니다.
             float baseY = coverage == CoverageMode.Fixed
-                ? fixedOrigin.y * 0f   // 고정 모드에서는 월드 원점 기준으로 둡니다.
+                ? 0f
                 : CurrentTargetPosition().y - SideHeightMeters * 0.25f;
             _height = new Vector2(baseY, 1f / SideHeightMeters);
 

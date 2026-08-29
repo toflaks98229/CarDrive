@@ -13,6 +13,7 @@ Material:
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
   - _HATCHING
+  - _SPLAT_ON
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 1
@@ -106,6 +107,7 @@ Material:
     - _DstBlendAlpha: 0
     - _EnvironmentReflections: 1
     - _FadeEnd: 330
+    - _FadeScatter: 0.6
     - _FadeStart: 240
     - _GlossMapScale: 0
     - _Glossiness: 0
@@ -122,6 +124,7 @@ Material:
     - _ReceiveShadows: 1
     - _RimStrength: 0
     - _RimWidth: 4
+    - _ShadowSoftness: 0.25
     - _ShadowStrength: 0.75
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0
@@ -129,8 +132,17 @@ Material:
     - _SpecularHighlights: 1
     - _SpecularSize: 40
     - _SpecularStrength: 0
+    - _SplatDarken: 0.45
+    - _SplatEdgeBite: 1.7
+    - _SplatEdgeSharp: 1.5
+    - _SplatGloss: 0.55
+    - _SplatHatchBite: 1
+    - _SplatHatchScale: 0.6
+    - _SplatNoiseScale: 3.5
+    - _SplatOn: 1
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
+    - _StepSoftness: 0.35
     - _Steps: 0
     - _Surface: 0
     - _UseDitherFade: 0
@@ -148,6 +160,7 @@ Material:
     - _RimColor: {r: 1, g: 1, b: 1, a: 1}
     - _ShadowTint: {r: 0.41999996, g: 0.4699999, b: 0.62, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
+    - _SplatColor: {r: 0.78, g: 0.68, b: 0.31999996, a: 0.85}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
 --- !u!114 &5284190236910333405

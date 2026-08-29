@@ -58,9 +58,9 @@ public static class UrineSplatSetup
         EditorUtility.SetDirty(mat);
         Debug.Log("SPLATSETUP 재질 값을 새 뜻으로 다시 씀");
 
-        EnableStainOnSurfaces();
-
         EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+
+        EnableStainOnSurfaces();
 
         UrineRelief relief = Object.FindAnyObjectByType<UrineRelief>(FindObjectsInactive.Include);
         if (relief == null) { Fail("씬에서 UrineRelief 를 못 찾음"); return; }
@@ -112,44 +112,61 @@ public static class UrineSplatSetup
     /// <summary>
     /// 오줌이 닿을 수 있는 표면 머티리얼에 얼룩을 켭니다.
     ///
-    /// <b>왜 도구가 켜는가.</b> CarDriveToonLit 은 머티리얼 35개가 함께 쓰는데, 하늘·차 내부처럼
-    /// 오줌이 닿을 수 없는 것까지 얼룩 코드를 컴파일하면 배리언트가 늘고 셰이더를 고칠 때마다
-    /// 재컴파일 범위가 그만큼 넓어집니다. 그래서 <b>기본은 꺼짐</b>이고 켤 것만 여기 적어 둡니다.
+    /// <b>이름 목록을 손으로 적지 않습니다.</b> 처음에는 네 개를 적어 두었는데, 정작 야외
+    /// 건물이 쓰는 BuildingWall 이 빠져 있어서 <b>벽에 아무것도 안 그려졌습니다</b> —
+    /// 판 소환을 없앤 뒤라 얼룩이 꺼진 면은 대안이 없습니다. 벽을 여러 에셋으로 바꿔 나갈
+    /// 예정이면 손 목록은 반드시 또 어긋납니다.
     ///
-    /// 새 벽 에셋을 넣으면 이 목록에 이름을 더하거나, 인스펙터에서 "오줌 얼룩을 받는가" 를
-    /// 체크하면 됩니다.
+    /// 그래서 <b>씬에서 유도합니다</b> — 오줌 레이캐스트가 맞힐 수 있는 레이어의 렌더러를
+    /// 훑어 그들이 쓰는 머티리얼을 모읍니다. 칠할 수 있는 면과 얼룩을 받는 면이
+    /// <b>같은 목록에서</b> 나오므로 어긋날 자리가 없습니다.
+    ///
+    /// 새 벽 에셋을 넣었으면 이 도구를 다시 돌리면 됩니다.
     /// </summary>
     private static void EnableStainOnSurfaces()
     {
-        string[] names = { "MartWall", "HomeWall", "MartFloor", "HomeFloor" };
+        Shader lit = Shader.Find("CarDrive/Toon Lit");
+        if (lit == null) { Debug.Log("SPLATSETUP CarDrive/Toon Lit 을 못 찾음"); return; }
 
-        foreach (string name in names)
+        var seen = new System.Collections.Generic.HashSet<Material>();
+        int enabled = 0, skipped = 0;
+
+        foreach (Renderer r in Object.FindObjectsByType<Renderer>(
+                     FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
-            string[] guids = AssetDatabase.FindAssets("t:Material " + name);
-            bool found = false;
+            // 오줌이 못 닿는 레이어는 건너뜁니다. UrineSplatter 가 쓰는 그 마스크입니다.
+            if ((SurfaceMask & (1 << r.gameObject.layer)) == 0) continue;
 
-            foreach (string guid in guids)
+            foreach (Material m in r.sharedMaterials)
             {
-                string path = AssetDatabase.GUIDToAssetPath(guid);
-                if (System.IO.Path.GetFileNameWithoutExtension(path) != name) continue;
+                if (m == null || !seen.Add(m)) continue;
 
-                Material m = AssetDatabase.LoadAssetAtPath<Material>(path);
-                if (m == null) continue;
+                // 다른 셰이더를 쓰는 것은 건드릴 수 없습니다 — 그 셰이더가 얼룩을 읽도록
+                // CarDriveSplatMap.hlsl 을 포함해야 참여합니다. 몇 개인지만 알려 둡니다.
+                if (m.shader != lit)
+                {
+                    // <b>이것들은 얼룩을 못 받습니다.</b> 조용히 넘기면 "왜 저 벽만 안 젖지" 를
+                    // 나중에 눈으로 찾게 됩니다. 이름과 셰이더를 남겨 둡니다.
+                    skipped++;
+                    Debug.Log("SPLATSETUP 건너뜀(다른 셰이더): " + m.name
+                              + " — " + (m.shader != null ? m.shader.name : "(없음)"));
+                    continue;
+                }
 
                 // 토글 프로퍼티와 키워드를 <b>함께</b> 세웁니다. 하나만 세우면 인스펙터와
                 // 실제 컴파일이 어긋나 다음 사람이 "체크했는데 안 된다" 를 겪습니다.
                 if (m.HasFloat("_SplatOn")) m.SetFloat("_SplatOn", 1f);
                 m.EnableKeyword("_SPLAT_ON");
                 EditorUtility.SetDirty(m);
+                enabled++;
 
-                Debug.Log("SPLATSETUP 얼룩 켬: " + path);
-                found = true;
+                Debug.Log("SPLATSETUP 얼룩 켬: " + m.name);
             }
-
-            if (!found) Debug.Log("SPLATSETUP 머티리얼을 못 찾음: " + name);
         }
 
         AssetDatabase.SaveAssets();
+        Debug.Log("SPLATSETUP 얼룩을 켠 머티리얼 " + enabled + " 개, 다른 셰이더라 건너뛴 것 "
+                  + skipped + " 개");
     }
 
     private static void Fail(string message)
