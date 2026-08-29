@@ -104,6 +104,20 @@ namespace CarDrive.Systems
         /// </summary>
         private const float MinWeatherVisibility = 0.35f;
 
+        /// <summary>
+        /// 날씨 안개 요청(짙기)을 <b>끝 거리를 당기는 정도</b>로 옮길 때 쓰는 상한입니다.
+        /// <see cref="WeatherRig"/> 의 maxFogDensity 와 같아야 합니다.
+        ///
+        /// <b>왜 환산이 필요한가.</b> 안개를 Linear 로 바꾸면 <c>RenderSettings.fogDensity</c> 는
+        /// 아예 무시됩니다. 날씨가 계산한 안개를 그대로 두면 <b>계산만 하고 버려집니다</b> —
+        /// WeatherRig 가 예전에 정확히 그 상태였고, 그래서 안개 날씨와 맑음이 화면에서
+        /// 구분되지 않았습니다. 같은 실수를 되풀이하지 않으려고 짙기를 거리로 옮깁니다.
+        /// </summary>
+        private const float MaxWeatherFogDensity = 0.05f;
+
+        /// <summary>날씨가 가장 짙을 때 안개가 끝나는 거리(m)입니다.</summary>
+        private const float ThickestWeatherFogEnd = 45f;
+
         // --- Public Types ---
 
         /// <summary>
@@ -168,6 +182,18 @@ namespace CarDrive.Systems
 
             /// <summary>그 거리에서 95% 를 덮는 지수 제곱 안개의 짙기입니다.</summary>
             public readonly float FogDensity;
+
+            /// <summary>
+            /// 안개가 <b>시작되는</b> 거리(m)입니다. 이보다 가까우면 완전히 맑습니다.
+            /// 나무가 디더로 녹기 시작하는 자리에 맞춥니다 — 그 앞에는 가릴 것이 없습니다.
+            /// </summary>
+            public readonly float FogStart;
+
+            /// <summary>
+            /// 안개가 <b>완전히 덮는</b> 거리(m)입니다.
+            /// 지형 타일이 아직 안 켜져 지면이 끝나 있을 수 있는 자리라, 여기서는 100% 여야 합니다.
+            /// </summary>
+            public readonly float FogEnd;
 
             /// <summary>지형의 나무를 잘라내는 거리(<c>Terrain.treeDistance</c>)입니다.</summary>
             public readonly float TreeCut;
@@ -268,6 +294,33 @@ namespace CarDrive.Systems
                 // 컬링 히스테리시스(20m)보다 크게 잡는 이유가 있습니다 — 타일을 껐다 켜는 일이
                 // 나무·풀을 접는 일보다 훨씬 비싸므로, 떨림을 막는 값도 그만큼 커야 합니다.
                 TerrainActiveRelease = TerrainActive + Mathf.Max(0f, settings.tileStreamingHysteresis);
+
+                // ── 안개가 놓일 자리 ──
+                //
+                // <b>안개는 무언가를 가릴 때만 값을 합니다.</b> 지금까지는 지수제곱이라
+                // 코앞부터 뿌옇게 깔렸는데, 그 구간에는 <b>사라지는 것이 하나도 없습니다</b> —
+                // 풀 디더는 46m 에서 끝나고 나무 디더는 FadeStart 까지 시작도 안 합니다.
+                // 그 사이를 덮는 안개는 순수한 손실이고, 실제로 그것이 중경의 초록 나무를
+                // 안개색(주황빛)으로 물들여 <b>화면에서 초록을 지웠습니다.</b>
+                // 재 보니 나무 구역의 색상이 37도로 땅과 같았습니다.
+                //
+                // 그래서 나무가 녹기 시작하는 자리에서 열고, 지형 타일이 켜지는 자리에서 닫습니다.
+                // 둘 다 <b>사다리에서 유도합니다</b> — 상수로 박으면 날씨나 품질로 거리가 줄 때
+                // 안개만 제자리에 남아 아무것도 없는 허공을 가립니다.
+                float fogOpen = FadeStart;
+
+                // 닫는 자리는 <b>지형이 끝날 수 있는 가장 가까운 거리</b>입니다.
+                // 나무가 다 녹는 자리보다도 멀어야 하므로 둘 중 먼 쪽을 씁니다 —
+                // 날씨가 시야를 좁히면 FadeEnd 가 TerrainActive 보다 앞으로 오기 때문입니다.
+                float fogShut = Mathf.Max(TerrainActive, FadeEnd / 0.9f);
+
+                // 날씨 안개는 짙기로 옵니다. Linear 는 짙기를 안 보므로 <b>끝 거리를 당기는</b>
+                // 것으로 옮깁니다. 안 그러면 날씨가 계산한 안개가 통째로 버려집니다.
+                float weatherPull = Mathf.Clamp01(weatherFog / MaxWeatherFogDensity);
+                fogShut = Mathf.Lerp(fogShut, Mathf.Min(fogShut, ThickestWeatherFogEnd), weatherPull);
+
+                FogStart = Mathf.Min(fogOpen, fogShut * 0.5f);
+                FogEnd = fogShut;
 
                 // <b>꺼지지 않고 남아 있는</b> 타일의 먼 쪽 모서리까지 담아야 합니다.
                 // 여기에 TerrainActive 를 쓰면 히스테리시스 구간의 타일 뒤쪽이 잘려 하늘이 뚫립니다.

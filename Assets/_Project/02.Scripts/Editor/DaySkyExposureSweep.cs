@@ -34,8 +34,19 @@ public static class DaySkyExposureSweep
     private const int Width = 960;
     private const int Height = 540;
 
-    /// <summary>런타임에 ViewRangeScaler 가 쓰는 안개 짙기입니다.</summary>
-    private const float RuntimeFogDensity = 0.012f;
+    /// <summary>
+    /// 런타임에 ViewRangeScaler 가 쓰는 안개 거리입니다.
+    ///
+    /// <b>짙기가 아니라 거리입니다.</b> 예전에는 여기에 짙기를 적어 두었는데, 그 값이
+    /// 씬 YAML 의 m_FogDensity 였고 <b>런타임에 한 번도 쓰이지 않는 값</b>이었습니다.
+    /// 사다리가 시야 거리에서 다시 계산하기 때문입니다. 그래서 캡처가 게임 화면이 아닌 것을
+    /// 보여 주고 있었습니다.
+    ///
+    /// 지금 사다리 값: FadeStart = 340 x 0.7 x 0.70 = 166.6m,
+    /// TerrainActive = max(340, 400) x 0.7 = 280m.
+    /// </summary>
+    private const float RuntimeFogStart = 166.6f;
+    private const float RuntimeFogEnd = 280f;
 
     /// <summary>훑어 볼 노출 값들입니다. 지금 값은 1.1 입니다.</summary>
     private static readonly float[] Exposures = { 1.1f, 0.85f, 0.7f, 0.55f, 0.45f, 0.35f };
@@ -122,8 +133,9 @@ public static class DaySkyExposureSweep
             if (chosen != null) RenderSettings.skybox = chosen;
 
             RenderSettings.fog = true;
-            RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogDensity = RuntimeFogDensity;
+            RenderSettings.fogMode = FogMode.Linear;
+            RenderSettings.fogStartDistance = RuntimeFogStart;
+            RenderSettings.fogEndDistance = RuntimeFogEnd;
 
             Texture2D shot = Grab(camera, target);
             string name = "exp" + Exposures[i].ToString("0.00", CultureInfo.InvariantCulture);

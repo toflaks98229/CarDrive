@@ -155,7 +155,7 @@ namespace CarDrive.Systems
             ViewDistances.Ladder ladder = ViewDistances.Current;
 
             // 1. 안개를 씁니다. 사다리가 날씨 요청과 시야 요구를 이미 합쳐 두었습니다.
-            if (settings.hideDrawDistanceWithFog) ApplyFog(ladder.FogDensity);
+            if (settings.hideDrawDistanceWithFog) ApplyFog(ladder.FogStart, ladder.FogEnd);
 
             // 2. 파클립. 켜져 있는 타일을 자르지 않을 만큼 멉니다.
             camera.farClipPlane = ladder.FarClip;
@@ -274,12 +274,26 @@ namespace CarDrive.Systems
         /// 이제 두 요구를 <see cref="ViewDistances"/> 가 합쳐 하나의 값으로 내주고,
         /// 여기서는 <b>그 값을 그대로 씁니다.</b> 읽지 않으므로 순서를 다툴 상대가 없습니다.
         /// </summary>
-        /// <param name="density">사다리가 정한 짙기. 날씨 요청과 시야 요구 중 짙은 쪽입니다.</param>
-        private static void ApplyFog(float density)
+        /// <param name="start">안개가 시작되는 거리(m). 이보다 가까우면 완전히 맑습니다.</param>
+        /// <param name="end">안개가 완전히 덮는 거리(m).</param>
+        private static void ApplyFog(float start, float end)
         {
             RenderSettings.fog = true;
-            RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogDensity = density;
+
+            // <b>지수제곱에서 Linear 로 바꿨습니다.</b> 지수제곱은 코앞부터 뿌옇게 깔리는데
+            // 그 구간에는 사라지는 것이 하나도 없습니다 — 풀 디더는 46m 에서 끝나고
+            // 나무 디더는 FadeStart 까지 시작도 안 합니다. 그런데도 100m 에서 33% 를 덮어,
+            // 중경의 <b>초록 나무를 안개색(주황빛)으로 물들여 화면에서 초록을 지웠습니다.</b>
+            // 실제로 재 보니 나무 구역의 색상이 37도로 땅과 같았습니다.
+            //
+            // Linear 는 시작 거리 전까지 완전히 맑고, 끝 거리에서 <b>진짜 100%</b> 에 닿습니다.
+            // 지수제곱은 끝까지 새기 때문에(280m 에서 95.6%) 타일 경계가 비칠 여지가 남았습니다.
+            //
+            // 씬이 저장해 둔 모드도 원래 Linear 입니다(m_FogMode: 1). 지금까지 런타임이
+            // 그것을 덮어쓰고 있었습니다.
+            RenderSettings.fogMode = FogMode.Linear;
+            RenderSettings.fogStartDistance = start;
+            RenderSettings.fogEndDistance = end;
         }
 
         /// <summary>
