@@ -127,9 +127,19 @@ namespace CarDrive.Gameplay
 
         /// <summary>
         /// 소비가 시작될 때 소비하는 쪽이 부릅니다. 물건이 어딘가에 매여 있다면 여기서 풉니다.
+        ///
+        /// <b>손에 들려 있던 것부터 뺍니다.</b> 이 게임의 들 수 있는 물건은 전부
+        /// 상호작용 대상이기도 합니다 — 좌클릭으로 든 병을 그대로 상호작용 키로 마실 수 있습니다.
+        /// 그런데 소비 절차는 곧바로 물건을 <c>SetActive(false)</c> 로 감춥니다.
+        /// 손이 그것을 계속 붙잡고 있으면 <b>물리 세계에 없는 Rigidbody</b> 를 매 물리 프레임
+        /// 밀어붙이게 되고, 다 마신 빈 병이 다시 켜질 때 손에 붙은 채로 되살아납니다.
+        ///
+        /// 감추기 <em>전에</em> 빼야 물리 설정도 살아 있는 Rigidbody 위에서 되돌려집니다.
         /// </summary>
         public virtual void OnConsumeStarted()
         {
+            Carryable carried = GetComponent<Carryable>();
+            if (carried != null) carried.ReleaseFromHolder();
         }
 
         // --- Protected Methods ---

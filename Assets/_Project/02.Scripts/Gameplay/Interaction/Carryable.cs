@@ -86,6 +86,17 @@ namespace CarDrive.Gameplay
         /// <summary>지금 누군가 이 물건을 들고 있는지 여부입니다.</summary>
         public bool IsHeld { get; private set; }
 
+        /// <summary>
+        /// 지금 이 물건을 들고 있는 쪽입니다. 아무도 들고 있지 않으면 null 입니다.
+        ///
+        /// <b>왜 물건이 드는 쪽을 아는가.</b> 들려 있는 동안에도 이 물건은 <b>다른 사정으로</b>
+        /// 꺼지거나 사라집니다 — 마시면 감춰지고, 다 꺼낸 봉투는 자기를 없애고,
+        /// 세이브를 되돌리면 통째로 치워집니다. 그때 드는 쪽에 알려 주지 않으면
+        /// <b>손이 없는 것을 계속 붙잡고</b> 매 물리 프레임마다 그 Rigidbody 를 밀어붙입니다.
+        /// 그 Rigidbody 는 이미 물리 세계에서 빠졌거나 사라진 것입니다.
+        /// </summary>
+        public PlayerCarrier Holder { get; private set; }
+
         /// <summary>이 물건의 Rigidbody입니다.</summary>
         public Rigidbody Body { get { EnsureBody(); return body; } }
 
@@ -127,6 +138,25 @@ namespace CarDrive.Gameplay
             EnsureBody();
         }
 
+        /// <summary>
+        /// 들려 있는 채로 꺼지면 손에서 빠집니다.
+        ///
+        /// 마시는 절차는 병을 <c>SetActive(false)</c> 로 감춥니다. 그 순간 이 Rigidbody 는
+        /// 물리 세계에서 빠지는데, 드는 쪽은 그것을 모른 채 매 물리 프레임마다 속도와
+        /// 회전을 밀어 넣습니다. 감춰졌다 다시 켜지는 빈 병은 그대로 손에 붙은 채 되살아나고,
+        /// 꺼졌다 켜지면서 <b>플레이어와의 충돌 무시까지 풀려</b> 제 몸을 밀어냅니다.
+        /// </summary>
+        void OnDisable()
+        {
+            ReleaseFromHolder();
+        }
+
+        /// <summary>들려 있는 채로 사라지면 손에서 빠집니다. (다 꺼낸 봉투가 자기를 없앨 때)</summary>
+        void OnDestroy()
+        {
+            ReleaseFromHolder();
+        }
+
         // --- Public Methods ---
 
         /// <summary>
@@ -134,8 +164,18 @@ namespace CarDrive.Gameplay
         /// </summary>
         public void OnPickedUp()
         {
+            OnPickedUp(null);
+        }
+
+        /// <summary>
+        /// 들리기 시작할 때 PlayerCarrier가 호출합니다.
+        /// </summary>
+        /// <param name="holder">이 물건을 드는 쪽. 꺼지거나 사라질 때 여기에 알립니다.</param>
+        public void OnPickedUp(PlayerCarrier holder)
+        {
             if (IsHeld) return;
             IsHeld = true;
+            Holder = holder;
 
             EnsureBody();
 
@@ -167,10 +207,13 @@ namespace CarDrive.Gameplay
         {
             if (!IsHeld) return;
             IsHeld = false;
+            Holder = null;
 
             EnsureBody();
 
-            if (cached)
+            // 사라지는 중에 놓이는 경우가 있습니다. (다 먹은 물건, 치워지는 세이브)
+            // 되돌릴 몸이 이미 없으면 되돌릴 것도 없습니다.
+            if (cached && body != null)
             {
                 body.useGravity = cachedUseGravity;
                 body.linearDamping = cachedLinearDamping;
@@ -181,6 +224,26 @@ namespace CarDrive.Gameplay
 
             if (onDropped != null) onDropped.Invoke();
         }
+
+        /// <summary>
+        /// 들고 있는 쪽의 손에서 빠져나옵니다.
+        ///
+        /// <b>물건이 사라지거나 꺼지기 <em>전에</em> 부르세요.</b> 그래야 물리 설정이
+        /// 아직 살아 있는 Rigidbody 위에서 되돌려집니다. 마시기·꺼내기처럼
+        /// 상호작용이 들고 있던 물건을 가져가는 자리가 여기입니다.
+        /// </summary>
+        public void ReleaseFromHolder()
+        {
+            if (!IsHeld) return;
+
+            PlayerCarrier holder = Holder;
+
+            // 드는 쪽이 먼저 사라졌을 수도 있습니다. 그때는 스스로 되돌립니다.
+            if (holder != null) holder.ReleaseHeld(this);
+            else OnDropped();
+        }
+
+        // --- Private Methods ---
 
         /// <summary>
         /// Rigidbody 참조가 없으면 찾습니다.

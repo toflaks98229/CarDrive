@@ -56,6 +56,7 @@ namespace CarDrive.Gameplay
         /// </summary>
         public override void OnConsumeStarted()
         {
+            base.OnConsumeStarted();
             LeaveBox();
         }
     }

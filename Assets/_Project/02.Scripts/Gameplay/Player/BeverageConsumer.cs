@@ -125,6 +125,12 @@ namespace CarDrive.Gameplay
         /// <summary>조준 기준입니다. 도보에서 던질 방향으로 씁니다.</summary>
         private Transform aim;
 
+        /// <summary>
+        /// 한 번의 소비가 걸릴 수 있는 가장 긴 시간(초)입니다.
+        /// 이보다 길면 값을 잘못 받은 것으로 봅니다. (무한 반복 연출 등)
+        /// </summary>
+        private const float MaxConsumeSeconds = 60f;
+
         /// <summary>지금 마시는 중인 병입니다. 중간에 끊겼을 때 마무리하는 데 씁니다.</summary>
         private ConsumableItem pending;
 
@@ -314,7 +320,7 @@ namespace CarDrive.Gameplay
                 }
             }
 
-            yield return new WaitForSeconds(wait);
+            yield return new WaitForSeconds(ResolveWait(wait));
 
             // 3. 다 썼습니다. 껍데기가 남는 것이면 던지고, 아니면 그대로 사라집니다.
             FinishConsume(item, vehicle);
@@ -322,6 +328,30 @@ namespace CarDrive.Gameplay
             pending = null;
             pendingVehicle = null;
             IsBusy = false;
+        }
+
+        /// <summary>
+        /// 기다릴 시간이 <b>말이 되는 값인지</b> 확인합니다.
+        ///
+        /// <b>왜 필요한가.</b> 이 값은 대부분 연출이 정합니다 — <c>MMF_Player.TotalDuration</c> 이나
+        /// <c>IDrinkView.TotalDuration</c> 입니다. 연출이 <b>무한 반복</b>으로 설정되어 있으면
+        /// 그 값이 무한대가 되고, <c>WaitForSeconds(무한대)</c> 는 <b>영원히 끝나지 않습니다.</b>
+        /// 그러면 <see cref="IsBusy"/> 가 켜진 채로 굳어 <b>상호작용 키가 영영 먹지 않고</b>,
+        /// 마시던 물건은 감춰진 채 사라집니다. 밖에서 보면 "게임이 멈춘" 것과 같습니다.
+        ///
+        /// 남의 컴포넌트가 정하는 값이므로 여기서 한 번 걸러 둡니다.
+        /// </summary>
+        /// <param name="wait">연출이 알려 준 시간(초)</param>
+        /// <returns>실제로 기다릴 시간. 말이 안 되면 기본값으로 물러납니다.</returns>
+        private float ResolveWait(float wait)
+        {
+            if (wait >= 0f && wait <= MaxConsumeSeconds) return wait;
+
+            GameLog.Warn(GameLog.Channel.Player,
+                "BeverageConsumer: 연출이 알려 준 시간(" + wait + "초)을 쓸 수 없어 " +
+                fallbackDrinkSeconds + "초로 대신합니다. 연출이 무한 반복인지 확인하세요.", this);
+
+            return fallbackDrinkSeconds;
         }
 
         /// <summary>

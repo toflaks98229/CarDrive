@@ -139,6 +139,12 @@ namespace CarDrive.Gameplay
         /// </summary>
         private readonly List<Collider> ignoredColliders = new List<Collider>();
 
+        /// <summary>
+        /// 직전에 찾았을 때 <see cref="Target"/> 이 실제로 있었는지 여부입니다.
+        /// 있었는데 지금 없다면 그 사이에 사라진 것이므로 캐시를 버려야 합니다.
+        /// </summary>
+        private bool targetFound;
+
         /// <summary>조준·손 위치·던지는 방향의 기준입니다. 보통 메인 카메라입니다.</summary>
         private Transform aimTransform;
 
@@ -198,6 +204,10 @@ namespace CarDrive.Gameplay
         /// </summary>
         void Update()
         {
+            // 손에 든 것이 아직 붙잡을 수 있는 상태인지 <b>입력보다 먼저</b> 확인합니다.
+            // 이것은 조작이 아니라 지켜야 할 규칙이라, 오버레이가 떠 있어도 멈추지 않습니다.
+            DropIfUnholdable();
+
             // 오버레이 버튼을 누르는 클릭이 들기/내려놓기로 들어가지 않게 합니다.
             //
             // <b>여기는 Suspended를 직접 봅니다.</b> 클릭만 막으면 되는 것이 아니라,
@@ -228,7 +238,11 @@ namespace CarDrive.Gameplay
         /// </summary>
         void FixedUpdate()
         {
-            if (!IsCarrying || holdPoint == null) return;
+            if (holdPoint == null) return;
+
+            // 꺼졌거나 사라진 것을 미는 일이 없도록 여기서 한 번 더 봅니다.
+            // Update 와 FixedUpdate 사이에도 물건은 사라집니다.
+            if (DropIfUnholdable() || !IsCarrying) return;
 
             Rigidbody body = Held.Body;
 
@@ -236,6 +250,20 @@ namespace CarDrive.Gameplay
             Vector3 delta = holdPoint.position - body.position;
             Vector3 velocity = delta * followSpeed;
             if (velocity.magnitude > maxFollowSpeed) velocity = velocity.normalized * maxFollowSpeed;
+
+            // 유한하지 않은 값은 <b>물리 엔진에 넣지 않습니다.</b>
+            //
+            // 손과 몸 사이에 물건이 끼면 서로 밀어내는 힘이 물려 값이 발산하고,
+            // 한 번 NaN 이 들어간 Rigidbody 는 그 프레임의 물리 계산 전체를 무너뜨립니다.
+            // 그렇게 될 바에는 놓습니다.
+            if (!IsFinite(velocity))
+            {
+                GameLog.Warn(GameLog.Channel.Player,
+                    "PlayerCarrier: 따라오는 속도가 계산되지 않아 " + Held.displayName + "을(를) 놓습니다.", this);
+                Drop(false);
+                return;
+            }
+
             body.linearVelocity = velocity;
 
             // 회전: 집어 들 때의 자세를 손을 따라 그대로 유지합니다.
@@ -282,11 +310,18 @@ namespace CarDrive.Gameplay
             if (target == null || target.IsHeld) return;
             if (target.Body == null) return;
 
+            // 꺼져 있는 것은 집지 않습니다. 물리 세계에 없는 몸을 손이 밀게 됩니다.
+            if (!target.isActiveAndEnabled) return;
+
             if (target.Body.mass > maxCarryMass)
             {
                 GameLog.Info(GameLog.Channel.Player, "PlayerCarrier: " + target.displayName + "은(는) 너무 무겁습니다.");
                 return;
             }
+
+            // 손은 하나입니다. 들고 있던 것을 남겨 두면 그것이 중력이 꺼진 채로 허공에 굳습니다.
+            // (들지 못할 것을 확인한 뒤에 놓습니다. 못 드는 것을 겨눴다고 손의 것을 잃으면 곤란합니다)
+            if (IsCarrying) Drop(false);
 
             Held = target;
 
@@ -294,7 +329,7 @@ namespace CarDrive.Gameplay
             // 이렇게 해야 물건이 들리면서 제멋대로 정렬되지 않고, 놓여 있던 자세 그대로 딸려옵니다.
             heldRotationOffset = ResolveHeldRotation(target);
 
-            target.OnPickedUp();
+            target.OnPickedUp(this);
             IgnorePlayerCollision(target, true);
 
             GameLog.Info(GameLog.Channel.Player, "PlayerCarrier: " + target.displayName + "을(를) 들었습니다.");
@@ -311,8 +346,10 @@ namespace CarDrive.Gameplay
             Carryable dropped = Held;
             Held = null;
 
-            IgnorePlayerCollision(dropped, false);
+            // <b>물리 설정을 먼저 되돌립니다.</b> 충돌 정리는 콜라이더가 꺼져 있으면 건너뛰는데,
+            // 그 뒤에 두었다가 순서가 엇갈리면 중력이 꺼진 채로 남아 물건이 허공에 굳습니다.
             dropped.OnDropped();
+            IgnorePlayerCollision(dropped, false);
 
             if (throwForward && throwImpulse > 0f && dropped.Body != null)
             {
@@ -323,7 +360,68 @@ namespace CarDrive.Gameplay
             GameLog.Info(GameLog.Channel.Player, "PlayerCarrier: " + dropped.displayName + "을(를) 내려놓았습니다.");
         }
 
+        /// <summary>
+        /// 지정한 물건이 지금 들고 있는 것이면 손에서 놓습니다.
+        ///
+        /// <b>물건 쪽에서 부르는 길입니다.</b> 마시려고 감춰지거나, 다 꺼낸 봉투가 자기를
+        /// 없애거나, 세이브를 되돌리며 치워질 때 <see cref="Carryable"/> 이 이것을 부릅니다.
+        /// 던지지 않고 그 자리에 놓습니다.
+        /// </summary>
+        /// <param name="target">손에서 뺄 물건. 들고 있는 것과 다르면 아무 일도 하지 않습니다.</param>
+        public void ReleaseHeld(Carryable target)
+        {
+            if (target == null || !ReferenceEquals(target, Held)) return;
+
+            Drop(false);
+        }
+
         // --- Private Methods ---
+
+        /// <summary>
+        /// 들고 있는 것이 더 이상 붙잡을 수 없는 상태면 놓습니다.
+        ///
+        /// <b>무엇이 붙잡을 수 없는 상태인가.</b> 사라졌거나, 꺼졌거나, Rigidbody 를 잃은 것입니다.
+        /// 셋 다 <b>물리 세계에 없는</b> 몸이라, 계속 붙잡고 속도를 밀어 넣어 봐야
+        /// 아무 데도 닿지 않고, 다시 켜지는 순간 손에 붙은 채로 되살아납니다.
+        ///
+        /// 보통은 <see cref="Carryable"/> 이 꺼지거나 사라지면서 스스로 알려 주므로 여기까지 오지 않습니다.
+        /// 이것은 그 통보가 닿지 못하는 경우(파괴 순서, 씬 정리)를 위한 마지막 그물입니다.
+        /// </summary>
+        /// <returns>여기서 놓았으면 true</returns>
+        private bool DropIfUnholdable()
+        {
+            // 유니티의 == 는 파괴된 것을 null 로 봅니다. 그래서 '사라졌다'는 여기서 걸립니다.
+            if (Held == null)
+            {
+                if (!ReferenceEquals(Held, null)) ForgetHeld();
+                return false;
+            }
+
+            Rigidbody body = Held.Body;
+            if (body != null && Held.isActiveAndEnabled && body.gameObject.activeInHierarchy) return false;
+
+            Drop(false);
+            return true;
+        }
+
+        /// <summary>
+        /// 이미 사라진 물건의 흔적을 지웁니다. 되돌릴 물리 설정도 함께 사라졌습니다.
+        /// </summary>
+        private void ForgetHeld()
+        {
+            Held = null;
+            ignoredColliders.Clear();
+        }
+
+        /// <summary>세 성분이 모두 유한한 값인지 확인합니다.</summary>
+        /// <param name="value">확인할 벡터</param>
+        /// <returns>NaN 도 무한대도 아니면 true</returns>
+        private static bool IsFinite(Vector3 value)
+        {
+            return !float.IsNaN(value.x) && !float.IsInfinity(value.x)
+                && !float.IsNaN(value.y) && !float.IsInfinity(value.y)
+                && !float.IsNaN(value.z) && !float.IsInfinity(value.z);
+        }
 
         /// <summary>
         /// 들고 있는 동안 유지할 회전을 손 기준으로 계산합니다.
@@ -354,6 +452,7 @@ namespace CarDrive.Gameplay
             {
                 lastHitCollider = null;
                 Target = null;
+                targetFound = false;
                 return;
             }
 
@@ -372,14 +471,18 @@ namespace CarDrive.Gameplay
             {
                 lastHitCollider = null;
                 Target = null;
+                targetFound = false;
                 return;
             }
 
             // 직전 프레임과 같은 것을 보고 있으면 이미 찾아 둔 결과가 그대로 유효합니다.
-            if (hit.collider == lastHitCollider) return;
+            // 찾아 둔 것이 그 사이에 사라졌다면(빈 병처럼 컴포넌트만 없어지는 경우)
+            // 캐시를 믿지 않고 다시 찾습니다.
+            if (hit.collider == lastHitCollider && !(targetFound && Target == null)) return;
 
             lastHitCollider = hit.collider;
             Target = hit.collider.GetComponentInParent<Carryable>();
+            targetFound = Target != null;
         }
 
         /// <summary>
@@ -409,10 +512,24 @@ namespace CarDrive.Gameplay
                 target.GetComponentsInChildren<Collider>(true, ignoredColliders);
             }
 
+            // <b>꺼져 있는 콜라이더에는 부르지 않습니다.</b> 유니티가 예외를 던지기 때문입니다.
+            // 예외가 나면 Drop 이 도중에 끊겨 들린 표식과 꺼진 중력이 그대로 남고,
+            // 그 물건은 다시는 집히지 않는 채 허공에 굳습니다.
+            //
+            // 되살릴 때(ignore == false) 꺼진 것을 건너뛰어도 됩니다.
+            // 유니티는 콜라이더가 꺼졌다 켜지면 무시 상태를 스스로 지웁니다.
+            if (!playerCollider.enabled || !playerCollider.gameObject.activeInHierarchy)
+            {
+                if (!ignore) ignoredColliders.Clear();
+                return;
+            }
+
             for (int i = 0; i < ignoredColliders.Count; i++)
             {
-                if (ignoredColliders[i] == null) continue;
-                Physics.IgnoreCollision(ignoredColliders[i], playerCollider, ignore);
+                Collider other = ignoredColliders[i];
+                if (other == null || !other.enabled || !other.gameObject.activeInHierarchy) continue;
+
+                Physics.IgnoreCollision(other, playerCollider, ignore);
             }
 
             if (!ignore) ignoredColliders.Clear();

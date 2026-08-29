@@ -68,6 +68,20 @@ namespace CarDrive.Gameplay
         private IInteractable currentInteractable;
 
         /// <summary>
+        /// 위의 대상을 <b>실물로</b> 들고 있는 것입니다. 살아 있는지 확인하는 데만 씁니다.
+        ///
+        /// <b>왜 따로 들고 있는가.</b> <c>IInteractable</c> 은 인터페이스라
+        /// <c>!= null</c> 이 <b>유니티의 파괴 검사를 타지 않습니다.</b> 파괴된 컴포넌트도
+        /// 참조는 그대로 남아 있어 살아 있는 것처럼 통과하고, 그 위에서 메서드를 부르면
+        /// 그때 <c>MissingReferenceException</c> 이 납니다. 조준은 매 프레임 도는 자리라
+        /// 한 번 이렇게 되면 <b>프레임마다</b> 예외가 쏟아집니다.
+        ///
+        /// 다 마신 빈 병이 정확히 그 경우입니다 — 오브젝트와 콜라이더는 남고
+        /// <c>Beverage</c> 컴포넌트만 사라지므로, 콜라이더로만 판단하는 캐시는 갱신되지 않습니다.
+        /// </summary>
+        private Component currentInteractableObject;
+
+        /// <summary>
         /// 직전 프레임에 조준점이 맞힌 콜라이더입니다.
         ///
         /// <b>왜 들고 있는가.</b> <c>GetComponentInParent&lt;IInteractable&gt;</c> 는 콜라이더에서 부모 체인을 끝까지
@@ -91,7 +105,7 @@ namespace CarDrive.Gameplay
         /// <summary>조준점에 무언가 상호작용 가능한 것이 걸려 있는지 여부입니다.</summary>
         public bool HasTarget
         {
-            get { return currentInteractable != null && currentInteractable.CanInteract(); }
+            get { return HasLiveInteractable() && currentInteractable.CanInteract(); }
         }
 
         /// <summary>마시는 중이라 상호작용을 받지 않는 상태인지 여부입니다.</summary>
@@ -156,7 +170,7 @@ namespace CarDrive.Gameplay
             // 마시는 중에는 아무 안내도 띄우지 않습니다. 눌러도 받지 않기 때문입니다.
             if (IsBlocked) return "";
 
-            if (currentInteractable != null && currentInteractable.CanInteract())
+            if (HasLiveInteractable() && currentInteractable.CanInteract())
             {
                 string label = currentInteractable.GetInteractionLabel();
                 if (!string.IsNullOrEmpty(label))
@@ -191,19 +205,57 @@ namespace CarDrive.Gameplay
 
             if (!didHit)
             {
-                lastHitCollider = null;
-                currentInteractable = null;
+                ClearTarget();
                 return;
             }
 
             // 직전 프레임과 같은 것을 보고 있으면 이미 찾아 둔 결과가 그대로 유효합니다.
-            if (hit.collider == lastHitCollider) return;
+            //
+            // 단, <b>찾아 둔 대상이 아직 살아 있을 때만</b> 그렇습니다. 콜라이더는 그대로인데
+            // 컴포넌트만 사라지는 경우가 있습니다 — 다 마신 빈 병이 그렇습니다.
+            // 그때 캐시를 믿으면 사라진 컴포넌트를 영원히 붙잡고 매 프레임 부릅니다.
+            if (hit.collider == lastHitCollider && !TargetDied()) return;
 
             // 콜라이더가 자식에 있을 수 있으므로 부모까지 올라가며 찾습니다.
             // 음료와 음료 상자도 IInteractable이라 여기서 함께 잡힙니다.
             // (차 안에 있는 것은 각자 CanInteract에서 탑승 여부를 확인합니다)
             lastHitCollider = hit.collider;
             currentInteractable = hit.collider.GetComponentInParent<IInteractable>();
+            currentInteractableObject = currentInteractable as Component;
+        }
+
+        /// <summary>
+        /// 찾아 둔 대상의 실물이 그 사이에 파괴되었는지 확인합니다.
+        /// </summary>
+        /// <returns>실물이 있었는데 파괴되었으면 true</returns>
+        private bool TargetDied()
+        {
+            // 실물이 없는 구현(테스트용 대역 등)은 유니티 수명과 무관합니다.
+            if (ReferenceEquals(currentInteractableObject, null)) return false;
+
+            // 유니티의 == 는 파괴된 오브젝트를 null 로 봅니다. 인터페이스 참조로는 걸리지 않는 검사입니다.
+            return currentInteractableObject == null;
+        }
+
+        /// <summary>
+        /// 조준해 둔 대상이 아직 살아 있는지 확인하고, 사라졌으면 지웁니다.
+        /// </summary>
+        /// <returns>불러도 되는 대상이 있으면 true</returns>
+        private bool HasLiveInteractable()
+        {
+            if (currentInteractable == null) return false;
+            if (!TargetDied()) return true;
+
+            ClearTarget();
+            return false;
+        }
+
+        /// <summary>조준해 둔 대상을 지웁니다. 다음 프레임에 다시 찾습니다.</summary>
+        private void ClearTarget()
+        {
+            lastHitCollider = null;
+            currentInteractable = null;
+            currentInteractableObject = null;
         }
 
         /// <summary>
@@ -221,7 +273,7 @@ namespace CarDrive.Gameplay
 
             // 문 = 탑승, 운전대 = 시동, 음료·상자 = 마시기, 침대·화장실 = 니즈 해소.
             // 대상이 무엇인지 여기서 구분하지 않습니다.
-            if (currentInteractable != null && currentInteractable.CanInteract())
+            if (HasLiveInteractable() && currentInteractable.CanInteract())
             {
                 currentInteractable.Interact();
                 return;
