@@ -133,6 +133,14 @@ public static class DaySkyExposureSweep
             Object.DestroyImmediate(shot);
         }
 
+        // ── 이 캡처에 볼륨(후처리)이 실제로 걸렸는지 확인합니다 ──
+        //
+        // <b>따지지 말고 잽니다.</b> Camera.CopyFrom 은 URP 의 추가 카메라 데이터를 복사하지
+        // 않아서, 그것을 손으로 옮기지 않으면 톤매핑·컬러 그레이딩이 통째로 빠집니다.
+        // 그러면 위에서 잰 대비 수치가 <b>게임 화면이 아닌 것을 잰 값</b>이 됩니다.
+        // 후처리를 껐다 켜서 그림이 달라지는지 보면 다툴 것이 없습니다.
+        VerifyPostProcessing(camera, target, sky, lateUpdate, activeSkyField, originalExposure);
+
         // 되돌립니다. 씬은 저장하지 않지만 메모리 상태도 원래대로 두는 편이 안전합니다.
         sky.dayExposure = originalExposure;
         sky.skyMaterial = dayAsset;
@@ -153,6 +161,48 @@ public static class DaySkyExposureSweep
 
         Debug.Log("DAYSKY 끝. 그림은 " + OutputDirectory);
         EditorApplication.Exit(0);
+    }
+
+    /// <summary>
+    /// 후처리를 켠 그림과 끈 그림이 다른지 재서, 볼륨이 실제로 걸렸는지 확인합니다.
+    ///
+    /// 같으면 볼륨이 안 걸린 것이고, 그러면 이 도구가 잰 대비는 게임 화면의 값이 아닙니다.
+    /// </summary>
+    private static void VerifyPostProcessing(Camera camera, RenderTexture target, SkyController sky,
+                                             MethodInfo lateUpdate, FieldInfo activeSkyField,
+                                             float exposure)
+    {
+        sky.dayExposure = exposure;
+        lateUpdate.Invoke(sky, null);
+        Material chosen = activeSkyField.GetValue(sky) as Material;
+        if (chosen != null) RenderSettings.skybox = chosen;
+
+        UniversalAdditionalCameraData data = camera.GetUniversalAdditionalCameraData();
+        bool had = data != null && data.renderPostProcessing;
+
+        Texture2D on = Grab(camera, target);
+        if (data != null) data.renderPostProcessing = false;
+        Texture2D off = Grab(camera, target);
+        if (data != null) data.renderPostProcessing = had;
+
+        Color32[] a = on.GetPixels32();
+        Color32[] b = off.GetPixels32();
+
+        long diff = 0;
+        for (int i = 0; i < a.Length; i++)
+            diff += Mathf.Abs(a[i].r - b[i].r) + Mathf.Abs(a[i].g - b[i].g) + Mathf.Abs(a[i].b - b[i].b);
+
+        float avg = (float)diff / (a.Length * 3);
+
+        File.WriteAllBytes(Path.Combine(OutputDirectory, "postON.png"), on.EncodeToPNG());
+        File.WriteAllBytes(Path.Combine(OutputDirectory, "postOFF.png"), off.EncodeToPNG());
+
+        Debug.Log(string.Format(CultureInfo.InvariantCulture,
+            "DAYSKY 후처리 확인: 켬/끔 채널당 평균차 {0:0.00} -> {1}",
+            avg, avg >= 1.0f ? "볼륨이 걸려 있음" : "<<<< 볼륨이 안 걸림. 위 수치는 못 믿음"));
+
+        Object.DestroyImmediate(on);
+        Object.DestroyImmediate(off);
     }
 
     /// <summary>
