@@ -41,6 +41,37 @@ namespace CarDrive.Systems
         /// <summary>요청 하나의 바이트 수입니다. float2 + float + float.</summary>
         private const int RequestStride = 16;
 
+        /// <summary>
+        /// 지도 셋입니다 — 바닥(XZ), 그리고 세운 면 둘(XY, ZY).
+        ///
+        /// <b>왜 하나로 안 되는가.</b> 위에서 내려다본 지도는 세운 면을 못 덮습니다.
+        /// 벽의 위아래 기둥이 전부 같은 XZ 좌표라 <b>같은 텍셀 하나</b>를 가리키기 때문입니다.
+        /// 오줌이 벽 아래에 튀면 벽 꼭대기까지 통째로 젖습니다.
+        /// 그래서 축마다 하나씩 두고 법선으로 골라 씁니다(삼중평면).
+        /// </summary>
+        private const int MapXZ = 0;   // 바닥·천장 (법선이 위아래)
+        private const int MapXY = 1;   // 앞뒤 벽   (법선이 Z 축)
+        private const int MapZY = 2;   // 좌우 벽   (법선이 X 축)
+        private const int MapCount = 3;
+
+        /// <summary>
+        /// 옆면 지도가 덮는 높이(m)입니다. 가로는 바닥 지도와 같은 창을 씁니다.
+        ///
+        /// <b>낮게 잡습니다.</b> 벽은 높아야 몇 미터인데 가로처럼 128m 를 덮으면 세로 해상도가
+        /// 8배 거칩니다. 24m 면 바닥 지도와 같은 6.25cm/텍셀이 나오고, 그 안에 건물과
+        /// 지형 기복이 다 들어옵니다.
+        /// </summary>
+        private const float SideHeightMeters = 24f;
+
+        /// <summary>옆면 지도의 세로 텍셀 수입니다. 가로는 <see cref="resolution"/> 을 씁니다.</summary>
+        private const int SideHeightTexels = 384;
+
+        /// <summary>
+        /// 이 값보다 위를 향하면 바닥으로 봅니다. 약 30도까지 비탈을 바닥으로 다룹니다.
+        /// 그보다 가파르면 옆면 지도가 맡습니다.
+        /// </summary>
+        private const float GroundNormalDot = 0.85f;
+
         // --- Types ---
 
         /// <summary>지도가 세계의 어디를 덮는가.</summary>
@@ -133,19 +164,20 @@ namespace CarDrive.Systems
         private int _paintKernel = -1;
         private int _fadeKernel = -1;
 
-        private RenderTexture _map;
-        private ComputeBuffer _requestBuffer;
+        /// <summary>지도 셋입니다. 색인은 MapXZ / MapXY / MapZY.</summary>
+        private readonly RenderTexture[] _maps = new RenderTexture[MapCount];
+        private readonly ComputeBuffer[] _requestBuffers = new ComputeBuffer[MapCount];
 
-        /// <summary>이번 프레임에 모은 요청입니다. <b>한 번만 잡고 계속 씁니다.</b></summary>
-        private SplatRequest[] _requests;
-        private int _requestCount;
+        /// <summary>지도마다 이번 프레임에 모은 요청입니다. <b>한 번만 잡고 계속 씁니다.</b></summary>
+        private readonly SplatRequest[][] _requests = new SplatRequest[MapCount][];
+        private readonly int[] _requestCounts = new int[MapCount];
 
-        /// <summary>이번 프레임 요청들이 걸친 텍셀 범위입니다.</summary>
-        private RectInt _paintBounds;
+        /// <summary>지도마다 이번 프레임 요청들이 걸친 텍셀 범위입니다.</summary>
+        private readonly RectInt[] _paintBounds = new RectInt[MapCount];
 
-        /// <summary>지금까지 칠한 적 있는 텍셀 범위입니다. 마름은 여기만 돕니다.</summary>
-        private RectInt _wetBounds;
-        private bool _hasWet;
+        /// <summary>지도마다 지금까지 칠한 적 있는 텍셀 범위입니다. 마름은 여기만 돕니다.</summary>
+        private readonly RectInt[] _wetBounds = new RectInt[MapCount];
+        private readonly bool[] _hasWet = new bool[MapCount];
 
         /// <summary>마지막으로 칠한 시각입니다. 다 마를 때까지 조용하면 범위를 비웁니다.</summary>
         private float _lastPaintTime;
@@ -180,8 +212,14 @@ namespace CarDrive.Systems
         private static readonly int FadeAmountId = Shader.PropertyToID("_FadeAmount");
 
         private static readonly int GlobalMapId = Shader.PropertyToID("_GlobalSplatMap");
+        private static readonly int GlobalMapXYId = Shader.PropertyToID("_GlobalSplatMapXY");
+        private static readonly int GlobalMapZYId = Shader.PropertyToID("_GlobalSplatMapZY");
         private static readonly int GlobalRectId = Shader.PropertyToID("_GlobalSplatMapRect");
+        private static readonly int GlobalHeightId = Shader.PropertyToID("_GlobalSplatMapHeight");
         private static readonly int GlobalOnId = Shader.PropertyToID("_GlobalSplatMapOn");
+
+        /// <summary>옆면 지도가 덮는 높이 구간입니다. x = 바닥 y, y = 1/높이.</summary>
+        private Vector2 _height;
 
         // --- Public Properties ---
 
@@ -224,15 +262,69 @@ namespace CarDrive.Systems
         /// <param name="amount">이번에 더할 젖음(0~1)</param>
         public void Paint(Vector3 worldPos, float radiusMeters, float amount)
         {
+            Paint(worldPos, radiusMeters, amount, Vector3.up);
+        }
+
+        /// <summary>
+        /// 이 월드 자리를 적십니다. <b>면의 법선으로 지도를 고릅니다.</b>
+        ///
+        /// 바닥이면 위에서 내려다본 지도에, 세운 면이면 그 면을 마주 보는 옆면 지도에 칠합니다.
+        /// 비스듬한 면은 둘 다에 나눠 칠해 경계에서 끊기지 않게 합니다 — 읽는 쪽도 같은
+        /// 가중치로 섞으므로 앞뒤가 맞습니다.
+        /// </summary>
+        /// <param name="worldPos">적실 자리</param>
+        /// <param name="radiusMeters">반경(m)</param>
+        /// <param name="amount">이번에 더할 젖음(0~1)</param>
+        /// <param name="normalWS">닿은 면의 법선</param>
+        public void Paint(Vector3 worldPos, float radiusMeters, float amount, Vector3 normalWS)
+        {
             if (!_ready) return;
             if (amount <= 0f || radiusMeters <= 0f) return;
 
-            Vector2 uv = WorldToUv(worldPos, _origin, _size);
+            Vector3 n = normalWS.sqrMagnitude > 1e-6f ? normalWS.normalized : Vector3.up;
+
+            // 삼중평면 가중치입니다. 읽는 쪽(CarDriveSplatMap.hlsl)과 <b>같은 식</b>이어야
+            // 칠한 만큼 읽힙니다.
+            float wy = Mathf.Abs(n.y);
+            float wz = Mathf.Abs(n.z);
+            float wx = Mathf.Abs(n.x);
+            float sum = wx + wy + wz;
+            if (sum < 1e-6f) return;
+            wx /= sum; wy /= sum; wz /= sum;
+
+            float u = Mathf.Clamp01(amount);
+
+            // 바닥(XZ): 가로세로가 월드 x, z.
+            if (wy > 0.001f)
+                Enqueue(MapXZ, new Vector2(
+                    (worldPos.x - _origin.x) / Mathf.Max(_size.x, 0.001f),
+                    (worldPos.z - _origin.y) / Mathf.Max(_size.y, 0.001f)),
+                    radiusMeters, u * wy);
+
+            // 앞뒤 벽(XY): 가로가 월드 x, 세로가 높이.
+            if (wz > 0.001f)
+                Enqueue(MapXY, new Vector2(
+                    (worldPos.x - _origin.x) / Mathf.Max(_size.x, 0.001f),
+                    (worldPos.y - _height.x) * _height.y),
+                    radiusMeters, u * wz);
+
+            // 좌우 벽(ZY): 가로가 월드 z, 세로가 높이.
+            if (wx > 0.001f)
+                Enqueue(MapZY, new Vector2(
+                    (worldPos.z - _origin.y) / Mathf.Max(_size.y, 0.001f),
+                    (worldPos.y - _height.x) * _height.y),
+                    radiusMeters, u * wx);
+        }
+
+        /// <summary>요청 하나를 해당 지도의 줄에 세웁니다.</summary>
+        private void Enqueue(int map, Vector2 uv, float radiusMeters, float amount)
+        {
+            if (amount <= 0.0005f) return;
 
             // 창 밖은 담지 않습니다. 담아 봐야 컴퓨트가 버립니다.
             if (uv.x < 0f || uv.x > 1f || uv.y < 0f || uv.y > 1f) return;
 
-            if (_requestCount >= _requests.Length)
+            if (_requestCounts[map] >= _requests[map].Length)
             {
                 // <b>매 프레임 문자열을 만들지 않습니다.</b> 넘치는 상황은 대개 매 프레임
                 // 이어지므로, 여기서 로그를 조립하면 그것 자체가 프레임 예산을 먹습니다.
@@ -245,12 +337,13 @@ namespace CarDrive.Systems
                 return;
             }
 
-            _requests[_requestCount].Uv = uv;
-            _requests[_requestCount].Radius = radiusMeters;
-            _requests[_requestCount].Amount = Mathf.Clamp01(amount);
-            _requestCount++;
+            int i = _requestCounts[map];
+            _requests[map][i].Uv = uv;
+            _requests[map][i].Radius = radiusMeters;
+            _requests[map][i].Amount = amount;
+            _requestCounts[map] = i + 1;
 
-            AccumulateBounds(uv, radiusMeters);
+            AccumulateBounds(map, uv, radiusMeters);
         }
 
         // --- Public Static Methods : 순수 계산 ---
@@ -299,37 +392,52 @@ namespace CarDrive.Systems
 
             resolution = Mathf.Clamp(Mathf.ClosestPowerOfTwo(resolution), 256, 8192);
 
-            _map = new RenderTexture(resolution, resolution, 0, format);
-            _map.name = "GlobalSplatMap";
-            _map.enableRandomWrite = true;
-
-            // 밉을 두지 않습니다. 매 프레임 덧칠하는 대상이라 사슬을 다시 만드는 값이 아깝고,
-            // 읽는 쪽(CarDriveSplatMap.hlsl)도 LOD 0 으로 못박아 두었습니다.
-            _map.useMipMap = false;
-            _map.autoGenerateMips = false;
-
-            // 맵 밖은 읽는 쪽에서 자르지만, 가장자리가 번지지 않도록 여기서도 막아 둡니다.
-            _map.wrapMode = TextureWrapMode.Clamp;
-            _map.filterMode = FilterMode.Bilinear;
-
-            if (!_map.Create())
+            for (int i = 0; i < MapCount; i++)
             {
-                Fallback("자국 지도를 만들지 못했습니다.");
-                return;
+                int hgt = i == MapXZ ? resolution : SideHeightTexels;
+                if (!CreateMap(i, resolution, hgt, format)) return;
+
+                _requests[i] = new SplatRequest[Mathf.Max(8, maxRequestsPerFrame)];
+                _requestBuffers[i] = new ComputeBuffer(_requests[i].Length, RequestStride);
             }
 
             Clear();
-
-            _requests = new SplatRequest[Mathf.Max(8, maxRequestsPerFrame)];
-            _requestBuffer = new ComputeBuffer(_requests.Length, RequestStride);
 
             RecenterWindow(true);
             _lastFadeTime = Time.time;
             _ready = true;
 
-            Shader.SetGlobalTexture(GlobalMapId, _map);
+            Shader.SetGlobalTexture(GlobalMapId, _maps[MapXZ]);
+            Shader.SetGlobalTexture(GlobalMapXYId, _maps[MapXY]);
+            Shader.SetGlobalTexture(GlobalMapZYId, _maps[MapZY]);
             PushRect();
             Shader.SetGlobalFloat(GlobalOnId, 1f);
+        }
+
+        /// <summary>지도 한 장을 만듭니다. 실패하면 물러서고 false 를 돌려줍니다.</summary>
+        private bool CreateMap(int index, int width, int height, GraphicsFormat format)
+        {
+            RenderTexture rt = new RenderTexture(width, height, 0, format);
+            rt.name = "GlobalSplatMap" + index;
+            rt.enableRandomWrite = true;
+
+            // 밉을 두지 않습니다. 매 프레임 덧칠하는 대상이라 사슬을 다시 만드는 값이 아깝고,
+            // 읽는 쪽(CarDriveSplatMap.hlsl)도 LOD 0 으로 못박아 두었습니다.
+            rt.useMipMap = false;
+            rt.autoGenerateMips = false;
+
+            // 맵 밖은 읽는 쪽에서 자르지만, 가장자리가 번지지 않도록 여기서도 막아 둡니다.
+            rt.wrapMode = TextureWrapMode.Clamp;
+            rt.filterMode = FilterMode.Bilinear;
+
+            if (!rt.Create())
+            {
+                Fallback("자국 지도를 만들지 못했습니다.");
+                return false;
+            }
+
+            _maps[index] = rt;
+            return true;
         }
 
         /// <summary>못 쓰게 됐음을 알리고 셰이더가 건너뛰게 합니다.</summary>
@@ -347,8 +455,11 @@ namespace CarDrive.Systems
             Shader.SetGlobalFloat(GlobalOnId, 0f);
             _ready = false;
 
-            if (_requestBuffer != null) { _requestBuffer.Release(); _requestBuffer = null; }
-            if (_map != null) { _map.Release(); Destroy(_map); _map = null; }
+            for (int i = 0; i < MapCount; i++)
+            {
+                if (_requestBuffers[i] != null) { _requestBuffers[i].Release(); _requestBuffers[i] = null; }
+                if (_maps[i] != null) { _maps[i].Release(); Destroy(_maps[i]); _maps[i] = null; }
+            }
         }
 
         /// <summary>LoadStore(랜덤 쓰기)를 지원하는 단일 채널 포맷을 고릅니다.</summary>
@@ -365,18 +476,21 @@ namespace CarDrive.Systems
             return GraphicsFormat.None;
         }
 
-        /// <summary>지도를 통째로 비웁니다.</summary>
+        /// <summary>지도 셋을 통째로 비웁니다.</summary>
         private void Clear()
         {
             RenderTexture prev = RenderTexture.active;
-            RenderTexture.active = _map;
-            GL.Clear(false, true, Color.clear);
+            for (int i = 0; i < MapCount; i++)
+            {
+                if (_maps[i] == null) continue;
+                RenderTexture.active = _maps[i];
+                GL.Clear(false, true, Color.clear);
+                _hasWet[i] = false;
+            }
             RenderTexture.active = prev;
-
-            _hasWet = false;
         }
 
-        /// <summary>지금 창이 덮는 월드 사각형을 전역으로 올립니다.</summary>
+        /// <summary>지금 창이 덮는 월드 사각형과 높이 구간을 전역으로 올립니다.</summary>
         private void PushRect()
         {
             // <b>역수로 넘깁니다.</b> 픽셀마다 나누지 않으려는 것입니다.
@@ -384,6 +498,8 @@ namespace CarDrive.Systems
                 _origin.x, _origin.y,
                 1f / Mathf.Max(_size.x, 0.001f),
                 1f / Mathf.Max(_size.y, 0.001f)));
+
+            Shader.SetGlobalVector(GlobalHeightId, new Vector4(_height.x, _height.y, 0f, 0f));
         }
 
         /// <summary>대상이 충분히 움직였으면 창을 다시 놓습니다.</summary>
@@ -426,9 +542,16 @@ namespace CarDrive.Systems
                 _origin = new Vector2(at.x - windowMeters * 0.5f, at.z - windowMeters * 0.5f);
             }
 
+            // 높이 창도 함께 놓습니다. 대상보다 조금 아래에서 시작해 위로 뻗습니다 —
+            // 벽은 발밑에서 시작하고, 아래로는 비탈 정도만 담으면 됩니다.
+            float baseY = coverage == CoverageMode.Fixed
+                ? fixedOrigin.y * 0f   // 고정 모드에서는 월드 원점 기준으로 둡니다.
+                : CurrentTargetPosition().y - SideHeightMeters * 0.25f;
+            _height = new Vector2(baseY, 1f / SideHeightMeters);
+
             PushRect();
 
-            if (!initial && _map != null) Clear();
+            if (!initial && _maps[MapXZ] != null) Clear();
         }
 
         private Vector3 CurrentTargetPosition()
@@ -440,27 +563,27 @@ namespace CarDrive.Systems
         }
 
         /// <summary>이번 요청이 걸치는 텍셀 범위를 모읍니다.</summary>
-        private void AccumulateBounds(Vector2 uv, float radiusMeters)
+        private void AccumulateBounds(int map, Vector2 uv, float radiusMeters)
         {
-            // 미터 반경을 축마다 UV 로 되돌립니다. 덮는 사각형이 정사각이 아니어도 맞습니다.
-            float rx = radiusMeters / Mathf.Max(_size.x, 0.001f);
-            float ry = radiusMeters / Mathf.Max(_size.y, 0.001f);
+            int mw = _maps[map].width;
+            int mh = _maps[map].height;
 
-            int x0 = Mathf.FloorToInt((uv.x - rx) * resolution) - 1;
-            int y0 = Mathf.FloorToInt((uv.y - ry) * resolution) - 1;
-            int x1 = Mathf.CeilToInt((uv.x + rx) * resolution) + 1;
-            int y1 = Mathf.CeilToInt((uv.y + ry) * resolution) + 1;
+            // 미터 반경을 축마다 UV 로 되돌립니다. 옆면 지도는 가로세로 눈금이 다릅니다.
+            float spanX = map == MapZY ? _size.y : _size.x;
+            float spanY = map == MapXZ ? _size.y : (SideHeightMeters);
+            float rx = radiusMeters / Mathf.Max(spanX, 0.001f);
+            float ry = radiusMeters / Mathf.Max(spanY, 0.001f);
 
-            x0 = Mathf.Clamp(x0, 0, resolution - 1);
-            y0 = Mathf.Clamp(y0, 0, resolution - 1);
-            x1 = Mathf.Clamp(x1, 1, resolution);
-            y1 = Mathf.Clamp(y1, 1, resolution);
+            int x0 = Mathf.Clamp(Mathf.FloorToInt((uv.x - rx) * mw) - 1, 0, mw - 1);
+            int y0 = Mathf.Clamp(Mathf.FloorToInt((uv.y - ry) * mh) - 1, 0, mh - 1);
+            int x1 = Mathf.Clamp(Mathf.CeilToInt((uv.x + rx) * mw) + 1, 1, mw);
+            int y1 = Mathf.Clamp(Mathf.CeilToInt((uv.y + ry) * mh) + 1, 1, mh);
 
             RectInt r = new RectInt(x0, y0, Mathf.Max(1, x1 - x0), Mathf.Max(1, y1 - y0));
 
-            _paintBounds = _requestCount == 1 ? r : Union(_paintBounds, r);
-            _wetBounds = _hasWet ? Union(_wetBounds, r) : r;
-            _hasWet = true;
+            _paintBounds[map] = _requestCounts[map] == 1 ? r : Union(_paintBounds[map], r);
+            _wetBounds[map] = _hasWet[map] ? Union(_wetBounds[map], r) : r;
+            _hasWet[map] = true;
             _lastPaintTime = Time.time;
             _fadedSincePaint = 0f;
         }
@@ -474,58 +597,75 @@ namespace CarDrive.Systems
             return new RectInt(x0, y0, x1 - x0, y1 - y0);
         }
 
-        /// <summary>모인 요청을 한 번만 디스패치합니다.</summary>
+        /// <summary>모인 요청을 지도마다 한 번씩만 디스패치합니다.</summary>
         private void FlushRequests()
         {
-            if (_requestCount == 0) return;
+            for (int m = 0; m < MapCount; m++)
+            {
+                if (_requestCounts[m] == 0) continue;
 
-            // 앞부분만 올립니다. 버퍼 전체를 올리면 안 쓰는 자리까지 매 프레임 실어 나릅니다.
-            _requestBuffer.SetData(_requests, 0, 0, _requestCount);
+                // 앞부분만 올립니다. 버퍼 전체를 올리면 안 쓰는 자리까지 매 프레임 실어 나릅니다.
+                _requestBuffers[m].SetData(_requests[m], 0, 0, _requestCounts[m]);
 
-            _shader.SetBuffer(_paintKernel, RequestsId, _requestBuffer);
-            _shader.SetTexture(_paintKernel, SplatMapId, _map);
-            _shader.SetInt(RequestCountId, _requestCount);
-            _shader.SetInts(MapSizeId, resolution, resolution);
-            _shader.SetVector(WorldSizeId, new Vector4(_size.x, _size.y, 0f, 0f));
-            _shader.SetInts(PaintRectId,
-                _paintBounds.xMin, _paintBounds.yMin, _paintBounds.width, _paintBounds.height);
+                _shader.SetBuffer(_paintKernel, RequestsId, _requestBuffers[m]);
+                _shader.SetTexture(_paintKernel, SplatMapId, _maps[m]);
+                _shader.SetInt(RequestCountId, _requestCounts[m]);
+                _shader.SetInts(MapSizeId, _maps[m].width, _maps[m].height);
+                _shader.SetVector(WorldSizeId, MapWorldSize(m));
+                _shader.SetInts(PaintRectId,
+                    _paintBounds[m].xMin, _paintBounds[m].yMin,
+                    _paintBounds[m].width, _paintBounds[m].height);
 
-            Dispatch(_paintKernel, _paintBounds);
+                Dispatch(_paintKernel, _paintBounds[m]);
+                _requestCounts[m] = 0;
+            }
+        }
 
-            _requestCount = 0;
+        /// <summary>지도가 덮는 월드 크기(m)입니다. 컴퓨트가 거리를 미터로 재는 데 씁니다.</summary>
+        private Vector4 MapWorldSize(int map)
+        {
+            if (map == MapXZ) return new Vector4(_size.x, _size.y, 0f, 0f);
+            if (map == MapXY) return new Vector4(_size.x, SideHeightMeters, 0f, 0f);
+            return new Vector4(_size.y, SideHeightMeters, 0f, 0f);
         }
 
         /// <summary>때가 되면 젖은 범위만 조금 말립니다.</summary>
         private void FadeIfDue()
         {
-            if (!_hasWet) return;
+            bool any = false;
+            for (int m = 0; m < MapCount; m++) if (_hasWet[m]) { any = true; break; }
+            if (!any) return;
+
             if (Time.time < _nextFadeTime) return;
 
-            // <b>예정된 주기가 아니라 실제 경과로 깎습니다.</b> 처음에는 fadeInterval 을
-            // 그대로 썼는데, 프레임이 그보다 느리면 예정보다 적게 돌아 <b>영영 안 마릅니다.</b>
-            // 실제로 시험에서 다 말라야 할 시간이 지나도 젖어 있었습니다.
+            // <b>예정된 주기가 아니라 실제 경과로 깎습니다.</b> 프레임이 주기보다 느리면
+            // 예정보다 적게 돌아 영영 안 마릅니다.
             float elapsed = Mathf.Min(Time.time - _lastFadeTime, dryDuration);
             _lastFadeTime = Time.time;
             _nextFadeTime = Time.time + fadeInterval;
-
             if (elapsed <= 0f) return;
 
-            // 마르는 시간이 주기와 무관하게 같도록 경과에 비례해 깎습니다.
             float amount = elapsed / Mathf.Max(dryDuration, 0.01f);
 
-            _shader.SetTexture(_fadeKernel, SplatMapId, _map);
-            _shader.SetInts(MapSizeId, resolution, resolution);
-            _shader.SetFloat(FadeAmountId, amount);
-            _shader.SetInts(FadeRectId,
-                _wetBounds.xMin, _wetBounds.yMin, _wetBounds.width, _wetBounds.height);
+            for (int m = 0; m < MapCount; m++)
+            {
+                if (!_hasWet[m]) continue;
 
-            Dispatch(_fadeKernel, _wetBounds);
+                _shader.SetTexture(_fadeKernel, SplatMapId, _maps[m]);
+                _shader.SetInts(MapSizeId, _maps[m].width, _maps[m].height);
+                _shader.SetFloat(FadeAmountId, amount);
+                _shader.SetInts(FadeRectId,
+                    _wetBounds[m].xMin, _wetBounds[m].yMin,
+                    _wetBounds[m].width, _wetBounds[m].height);
 
-            // <b>깎아 낸 총량으로 판정합니다.</b> "칠한 지 dryDuration 지났으면" 으로 두면,
-            // 마름이 조금이라도 뒤처졌을 때 <b>덜 마른 채로 멈춰</b> 그 얼룩이 영원히 남습니다.
-            // 총량이 1 을 넘었으면 아무리 진했어도(값의 상한이 1) 다 지워진 것이 확실합니다.
+                Dispatch(_fadeKernel, _wetBounds[m]);
+            }
+
+            // <b>깎아 낸 총량으로 판정합니다.</b> "칠한 지 dryDuration 지났으면" 으로 두면
+            // 마름이 조금이라도 뒤처졌을 때 덜 마른 채로 멈춰 얼룩이 영원히 남습니다.
             _fadedSincePaint += amount;
-            if (_fadedSincePaint >= 1f) _hasWet = false;
+            if (_fadedSincePaint >= 1f)
+                for (int m = 0; m < MapCount; m++) _hasWet[m] = false;
         }
 
         private void Dispatch(int kernel, RectInt rect)

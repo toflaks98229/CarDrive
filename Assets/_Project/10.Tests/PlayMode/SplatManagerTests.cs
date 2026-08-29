@@ -172,6 +172,69 @@ namespace CarDrive.Tests
                                            "배밖에 안 늘었습니다.");
         }
 
+        /// <summary>지정한 전역 이름의 지도에서 가장 진한 값을 냅니다.</summary>
+        private static float PeakOf(string globalName)
+        {
+            RenderTexture rt = Shader.GetGlobalTexture(globalName) as RenderTexture;
+            if (rt == null) return -1f;
+
+            Texture2D read = new Texture2D(rt.width, rt.height, TextureFormat.RGBAFloat, false);
+            RenderTexture prev = RenderTexture.active;
+            RenderTexture.active = rt;
+            read.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+            read.Apply();
+            RenderTexture.active = prev;
+
+            float peak = 0f;
+            Color[] px = read.GetPixels();
+            for (int i = 0; i < px.Length; i++) if (px[i].r > peak) peak = px[i].r;
+
+            Object.DestroyImmediate(read);
+            return peak;
+        }
+
+        /// <summary>
+        /// <b>벽에 칠하면 옆면 지도가 젖고 바닥 지도는 안 젖어야 합니다.</b>
+        ///
+        /// 위에서 내려다본 지도 하나로는 벽을 못 덮습니다 — 벽의 위아래 기둥이 전부 같은
+        /// XZ 좌표라 <b>같은 텍셀 하나</b>를 가리키기 때문입니다. 발밑에 튄 오줌이 벽
+        /// 꼭대기까지 젖게 만듭니다. 그래서 축마다 지도를 두고 법선으로 고릅니다.
+        ///
+        /// 이 시험이 없으면 벽 자국이 엉뚱한 지도에 칠해져도 화면으로만 알 수 있습니다.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator 벽에_칠하면_옆면_지도가_젖는다()
+        {
+            yield return null;
+            if (!manager.IsReady) yield break;
+
+            Assert.AreEqual(0f, PeakOf("_GlobalSplatMapZY"), 1e-3f, "칠하기 전에 이미 젖어 있습니다.");
+
+            // 법선이 +X 인 벽 — 좌우 벽 지도(ZY)가 맡아야 합니다.
+            manager.Paint(new Vector3(50f, 2f, 50f), 3f, 1f, Vector3.right);
+            yield return null;
+
+            Assert.Greater(PeakOf("_GlobalSplatMapZY"), 0.5f,
+                "벽에 칠했는데 좌우 벽 지도가 안 젖었습니다.");
+            Assert.Less(PeakOf("_GlobalSplatMap"), 0.05f,
+                "벽에 칠했는데 바닥 지도까지 젖었습니다. 법선으로 안 갈리고 있습니다.");
+        }
+
+        /// <summary>바닥에 칠하면 반대로 바닥 지도만 젖어야 합니다.</summary>
+        [UnityTest]
+        public IEnumerator 바닥에_칠하면_옆면_지도는_안_젖는다()
+        {
+            yield return null;
+            if (!manager.IsReady) yield break;
+
+            manager.Paint(new Vector3(50f, 0f, 50f), 3f, 1f, Vector3.up);
+            yield return null;
+
+            Assert.Greater(PeakOf("_GlobalSplatMap"), 0.5f, "바닥 지도가 안 젖었습니다.");
+            Assert.Less(PeakOf("_GlobalSplatMapXY"), 0.05f, "바닥에 칠했는데 앞뒤 벽 지도가 젖었습니다.");
+            Assert.Less(PeakOf("_GlobalSplatMapZY"), 0.05f, "바닥에 칠했는데 좌우 벽 지도가 젖었습니다.");
+        }
+
         [UnityTest]
         public IEnumerator 칠하면_지도가_젖는다()
         {

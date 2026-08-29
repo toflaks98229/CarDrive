@@ -38,6 +38,19 @@ float4 _GlobalSplatMapRect;
 /// 0 = 시스템이 없거나 이 기기에서 못 씀, 1 = 유효.
 float _GlobalSplatMapOn;
 
+// ── 세운 면을 위한 지도 둘 ──
+//
+// <b>위에서 내려다본 지도로는 벽을 못 덮습니다.</b> 벽의 위아래 기둥이 전부 같은 XZ 좌표라
+// <b>같은 텍셀 하나</b>를 가리키기 때문입니다. 오줌이 벽 아래에 튀면 꼭대기까지 통째로 젖습니다.
+// 그래서 축마다 하나씩 두고 법선으로 골라 씁니다 — 삼중평면입니다.
+//
+// 세로는 <b>높이</b>라 낮게 잡습니다(24m). 가로처럼 128m 를 덮으면 세로 해상도가 8배 거칩니다.
+TEXTURE2D(_GlobalSplatMapXY);   // 앞뒤 벽 (법선이 Z 축)
+TEXTURE2D(_GlobalSplatMapZY);   // 좌우 벽 (법선이 X 축)
+
+/// x = 높이 창의 바닥(월드 y), y = 1/높이(m).
+float4 _GlobalSplatMapHeight;
+
 /// <summary>
 /// 이 월드 좌표가 얼마나 젖었는지 읽습니다. 0 이면 마름, 1 이면 흠뻑입니다.
 ///
@@ -160,6 +173,100 @@ half CarDriveSplatStain(float3 positionWS, float3 normalWS,
 
     // HatchingRig 가 없으면 획을 못 긋습니다. 그냥 두면 테두리가 매끈해져
     // 이 함수의 이유가 사라지므로, 갉은 덮임을 그대로 문턱으로 씁니다.
+    return step(0.5h, coverage);
+}
+
+
+/// <summary>
+/// 지도 한 장에서 0~1 밖을 잘라 읽습니다.
+///
+/// <b>샘플러의 wrap 모드에 기대지 않습니다.</b> Clamp 면 가장자리 텍셀이 무한히 번지고
+/// Repeat 면 반대편이 되풀이됩니다. 둘 다 틀린 그림입니다.
+/// </summary>
+half CarDriveSplatRead(TEXTURE2D_PARAM(tex, samp), float2 uv)
+{
+    float2 inRange = step(0.0, uv) * step(uv, 1.0);
+    half inside = (half)(inRange.x * inRange.y);
+    return (half)SAMPLE_TEXTURE2D_LOD(tex, samp, uv, 0).r * inside;
+}
+
+/// <summary>
+/// <b>세운 면까지 포함해</b> 이 자리가 얼마나 젖었는지 읽습니다.
+///
+/// 법선으로 세 지도의 가중치를 내어 섞습니다. 칠하는 쪽(SplatManager.Paint)이
+/// <b>같은 식</b>으로 나눠 칠하므로 칠한 만큼 그대로 읽힙니다 — 한쪽만 고치면
+/// 벽이 절반만 젖거나 두 배로 젖습니다.
+///
+/// 바닥만 필요하면 <see cref="CarDriveSplatWetness"/> 가 더 쌉니다(샘플 한 번).
+/// </summary>
+/// <param name="positionWS">월드 위치</param>
+/// <param name="normalWS">월드 법선. 어느 지도를 볼지 정합니다.</param>
+half CarDriveSplatWetnessTriplanar(float3 positionWS, float3 normalWS)
+{
+    if (_GlobalSplatMapOn < 0.5) return 0.0h;
+
+    half3 w = abs((half3)normalWS);
+    half sum = w.x + w.y + w.z;
+    if (sum < 1e-4h) return 0.0h;
+    w /= sum;
+
+    half wet = 0.0h;
+
+    // 바닥·천장.
+    [branch] if (w.y > 0.001h)
+    {
+        float2 uv = (positionWS.xz - _GlobalSplatMapRect.xy) * _GlobalSplatMapRect.zw;
+        wet += w.y * CarDriveSplatRead(TEXTURE2D_ARGS(_GlobalSplatMap, sampler_GlobalSplatMap), uv);
+    }
+
+    // 앞뒤 벽 — 가로가 월드 x, 세로가 높이.
+    [branch] if (w.z > 0.001h)
+    {
+        float2 uv = float2((positionWS.x - _GlobalSplatMapRect.x) * _GlobalSplatMapRect.z,
+                           (positionWS.y - _GlobalSplatMapHeight.x) * _GlobalSplatMapHeight.y);
+        wet += w.z * CarDriveSplatRead(TEXTURE2D_ARGS(_GlobalSplatMapXY, sampler_GlobalSplatMap), uv);
+    }
+
+    // 좌우 벽 — 가로가 월드 z, 세로가 높이.
+    [branch] if (w.x > 0.001h)
+    {
+        float2 uv = float2((positionWS.z - _GlobalSplatMapRect.y) * _GlobalSplatMapRect.w,
+                           (positionWS.y - _GlobalSplatMapHeight.x) * _GlobalSplatMapHeight.y);
+        wet += w.x * CarDriveSplatRead(TEXTURE2D_ARGS(_GlobalSplatMapZY, sampler_GlobalSplatMap), uv);
+    }
+
+    return saturate(wet);
+}
+
+/// <summary>
+/// 세운 면까지 포함한 <b>손그림 얼룩</b> 마스크입니다.
+/// <see cref="CarDriveSplatStain"/> 과 같은 문법이고 읽는 지도만 삼중평면입니다.
+/// </summary>
+half CarDriveSplatStainTriplanar(float3 positionWS, float3 normalWS,
+                                 float noiseScale, half edgeBite, half edgeSharp,
+                                 float hatchScale, half hatchBite)
+{
+    half w = CarDriveSplatWetnessTriplanar(positionWS, normalWS);
+    if (w <= 0.0h) return 0.0h;
+
+    // 잡음 좌표도 <b>면에 맞춰</b> 고릅니다. 벽에서 xz 를 쓰면 위아래로 무늬가 늘어납니다.
+    half3 an = abs((half3)normalWS);
+    float2 np = an.y > an.x && an.y > an.z ? positionWS.xz
+              : (an.z > an.x ? positionWS.xy : positionWS.zy);
+    np *= noiseScale;
+
+    float n = ValueNoise(np) * 0.68 + ValueNoise(np * 2.6) * 0.32;
+
+    half band = w * (1.0h - w) * 4.0h;
+    half coverage = saturate((w + (half)((n - 0.5) * edgeBite) * band - 0.5h) * edgeSharp + 0.5h);
+
+    [branch] if (_CarDriveHatchParams.w >= 0.5)
+    {
+        half pattern = CarDriveHatchValue(0.6h, positionWS, normalWS,
+                                          max(hatchScale, 0.01), 1.0h);
+        return step(pattern * hatchBite + 0.0001h, coverage * (1.0h + hatchBite));
+    }
+
     return step(0.5h, coverage);
 }
 

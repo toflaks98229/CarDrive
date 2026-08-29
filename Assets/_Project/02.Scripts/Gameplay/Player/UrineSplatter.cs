@@ -177,18 +177,6 @@ namespace CarDrive.Gameplay
         }
 
         /// <summary>
-        /// 이보다 평평하면 전역 젖음 지도에 맡기고, 아니면 판을 찍습니다.
-        ///
-        /// <b>지도는 위에서 내려다본 투영이라 벽을 못 덮습니다.</b> 세워진 면에 칠하면
-        /// 그 위아래 기둥 전체가 같은 UV 를 가리켜 통째로 젖습니다. 그래서 갈라 둡니다 —
-        /// 바닥은 지도(상한 없음, 굽은 땅에 그대로 얹힘), 벽은 판(흘러내림까지 그림).
-        ///
-        /// 0.75 는 약 41도입니다. 그보다 가파른 비탈은 걸어 오르기 어렵고 시선에서도
-        /// 벽처럼 읽히므로 판 쪽에 둡니다.
-        /// </summary>
-        private const float GroundNormalDot = 0.75f;
-
-        /// <summary>
         /// 자리를 고를 때 크기가 나이를 얼마나 이기는가.
         ///
         /// 0 이면 순수하게 마른 순서대로, 1 이면 다 자란 웅덩이가 "완전히 마름" 만큼의
@@ -385,8 +373,9 @@ namespace CarDrive.Gameplay
             {
                 Pending p = _pending.Dequeue();
 
-                // <b>바닥은 지도가 맡습니다.</b> 판을 쓰지 않으므로 풀도 안 먹고 상한도 없습니다.
-                if (p.Drip <= 1f - GroundNormalDot && PaintToMap(p)) continue;
+                // <b>바닥이든 벽이든 지도가 맡습니다.</b> 판을 쓰지 않으므로 풀도 안 먹고
+                // 상한도 없습니다. 지도가 세운 면까지 덮게 된 뒤로 갈라 보낼 이유가 없어졌습니다.
+                if (PaintToMap(p)) continue;
 
                 if (_active >= 0 && _pool[_active].Alive &&
                     Vector3.Distance(_pool[_active].Anchor, p.At) <= _stampDistance)
@@ -543,7 +532,9 @@ namespace CarDrive.Gameplay
 
             float amount = p.Flow * p.DeltaTime / Mathf.Max(wetPerSecond, 0.01f);
 
-            _splatMap.Paint(p.At, _mapRadius, amount);
+            // <b>법선을 함께 넘깁니다.</b> 지도가 그것으로 어느 축의 지도에 칠할지 고릅니다 —
+            // 바닥은 위에서 내려다본 지도, 벽은 그 면을 마주 보는 옆면 지도입니다.
+            _splatMap.Paint(p.At, _mapRadius, amount, p.Normal);
             return true;
         }
 

@@ -19,6 +19,17 @@ Shader "CarDrive/Toon Lit"
         _BaseMap ("바탕 텍스처", 2D) = "white" {}
         _BaseColor ("바탕색", Color) = (1, 1, 1, 1)
 
+        // 땅 얼룩(CarDriveToonTerrain)과 <b>같은 이름·같은 기본값</b>입니다.
+        // 다르면 같은 오줌인데 땅과 벽이 다른 물건으로 보입니다.
+        _SplatColor ("얼룩 색", Color) = (0.78, 0.68, 0.32, 0.85)
+        _SplatDarken ("젖으면 어두워지는 정도", Range(0, 1)) = 0.45
+        _SplatGloss ("젖으면 생기는 반짝임", Range(0, 1)) = 0.55
+        _SplatNoiseScale ("테두리 잡음 잘기 (1m 당 주기)", Range(0.5, 20)) = 3.5
+        _SplatEdgeBite ("테두리를 갉는 정도", Range(0, 2)) = 1.7
+        _SplatEdgeSharp ("테두리 경사 세우기", Range(1, 12)) = 1.5
+        _SplatHatchScale ("획 한 판이 덮는 거리(m)", Range(0.05, 2)) = 0.6
+        _SplatHatchBite ("획이 얼룩을 갉는 정도", Range(0, 1)) = 1
+
         [Header(Toon Shading)]
         _MidPoint ("명암 경계 (낮을수록 밝은 면이 넓음)", Range(0, 1)) = 0.35
         _Softness ("경계 부드러움", Range(0, 0.5)) = 0.05
@@ -80,9 +91,21 @@ Shader "CarDrive/Toon Lit"
         HLSLINCLUDE
         #include "CarDriveToonLighting.hlsl"
 
+        // 세운 면까지 덮는 전역 젖음 지도입니다.
+        // 지도가 없으면 CarDriveSplatWetnessTriplanar 가 0 을 돌려주므로 아래가 전부 사라집니다.
+        #include "CarDriveSplatMap.hlsl"
+
         CBUFFER_START(UnityPerMaterial)
             float4 _BaseMap_ST;
             half4  _BaseColor;
+            half4  _SplatColor;
+            half   _SplatDarken;
+            half   _SplatGloss;
+            float  _SplatNoiseScale;
+            half   _SplatEdgeBite;
+            half   _SplatEdgeSharp;
+            float  _SplatHatchScale;
+            half   _SplatHatchBite;
             half   _MidPoint;
             half   _Softness;
             half   _ShadowSoftness;
@@ -307,14 +330,40 @@ Shader "CarDrive/Toon Lit"
                 CarDriveApplyDitherFade(input.positionWS, input.positionCS.xy);
                 CARDRIVE_LOD_CROSSFADE(input.positionCS);
 
+                float3 nrm = normalize(input.normalWS);
+
+                // ── 오줌 얼룩 ──
+                //
+                // <b>판(quad)을 소환하지 않습니다.</b> 예전에는 벽에 자국이 튈 때마다 판을 하나씩
+                // 눕혔는데, 그러면 자국 수만큼 드로우가 늘고 고정 풀이 한 바퀴 돌면 살아 있는
+                // 자국이 그대로 사라졌습니다. 지금은 머티리얼이 지도를 읽습니다 —
+                // 자국이 몇이든 드로우는 늘지 않고 상한도 없습니다.
+                //
+                // <b>삼중평면입니다.</b> 위에서 내려다본 지도 하나로는 벽을 못 덮습니다.
+                // 벽의 위아래 기둥이 전부 같은 XZ 좌표라 같은 텍셀을 가리켜, 발밑에 튄 오줌이
+                // 벽 꼭대기까지 젖게 만듭니다. 법선으로 세 지도를 섞어 그것을 피합니다.
+                //
+                // 지도가 없거나 이 자리가 마르면 wet 이 0 이라 아래가 전부 사라집니다 —
+                // <b>마른 표면의 그림은 예전과 픽셀 단위로 같습니다.</b>
+                half wet = CarDriveSplatStainTriplanar(input.positionWS, nrm,
+                                                       _SplatNoiseScale, _SplatEdgeBite, _SplatEdgeSharp,
+                                                       _SplatHatchScale, _SplatHatchBite);
+
+                half3 albedo = baseSample.rgb * _BaseColor.rgb;
+                half3 stained = lerp(albedo * (1.0h - _SplatDarken), _SplatColor.rgb, _SplatColor.a);
+                albedo = lerp(albedo, stained, wet);
+
                 ToonSurface s;
-                s.albedo = baseSample.rgb * _BaseColor.rgb;
-                s.normalWS = normalize(input.normalWS);
+                s.albedo = albedo;
+                s.normalWS = nrm;
                 s.positionWS = input.positionWS;
                 s.viewDirWS = SafeNormalize(GetWorldSpaceViewDir(input.positionWS));
 
+                ToonParams tp = BuildToonParams();
+                tp.specularStrength = max(tp.specularStrength, _SplatGloss * wet);
+
                 float4 shadowCoord = TransformWorldToShadowCoord(input.positionWS);
-                half3 color = ToonShade(s, BuildToonParams(), shadowCoord);
+                half3 color = ToonShade(s, tp, shadowCoord);
 
                 color = MixFog(color, input.fogFactor);
                 return half4(color, baseSample.a * _BaseColor.a);
