@@ -28795,7 +28795,7 @@ MonoBehaviour:
   skyMaterial: {fileID: 2100000, guid: 61a2f1d5ed2f3764ba5629f2274445ea, type: 2}
   sun: {fileID: 410087040}
   cloudsHideStars: 1
-  dayExposure: 0.92
+  dayExposure: 0.5
   nightExposure: 0.06
   nightSkyTint: {r: 0.86, g: 0.58, b: 0.42, a: 1}
   nightSkyMaterial: {fileID: 2100000, guid: 634140d921a24c16b021fa875618aa17, type: 2}
