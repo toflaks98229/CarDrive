@@ -138,7 +138,7 @@ PRESETS = {
 # --- Shared core ------------------------------------------------------------
 
 
-def core(m, length, bays, gaps=()):
+def core(m, length, bays):
     """
     모든 프리셋이 똑같이 세우는 뼈대입니다. <b>이음매를 지나는 것은 전부 여기 있습니다.</b>
 
@@ -146,10 +146,8 @@ def core(m, length, bays, gaps=()):
     전체 길이를 지나 양 끝에서 정확히 끊깁니다. 그래서 어떤 프리셋 뒤에 어떤 프리셋을
     붙여도 이 단면끼리 맞닿습니다.
 
-    <c>gaps</c> 는 <b>난간을 끊는 자리</b>입니다 - (부호, 중심 x, 폭). 난간이 이어져
-    있으면 데크에서 내려올 방법이 없고, 경사로에서 올라온 차도 못 들어갑니다.
-    구멍은 <b>양 끝에서 물러나 있어야</b> 합니다. 이음매에 걸치면 옆 프리셋의 난간과
-    반쪽씩 만나 어긋납니다.
+    <b>난간은 여기 없습니다.</b> 프리셋마다 끊는 자리가 달라 공용 부품이 될 수
+    없으므로 프리셋 쪽 메시가 갖습니다.
     """
     W = SOCKET["width"]
     lx, ly = SOCKET["leg"]
@@ -201,9 +199,7 @@ def core(m, length, bays, gaps=()):
     # 자리에서 깊이 버퍼가 계속 다툽니다.
     m.box((0.0, 0.0, DECK_TOP + 0.03), (length, W - 4.0, 0.26), DARK)
 
-    for sign in (-1.0, 1.0):
-        mine = sorted((g[1], g[2]) for g in gaps if g[0] == sign)
-        parapet(m, length, sign * (W * 0.5 - 0.6), mine)
+
 
 
 def parapet(m, length, y, gaps):
@@ -636,8 +632,26 @@ def citadel(m, s, length, rng):
 # --- Build ------------------------------------------------------------------
 
 
+def build_core():
+    """
+    <b>한 베이짜리 뼈대.</b> 프리셋이 몇 베이든 이것을 그만큼 늘어놓습니다.
+
+    프리셋마다 구워 넣으면 같은 288 삼각형이 열 벌 저장되고 열 개의 다른 메시로
+    그려집니다. 하나만 두면 스파인 전체가 이것을 인스턴싱합니다.
+    """
+    m = hardsurface.Mass(MATS)
+    core(m, SOCKET["bay"], 1)
+    return m.to_object("SM_Mega_Core")
+
+
 def build(name):
-    """프리셋 하나를 세웁니다. 원점은 <b>지면이자 프리셋의 한가운데</b>입니다."""
+    """
+    프리셋이 <b>더하는 것</b>만 세웁니다. 뼈대는 build_core() 가 따로 냅니다.
+    원점은 지면이자 프리셋의 한가운데입니다.
+
+    난간은 여기 있습니다 — 프리셋마다 끊는 자리가 달라 공용 뼈대에 넣을 수 없습니다.
+    대신 <b>양 끝의 단면은 모든 프리셋이 같아야</b> 하고, verify() 가 그것을 봅니다.
+    """
     s = PRESETS[name]
     bays = s["bays"]
     length = bays * SOCKET["bay"]
@@ -645,7 +659,11 @@ def build(name):
     m = hardsurface.Mass(MATS)
     rng = random.Random(abs(hash(name)) % 100000)
 
-    core(m, length, bays, s.get("gaps", ()))
+    W = SOCKET["width"]
+    for sign in (-1.0, 1.0):
+        mine = sorted((g[1], g[2]) for g in s.get("gaps", ()) if g[0] == sign)
+        parapet(m, length, sign * (W * 0.5 - 0.6), mine)
+
     capsules(m, s, length, rng)
     portal(m, s, length, rng)
     industry(m, s, length, rng)
@@ -677,7 +695,13 @@ def seam(obj, x):
 
 
 def verify(made):
-    """모든 프리셋이 양 끝에서 같은 단면을 내미는지 확인합니다."""
+    """
+    모든 프리셋이 양 끝에서 같은 단면을 내미는지 확인합니다.
+
+    뼈대는 <b>글자 그대로 같은 메시</b>가 되었으므로 더 볼 것이 없습니다. 남은 것은
+    프리셋마다 다른 난간인데, 끊는 자리가 이음매에 걸치면 옆 조각과 반쪽씩 만나
+    어긋납니다. 그것을 여기서 잡습니다.
+    """
     profiles = {}
 
     for name, obj in made.items():
@@ -703,32 +727,52 @@ def verify(made):
     return len(profiles[first])
 
 
+def emit(obj, report_extra=None):
+    """UV 를 깔고 FBX 로 내보냅니다. 부품마다 파일 하나입니다."""
+    uv_worldscale.box_uv(obj, UV_TILE)
+
+    path = os.path.join(OUT_DIR, obj.name + ".fbx")
+    written = hardsurface.export_fbx(path)
+
+    lo, hi = hardsurface.bounds(obj)
+
+    out = dict(mesh=obj.name,
+               size=[round(hi[a] - lo[a], 2) for a in range(3)],
+               top=round(hi[2], 1),
+               tris=sum(len(p.vertices) - 2 for p in obj.data.polygons),
+               fbx=written)
+
+    if report_extra:
+        out.update(report_extra)
+
+    return out
+
+
 def run():
-    made = {}
     report = []
 
+    # ---- 뼈대 한 벌 --------------------------------------------------------
+    hardsurface.wipe()
+    hardsurface.ensure_materials(MATS)
+    core_report = emit(build_core(), dict(bay=SOCKET["bay"]))
+
+    # ---- 프리셋이 더하는 것 ------------------------------------------------
     for name in PRESETS:
         hardsurface.wipe()
         hardsurface.ensure_materials(MATS)
 
         obj = build(name)
-        made[name] = obj
-        uv_worldscale.box_uv(obj, UV_TILE)
-
-        path = os.path.join(OUT_DIR, obj.name + ".fbx")
-        written = hardsurface.export_fbx(path)
-
-        lo, hi = hardsurface.bounds(obj)
         want = PRESETS[name]["bays"] * SOCKET["bay"]
 
-        report.append(dict(
-            name=obj.name, preset=name, bays=PRESETS[name]["bays"],
-            length=round(hi[0] - lo[0], 3), want=want,
-            tiles=abs((hi[0] - lo[0]) - want) < 0.01,
-            size=[round(hi[a] - lo[a], 2) for a in range(3)],
-            top=round(hi[2], 1),
-            tris=sum(len(p.vertices) - 2 for p in obj.data.polygons),
-            weight=PRESETS[name]["weight"], fbx=written))
+        lo, hi = hardsurface.bounds(obj)
+        span = hi[0] - lo[0]
+
+        report.append(emit(obj, dict(
+            preset=name, bays=PRESETS[name]["bays"], length=want,
+            span=round(span, 3),
+            # 부품이 프리셋 길이를 넘으면 이웃을 파고듭니다.
+            fits=span <= want + 0.01,
+            weight=PRESETS[name]["weight"])))
 
     # 이음매 검사는 <b>전부 만든 뒤</b>에 합니다. 하나만 보고는 알 수 없습니다.
     hardsurface.wipe()
@@ -739,21 +783,31 @@ def run():
     with open(MANIFEST, "w", encoding="utf-8") as f:
         json.dump(dict(
             bay=SOCKET["bay"], width=SOCKET["width"], burial=SOCKET["burial"],
-            # 데크 노면의 높이입니다. 유니티가 "어느 면이 달릴 면인지" 알아야
-            # 위에서 쏜 광선이 지붕이 아니라 노면을 고를 수 있습니다.
             deckTop=DECK_TOP, gate=SOCKET["gate"],
+            core=core_report["mesh"], coreTris=core_report["tris"],
             seamPoints=points,
-            presets=[dict(name=r["preset"], mesh=r["name"], bays=r["bays"],
-                          length=r["length"], weight=r["weight"], top=r["top"])
+            presets=[dict(name=r["preset"], mesh=r["mesh"], bays=r["bays"],
+                          length=r["length"], weight=r["weight"], top=r["top"],
+                          tris=r["tris"])
                      for r in report]), f, indent=1)
 
-    return report, points
+    return core_report, report, points
 
 
 def lay_out():
-    """프리셋을 <b>실제로 이어 붙여</b> blend 에 남깁니다. 늘어놓아야 이음매가 보입니다."""
+    """
+    부품을 <b>실제로 이어 붙여</b> blend 에 남깁니다.
+
+    뼈대는 베이마다 한 번씩, 프리셋 부품은 그 가운데에 한 번씩 놓습니다 - 유니티가
+    할 일과 똑같습니다. 늘어놓아야 이음매가 맞는지, 그리고 무엇보다 <b>끝이 안
+    보이는지</b>가 보입니다.
+    """
     hardsurface.wipe()
     hardsurface.ensure_materials(MATS)
+
+    core_obj = build_core()
+    uv_worldscale.box_uv(core_obj, UV_TILE)
+    core_obj.location.y = 6000.0
 
     made = {}
     for name in PRESETS:
@@ -768,13 +822,19 @@ def lay_out():
 
     x = 0.0
     for name in order:
-        span = PRESETS[name]["bays"] * SOCKET["bay"]
-        source = made[name]
+        bays = PRESETS[name]["bays"]
+        span = bays * SOCKET["bay"]
 
-        copy = source.copy()
-        copy.data = source.data
-        copy.location = (x + span * 0.5, 0.0, 0.0)
-        bpy.context.scene.collection.objects.link(copy)
+        for b in range(bays):
+            piece = core_obj.copy()
+            piece.data = core_obj.data
+            piece.location = (x + (b + 0.5) * SOCKET["bay"], 0.0, 0.0)
+            bpy.context.scene.collection.objects.link(piece)
+
+        part = made[name].copy()
+        part.data = made[name].data
+        part.location = (x + span * 0.5, 0.0, 0.0)
+        bpy.context.scene.collection.objects.link(part)
 
         x += span
 
@@ -782,6 +842,7 @@ def lay_out():
 
 
 if __name__ == "__main__":
-    out, points = run()
+    core_out, out, points = run()
     lay_out()
-    print("###JSON###" + json.dumps(dict(presets=out, seamPoints=points)))
+    print("###JSON###" + json.dumps(
+        dict(core=core_out, presets=out, seamPoints=points)))

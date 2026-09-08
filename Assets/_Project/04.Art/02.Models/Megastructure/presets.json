@@ -4,7 +4,9 @@
  "burial": 14.0,
  "deckTop": 32.0,
  "gate": 22.0,
- "seamPoints": 44,
+ "core": "SM_Mega_Core",
+ "coreTris": 264,
+ "seamPoints": 8,
  "presets": [
   {
    "name": "Viaduct",
@@ -12,7 +14,8 @@
    "bays": 1,
    "length": 42.0,
    "weight": 5,
-   "top": 33.4
+   "top": 33.4,
+   "tris": 24
   },
   {
    "name": "Habitat",
@@ -20,7 +23,8 @@
    "bays": 1,
    "length": 42.0,
    "weight": 6,
-   "top": 57.2
+   "top": 57.2,
+   "tris": 1116
   },
   {
    "name": "Industry",
@@ -28,7 +32,8 @@
    "bays": 1,
    "length": 42.0,
    "weight": 3,
-   "top": 58.6
+   "top": 58.6,
+   "tris": 588
   },
   {
    "name": "Junction",
@@ -36,7 +41,8 @@
    "bays": 2,
    "length": 84.0,
    "weight": 2,
-   "top": 65.2
+   "top": 65.2,
+   "tris": 1440
   },
   {
    "name": "Citadel",
@@ -44,7 +50,8 @@
    "bays": 3,
    "length": 126.0,
    "weight": 1,
-   "top": 173.0
+   "top": 173.0,
+   "tris": 15756
   },
   {
    "name": "Ramp",
@@ -52,7 +59,8 @@
    "bays": 2,
    "length": 84.0,
    "weight": 2,
-   "top": 33.5
+   "top": 33.5,
+   "tris": 372
   },
   {
    "name": "Crane",
@@ -60,7 +68,8 @@
    "bays": 1,
    "length": 42.0,
    "weight": 3,
-   "top": 60.8
+   "top": 60.8,
+   "tris": 468
   },
   {
    "name": "Breach",
@@ -68,7 +77,8 @@
    "bays": 1,
    "length": 42.0,
    "weight": 2,
-   "top": 54.8
+   "top": 54.8,
+   "tris": 888
   },
   {
    "name": "Overpass",
@@ -76,7 +86,8 @@
    "bays": 2,
    "length": 84.0,
    "weight": 2,
-   "top": 59.6
+   "top": 59.6,
+   "tris": 204
   },
   {
    "name": "Spur",
@@ -84,7 +95,8 @@
    "bays": 1,
    "length": 42.0,
    "weight": 2,
-   "top": 47.2
+   "top": 47.2,
+   "tris": 432
   }
  ]
 }

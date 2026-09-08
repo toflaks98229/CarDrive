@@ -56,6 +56,10 @@ public static class MegastructureSetup
         public float bay;
         public float width;
         public int seamPoints;
+
+        /// <summary>베이마다 놓이는 <b>공용 뼈대</b>의 메시 이름입니다.</summary>
+        public string core;
+
         public Preset[] presets;
     }
 
@@ -113,21 +117,26 @@ public static class MegastructureSetup
                 throw new Exception("프리셋 목록을 읽지 못했습니다: " + ManifestPath);
             }
 
+            // <b>부품 이름으로 담습니다.</b> 뼈대와 프리셋 부품이 섞여 있고, 스파인은
+            // 둘을 다른 규칙으로 놓습니다 - 뼈대는 베이마다, 부품은 프리셋마다.
             Dictionary<string, GameObject> made = new Dictionary<string, GameObject>();
 
             foreach (string model in models)
             {
                 Configure(model, materials);
                 GameObject piece = BuildBay(model);
-
-                Preset owner = manifest.presets.FirstOrDefault(p => p.mesh == piece.name);
-                if (owner != null) made[owner.name] = piece;
+                made[piece.name] = piece;
             }
 
-            BuildSpine(manifest, made);
+            if (!made.TryGetValue(manifest.core, out GameObject core))
+            {
+                throw new Exception("공용 뼈대 프리팹이 없습니다: " + manifest.core);
+            }
+
+            BuildSpine(manifest, core, made);
 
             AssetDatabase.SaveAssets();
-            Debug.Log($"MegastructureSetup: 프리셋 {made.Count} 종 · 이음매 {manifest.seamPoints} 점 확인됨");
+            Debug.Log($"MegastructureSetup: 부품 {made.Count} 종 · 이음매 {manifest.seamPoints} 점 확인됨");
         }
         catch (Exception e)
         {
@@ -332,7 +341,8 @@ public static class MegastructureSetup
     ///     각각이 <b>사건</b>으로 읽힙니다.
     ///   · 초거대는 한 번만. 두 번 나오면 초거대가 아닙니다.
     /// </summary>
-    private static void BuildSpine(Manifest manifest, Dictionary<string, GameObject> made)
+    private static void BuildSpine(Manifest manifest, GameObject core,
+                                   Dictionary<string, GameObject> made)
     {
         List<Preset> order = Sequence(manifest);
 
@@ -342,23 +352,38 @@ public static class MegastructureSetup
         {
             float total = order.Sum(p => p.length);
             float at = -total * 0.5f;
+            int cores = 0;
+
+            // 스파인이 z 로 흐르게 돌립니다. 블렌더에서는 x 가 진행 방향이었습니다.
+            Quaternion turn = Quaternion.Euler(0f, 90f, 0f);
 
             foreach (Preset preset in order)
             {
-                GameObject piece = (GameObject)PrefabUtility.InstantiatePrefab(made[preset.name]);
-                piece.transform.SetParent(root.transform, false);
-                piece.transform.localPosition = new Vector3(0f, 0f, at + preset.length * 0.5f);
+                // <b>뼈대는 베이마다.</b> 같은 메시가 반복되므로 유니티가 인스턴싱할
+                // 수 있고, 콜라이더도 베이 단위로 쪼개집니다.
+                for (int b = 0; b < preset.bays; b++)
+                {
+                    GameObject bay = (GameObject)PrefabUtility.InstantiatePrefab(core);
+                    bay.transform.SetParent(root.transform, false);
+                    bay.transform.localPosition =
+                        new Vector3(0f, 0f, at + (b + 0.5f) * manifest.bay);
+                    bay.transform.localRotation = turn;
+                    cores++;
+                }
 
-                // 스파인이 z 로 흐르게 돌립니다. 블렌더에서는 x 가 진행 방향이었습니다.
-                piece.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
+                // 프리셋이 더하는 것은 그 한가운데에 하나.
+                GameObject part = (GameObject)PrefabUtility.InstantiatePrefab(made[preset.mesh]);
+                part.transform.SetParent(root.transform, false);
+                part.transform.localPosition = new Vector3(0f, 0f, at + preset.length * 0.5f);
+                part.transform.localRotation = turn;
 
                 at += preset.length;
             }
 
             PrefabUtility.SaveAsPrefabAsset(root, SpinePath);
 
-            Debug.Log($"MegastructureSetup: 스파인 {order.Count} 조각 · {total:F0} m — " +
-                      string.Join(" ", order.Select(p => p.name)));
+            Debug.Log($"MegastructureSetup: 스파인 {order.Count} 프리셋 · 뼈대 {cores} 베이 · " +
+                      $"{total:F0} m — " + string.Join(" ", order.Select(p => p.name)));
         }
         finally
         {
