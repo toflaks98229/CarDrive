@@ -174,10 +174,16 @@ public static class MegastructureSetup
             AssetDatabase.LoadAssetAtPath<GameObject>(SpinePath));
         Bounds all = Measure(spine);
 
-        // 차 한 대. 이것이 없으면 100 m 인지 10 m 인지 그림만 봐서는 알 수 없습니다.
-        GameObject car = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        car.transform.localScale = new Vector3(1.9f, 1.5f, 4.5f);
-        car.transform.position = new Vector3(0f, 0.75f, all.center.z + 140f);
+        // 차 몇 대. 이것이 없으면 100 m 인지 10 m 인지 그림만 봐서는 알 수 없습니다.
+        // <b>한 대로는 부족합니다</b> — 높이가 400 m 를 넘으면 멀리 있는 차 한 대는
+        // 점이 되어 사라지고, 그러면 크기를 재 줄 것이 화면에 아무것도 없습니다.
+        for (int i = 0; i < 5; i++)
+        {
+            GameObject car = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            car.transform.localScale = new Vector3(1.9f, 1.5f, 4.5f);
+            car.transform.position = new Vector3(
+                (i - 2) * 26f, 0.75f, all.center.z + all.extents.z * (0.2f + i * 0.14f));
+        }
 
         GameObject sun = new GameObject("Sun");
         Light light = sun.AddComponent<Light>();
@@ -201,13 +207,26 @@ public static class MegastructureSetup
         cam.farClipPlane = 4000f;
         cam.enabled = false;
 
+        // 카메라 거리를 <b>여기 적어 두면 안 됩니다.</b> 옛 그림은 -320 m 에서 찍게
+        // 박혀 있었는데, 높이를 34 m 에서 438 m 로 올린 뒤에도 그 거리 그대로라 화면에
+        // 다리 밑동만 들어왔습니다. 화각이 38° 이므로 높이 h 를 담으려면
+        // h / (2 tan 19°) ≈ h x 1.45 만큼 떨어져야 합니다.
+        float height = all.size.y;
+        float span = height * 1.6f;
+
         // 밑을 지나가며 보는 그림. 운전 게임에서 <b>가장 많이 보게 될 각</b>입니다.
         Shoot(cam, new Vector3(0f, 2.2f, all.center.z - all.extents.z * 0.9f),
-              new Vector3(0f, 26f, all.center.z + all.extents.z * 0.6f), "under");
+              new Vector3(0f, all.min.y + height * 0.22f, all.center.z + all.extents.z * 0.6f),
+              "under");
 
         // 옆에서 본 단면. 골조와 캡슐이 갈려 보이는지는 여기서 판단합니다.
-        Shoot(cam, new Vector3(-320f, 60f, all.center.z),
-              new Vector3(0f, 34f, all.center.z), "side");
+        Shoot(cam, new Vector3(-span, height * 0.5f, all.center.z),
+              new Vector3(0f, height * 0.5f, all.center.z), "side");
+
+        // <b>올려다보는 그림.</b> 넓이는 옆에서 보면 알지만 높이는 밑에서 봐야 압니다.
+        // 사람이 서는 자리에서 찍어야 층이 몇 겹인지가 화면에 나옵니다.
+        Shoot(cam, new Vector3(span * 0.22f, 1.7f, all.center.z + all.extents.z * 0.34f),
+              new Vector3(0f, height * 0.7f, all.center.z + all.extents.z * 0.1f), "up");
 
         Debug.Log($"MegastructureSetup: 미리보기 저장 — {ShotDir}");
 

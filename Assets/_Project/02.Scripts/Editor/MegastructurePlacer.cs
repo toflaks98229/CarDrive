@@ -30,20 +30,37 @@ public static class MegastructurePlacer
     private const string SpinePath = "Assets/_Project/05.Prefabs/Megastructure/MegaSpine.prefab";
     private const string HolderName = "Megastructure";
 
+    private const string ManifestPath =
+        "Assets/_Project/04.Art/02.Models/Megastructure/presets.json";
+
     /// <summary>
-    /// 다리가 원점 아래로 내려가 있는 깊이(m)입니다. 이만큼은 파묻을 수 있습니다.
-    /// <c>build_megastructure.py</c> 의 <c>BURIAL</c> 과 같은 값이어야 합니다.
+    /// 블렌더가 낸 치수입니다. <b>여기 적어 두면 안 됩니다.</b>
+    ///
+    /// 다리가 파묻히는 깊이와 스파인의 폭을 C# 에 상수로 두었더니, 폭을 34 m 에서
+    /// 96 m 로 넓힌 순간 배치기가 <b>없는 자리에서 지면을 재고</b> 출발 지점과의
+    /// 거리도 옛 폭으로 판단했습니다. 만든 쪽이 적고 쓰는 쪽은 읽습니다.
     /// </summary>
-    private const float LegBurial = 14.0f;
+    [Serializable]
+    private class Manifest
+    {
+        public float bay;
+        public float width;
+        public float burial;
+        public float deckTop;
+    }
+
+    private static Manifest _spec;
+
+    private static float LegBurial { get { return _spec.burial; } }
 
     /// <summary>다리 중심선에서 바깥 다리까지의 거리(m)입니다.</summary>
-    private const float LegOffset = 11.5f;
+    private static float LegOffset { get { return _spec.width * 0.5f - 6.5f; } }
 
     /// <summary>기복 여유에서 남겨 두는 안전 폭(m)입니다. 딱 맞으면 딱 맞을 뿐입니다.</summary>
     private const float Margin = 2.0f;
 
-    /// <summary>출발 지점에서 떨어뜨릴 최소 거리(m)입니다. 구조물 폭이 34 m 입니다.</summary>
-    private const float Clear = 40.0f;
+    /// <summary>출발 지점에서 떨어뜨릴 최소 거리(m)입니다. 폭의 절반에 여유를 더합니다.</summary>
+    private static float Clear { get { return _spec.width * 0.5f + 24f; } }
 
     private const int Angles = 12;
     private const int Offsets = 9;
@@ -135,20 +152,27 @@ public static class MegastructurePlacer
     /// <b>왜 가장 평탄한 선이 아닌가.</b> 다리 여유를 14 m 로 늘린 뒤로는 상위 후보가
     /// 전부 구조적으로 가능합니다. 그러면 기복은 더 이상 고르는 기준이 못 됩니다 —
     /// 통과 조건일 뿐입니다. 남는 기준은 <b>플레이어가 실제로 만나는가</b> 하나입니다.
-    /// 세계 구석에 선 96 m 짜리는 아무 일도 하지 않습니다.
+    /// 세계 구석에 선 것은 아무 일도 하지 않습니다.
     ///
-    /// 다만 출발 지점을 깔고 앉으면 안 됩니다. 폭이 34 m 이므로 <see cref="Clear"/>
+    /// 다만 출발 지점을 깔고 앉으면 안 됩니다. <see cref="Clear"/>
     /// 만큼은 떨어뜨립니다 — 차가 다리 안에서 시작하지 않을 거리입니다.
     /// </summary>
     private static List<Line> Rank(out Bounds world, out float length, out int bays, out Vector3 start)
     {
+        _spec = JsonUtility.FromJson<Manifest>(System.IO.File.ReadAllText(ManifestPath));
+        if (_spec == null || _spec.width <= 0f) throw new Exception("치수를 읽지 못했습니다");
+
         Terrain[] terrains = Terrain.activeTerrains;
         if (terrains.Length == 0) throw new Exception("지형을 찾지 못했습니다");
 
         world = WorldBounds(terrains);
-        (Vector3 unused, float span, int count) = SpineShape();
-        length = span;
-        bays = count;
+        length = SpineShape();
+
+        // 베이 수는 <b>프리팹의 자식 수가 아닙니다.</b> 자식에는 코어뿐 아니라 프리셋
+        // 부품도 섞여 있어, 세면 실제 베이보다 훨씬 많이 나옵니다. 그 수로 표본을
+        // 나누면 <b>다리가 서지 않는 자리</b>의 지면을 재게 됩니다 - 재야 하는 것은
+        // 다리 발밑이므로 베이 길이로 나눕니다.
+        bays = Mathf.Max(1, Mathf.RoundToInt(length / _spec.bay));
         start = PlayerStart();
 
         List<Line> lines = new List<Line>();
@@ -175,8 +199,20 @@ public static class MegastructurePlacer
             }
         }
 
-        // 가능한 것을 먼저, 그 안에서 가까운 순으로.
-        return lines.OrderByDescending(l => l.Fits).ThenBy(l => l.reach).ToList();
+        // 가능한 것을 먼저, <b>여유가 비슷하면</b> 가까운 순으로.
+        //
+        // 가깝다는 이유만으로 여유 없는 선을 고르면 안 됩니다. 다리는 어차피 파묻히니
+        // 티가 안 나지만 <b>경사로가 지면에 못 닿습니다</b> — 경사로 발은 원점보다
+        // 6.8 m 아래까지만 내려가는데, 기복이 크면 낮은 쪽 지면이 그 밑으로 빠지기
+        // 때문입니다. 실제로 기복 13.8 m 짜리(한도 14 m 를 통과합니다) 선을 골랐더니
+        // 경사로가 지면에서 <b>6.2 m 떠서</b> 데크에 올라탈 방법이 없었습니다.
+        //
+        // 그래서 기복을 <see cref="Margin"/> 단위로 뭉쳐 먼저 봅니다. 그 안에서만
+        // 가까운 쪽이 이깁니다.
+        return lines.OrderByDescending(l => l.Fits)
+                    .ThenBy(l => Mathf.Ceil(l.relief / Margin))
+                    .ThenBy(l => l.reach)
+                    .ToList();
     }
 
     /// <summary>
@@ -259,7 +295,7 @@ public static class MegastructurePlacer
         return b;
     }
 
-    private static (Vector3, float, int) SpineShape()
+    private static float SpineShape()
     {
         GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(SpinePath);
         if (prefab == null) throw new Exception("스파인 프리팹이 없습니다: " + SpinePath);
@@ -268,7 +304,7 @@ public static class MegastructurePlacer
         Bounds b = renderers[0].bounds;
         for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
 
-        return (b.center, b.size.z, prefab.transform.childCount);
+        return b.size.z;
     }
 
     private static Vector3 Along(float angle)
@@ -304,9 +340,11 @@ public static class MegastructurePlacer
         {
             Vector3 at = middle + along * ((i - bays * 0.5f + 0.5f) * step);
 
-            for (int side = -1; side <= 1; side += 2)
+            // <b>다리가 네 줄</b>입니다. 바깥 둘만 재면 가운데 두 줄 밑의 지면을
+            // 못 봅니다 - 폭이 96 m 라 그 사이에서 지형이 크게 오르내립니다.
+            foreach (float lane in new[] { -1f, -0.35f, 0.35f, 1f })
             {
-                Vector3 foot = at + perp * (LegOffset * side);
+                Vector3 foot = at + perp * (LegOffset * lane);
 
                 // 지형 밖은 <b>건너뜁니다.</b> 스파인은 일부러 세계보다 길어서 양 끝이
                 // 밖으로 나갑니다 - 그것을 실패로 치면 놓을 수 있는 선이 하나도 남지

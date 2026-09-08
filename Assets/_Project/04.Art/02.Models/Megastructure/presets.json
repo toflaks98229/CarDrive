@@ -1,11 +1,11 @@
 {
  "bay": 42.0,
- "width": 34.0,
- "burial": 14.0,
- "deckTop": 32.0,
- "gate": 22.0,
+ "width": 96.0,
+ "burial": 16.0,
+ "deckTop": 35.2,
+ "gate": 24.0,
  "core": "SM_Mega_Core",
- "coreTris": 264,
+ "coreTris": 1344,
  "seamPoints": 8,
  "presets": [
   {
@@ -14,7 +14,7 @@
    "bays": 1,
    "length": 42.0,
    "weight": 5,
-   "top": 33.4,
+   "top": 36.6,
    "tris": 24
   },
   {
@@ -23,8 +23,8 @@
    "bays": 1,
    "length": 42.0,
    "weight": 6,
-   "top": 57.2,
-   "tris": 1944
+   "top": 168.4,
+   "tris": 4848
   },
   {
    "name": "Industry",
@@ -32,8 +32,8 @@
    "bays": 1,
    "length": 42.0,
    "weight": 3,
-   "top": 58.6,
-   "tris": 1128
+   "top": 115.8,
+   "tris": 2004
   },
   {
    "name": "Junction",
@@ -41,8 +41,8 @@
    "bays": 2,
    "length": 84.0,
    "weight": 2,
-   "top": 65.2,
-   "tris": 2412
+   "top": 122.4,
+   "tris": 2556
   },
   {
    "name": "Citadel",
@@ -50,8 +50,8 @@
    "bays": 3,
    "length": 126.0,
    "weight": 1,
-   "top": 173.0,
-   "tris": 32784
+   "top": 438.2,
+   "tris": 66744
   },
   {
    "name": "Ramp",
@@ -59,7 +59,7 @@
    "bays": 2,
    "length": 84.0,
    "weight": 2,
-   "top": 33.5,
+   "top": 36.8,
    "tris": 372
   },
   {
@@ -68,8 +68,8 @@
    "bays": 1,
    "length": 42.0,
    "weight": 3,
-   "top": 60.8,
-   "tris": 624
+   "top": 172.0,
+   "tris": 768
   },
   {
    "name": "Breach",
@@ -77,8 +77,8 @@
    "bays": 1,
    "length": 42.0,
    "weight": 2,
-   "top": 55.4,
-   "tris": 1368
+   "top": 166.6,
+   "tris": 2316
   },
   {
    "name": "Overpass",
@@ -86,7 +86,7 @@
    "bays": 2,
    "length": 84.0,
    "weight": 2,
-   "top": 59.6,
+   "top": 62.8,
    "tris": 204
   },
   {
@@ -95,7 +95,7 @@
    "bays": 1,
    "length": 42.0,
    "weight": 2,
-   "top": 47.2,
+   "top": 50.4,
    "tris": 432
   },
   {
@@ -104,8 +104,8 @@
    "bays": 2,
    "length": 84.0,
    "weight": 1,
-   "top": 153.2,
-   "tris": 792
+   "top": 264.4,
+   "tris": 840
   },
   {
    "name": "CapsuleTower",
@@ -113,8 +113,8 @@
    "bays": 2,
    "length": 84.0,
    "weight": 1,
-   "top": 101.0,
-   "tris": 1176
+   "top": 212.2,
+   "tris": 1272
   }
  ]
 }
