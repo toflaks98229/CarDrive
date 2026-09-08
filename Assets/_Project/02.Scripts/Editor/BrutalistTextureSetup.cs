@@ -23,14 +23,18 @@ using UnityEngine;
 /// 두면 콘크리트·강철·암철이 같은 회색이 되어 명도 대비가 통째로 사라집니다.
 ///
 /// <code>
-/// Unity.exe -batchmode -nographics -projectPath . -executeMethod RobotTextureSetup.Run
+/// Unity.exe -batchmode -nographics -projectPath . -executeMethod BrutalistTextureSetup.Run
 /// </code>
 /// </summary>
-public static class RobotTextureSetup
+public static class BrutalistTextureSetup
 {
     // --- Constants ---
 
-    private const string TextureDir = "Assets/_Project/04.Art/02.Models/Robot";
+    /// <summary>
+    /// 결 지도가 있는 곳입니다. 로봇 폴더에 있는 것은 <b>거기서 처음 만들었기 때문</b>이고,
+    /// 지금은 건물도 같은 지도를 씁니다 — 같은 콘크리트여야 같은 세계로 보입니다.
+    /// </summary>
+    private const string MapDir = "Assets/_Project/04.Art/02.Models/Robot";
     private const string MaterialDir = "Assets/_Project/04.Art/00.Materials";
 
     /// <summary>콘크리트 결입니다. 넓은 얼룩과 거친 골재, 기공.</summary>
@@ -58,6 +62,12 @@ public static class RobotTextureSetup
         ("RobotConcrete", new Color(0.60f, 0.59f, 0.55f), ConcreteMap),
         ("RobotSteel", new Color(0.26f, 0.28f, 0.31f), SteelMap),
         ("RobotDark", new Color(0.11f, 0.12f, 0.13f), SteelMap),
+
+        // 메가스트럭처. 로봇과 <b>같은 지도</b>를 씁니다. 콘크리트가 로봇의 엉덩이일 때와
+        // 100 m 벽일 때 달라 보이면 두 물건이 같은 세계에 있는 것으로 보이지 않습니다.
+        ("MegaConcrete", new Color(0.58f, 0.57f, 0.53f), ConcreteMap),
+        ("MegaSteel", new Color(0.26f, 0.28f, 0.31f), SteelMap),
+        ("MegaDark", new Color(0.09f, 0.10f, 0.11f), SteelMap),
     };
 
     // --- Public Methods ---
@@ -69,7 +79,7 @@ public static class RobotTextureSetup
 
         foreach ((string material, Color value, string texture) in Wiring)
         {
-            string texturePath = TextureDir + "/" + texture;
+            string texturePath = MapDir + "/" + texture;
             string materialPath = MaterialDir + "/" + material + ".mat";
 
             Texture2D map = AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath);
@@ -77,14 +87,14 @@ public static class RobotTextureSetup
 
             if (map == null)
             {
-                Debug.LogError("RobotTextureSetup: 텍스처가 없습니다: " + texturePath);
+                Debug.LogError("BrutalistTextureSetup: 텍스처가 없습니다: " + texturePath);
                 errors++;
                 continue;
             }
 
             if (target == null)
             {
-                Debug.LogError("RobotTextureSetup: 머티리얼이 없습니다: " + materialPath);
+                Debug.LogError("BrutalistTextureSetup: 머티리얼이 없습니다: " + materialPath);
                 errors++;
                 continue;
             }
@@ -110,11 +120,11 @@ public static class RobotTextureSetup
             EditorUtility.SetDirty(target);
             wired++;
 
-            Debug.Log($"RobotTextureSetup: {material} ← {texture} · 이득 {gain.r:F2},{gain.g:F2},{gain.b:F2} · 세기 {Strength:F2}");
+            Debug.Log($"BrutalistTextureSetup: {material} ← {texture} · 이득 {gain.r:F2},{gain.g:F2},{gain.b:F2} · 세기 {Strength:F2}");
         }
 
         AssetDatabase.SaveAssets();
-        Debug.Log($"RobotTextureSetup: {wired} 개 연결, 실패 {errors} 개");
+        Debug.Log($"BrutalistTextureSetup: {wired} 개 연결, 실패 {errors} 개");
 
         if (Application.isBatchMode) EditorApplication.Exit(errors > 0 ? 2 : 0);
     }
@@ -135,7 +145,7 @@ public static class RobotTextureSetup
         if (!probe.LoadImage(System.IO.File.ReadAllBytes(path)))
         {
             UnityEngine.Object.DestroyImmediate(probe);
-            Debug.LogWarning("RobotTextureSetup: 텍스처를 읽지 못해 이득을 1 로 둡니다: " + path);
+            Debug.LogWarning("BrutalistTextureSetup: 텍스처를 읽지 못해 이득을 1 로 둡니다: " + path);
             return Color.white;
         }
 
