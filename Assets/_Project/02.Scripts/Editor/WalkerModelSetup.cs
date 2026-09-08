@@ -233,6 +233,7 @@ public static class WalkerModelSetup
 
             // 옛 상자 몸은 전부 걷어냅니다. 다리 뿌리와 마디 노드만 남깁니다.
             StripMeshes(root.transform);
+            StripAim(root.transform, rig);
 
             // 조준 마디를 먼저 세웁니다. 몸통 파츠 일부가 이 밑으로 들어갑니다.
             Dictionary<string, Transform> nodes = new Dictionary<string, Transform> { { "Body", body } };
@@ -317,9 +318,6 @@ public static class WalkerModelSetup
     /// </summary>
     private static void PruneSceneOverrides()
     {
-        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(_config.Prefab);
-        Transform assetRoot = prefab.transform;
-
         string guid = AssetDatabase.AssetPathToGUID(_config.Prefab);
 
         // 그 프리팹을 쓰지 않는 씬은 <b>열지도 않습니다.</b> 여는 것만으로도 [ExecuteAlways] 가 돌아
@@ -339,13 +337,24 @@ public static class WalkerModelSetup
                 {
                     GameObject go = t.gameObject;
                     if (!PrefabUtility.IsAnyPrefabInstanceRoot(go)) continue;
-                    if (PrefabUtility.GetCorrespondingObjectFromSource(go) != prefab) continue;
+
+                    // <b>씬 안의 모든 워커를 걷습니다.</b> 방금 다시 만든 프리팹만 걷으면
+                    // 나머지 워커의 찌꺼기가 남습니다 — 씬을 여는 것만으로 [ExecuteAlways] 가
+                    // 모든 워커의 본을 자세잡고, 저장하면 그 자세가 오버라이드로 굳습니다.
+                    // 실제로 드레드노트를 다시 만들 때마다 스트라이더에 자세 오버라이드가
+                    // 220 줄씩 쌓였습니다. 본 회전은 런타임에 덮어써지므로 씬에 남을 이유가
+                    // 없고, 뿌리의 위치·회전만 남깁니다.
+                    if (go.GetComponent<WalkerRobot>() == null) continue;
+
+                    Transform sourceRoot = PrefabUtility.GetCorrespondingObjectFromSource(go) is GameObject source
+                        ? source.transform
+                        : null;
 
                     PropertyModification[] mods = PrefabUtility.GetPropertyModifications(go);
                     if (mods == null) continue;
 
                     PropertyModification[] kept = mods
-                        .Where(m => !(m.target is Transform) || m.target == assetRoot)
+                        .Where(m => !(m.target is Transform) || m.target == sourceRoot)
                         .ToArray();
 
                     if (kept.Length == mods.Length) continue;
@@ -413,6 +422,47 @@ public static class WalkerModelSetup
     /// 회전은 넣지 않습니다 — <see cref="RobotTurret"/> 이 매 프레임 자기 축으로 돌리므로,
     /// 여기서 회전을 주면 그것이 조준각에 더해져 규약이 깨집니다.
     /// </summary>
+    /// <summary>
+    /// 지난번에 세운 조준·총구·포탑 마디를 걷습니다.
+    ///
+    /// <b>왜 따로 걷어야 하는가.</b> <see cref="StripMeshes"/> 는 메시가 붙은 것만 걷습니다.
+    /// 조준 마디는 빈 트랜스폼이라 그 그물에 걸리지 않고 살아남는데,
+    /// <see cref="BuildAim"/> 은 조건 없이 새로 만듭니다. 그래서 도구를 두 번 돌리면
+    /// 마디가 <b>두 벌</b>이 됩니다. 실제로 드레드노트 프리팹에 빈 껍데기 11 개가
+    /// 쌓여 있었습니다 — 부품이 붙은 쪽만 동작해서 실측으로는 드러나지 않았습니다.
+    ///
+    /// 이 마디들은 전부 리그 JSON 이 이름까지 정해 만드는 것이므로, 남겨 두고 재활용할
+    /// 이유가 없습니다. 지우고 다시 세웁니다.
+    /// </summary>
+    private static void StripAim(Transform root, Rig rig)
+    {
+        HashSet<string> built = new HashSet<string>();
+
+        if (rig.aim != null)
+        {
+            foreach (Aim aim in rig.aim) built.Add(aim.node);
+        }
+
+        if (rig.muzzles != null)
+        {
+            foreach (Muzzle muzzle in rig.muzzles) built.Add(muzzle.node);
+        }
+
+        if (rig.turrets != null)
+        {
+            foreach (Turret turret in rig.turrets) built.Add("Turret_" + turret.name);
+        }
+
+        // 부모를 지우면 자식도 함께 사라져 목록에 빈 칸이 생깁니다. 먼저 복사해 두고 확인합니다.
+        foreach (Transform node in root.GetComponentsInChildren<Transform>(true).ToArray())
+        {
+            if (node == null || node == root) continue;
+            if (!built.Contains(node.name)) continue;
+
+            UnityEngine.Object.DestroyImmediate(node.gameObject);
+        }
+    }
+
     private static void BuildAim(Rig rig, Dictionary<string, Transform> nodes)
     {
         if (rig.aim == null) return;
