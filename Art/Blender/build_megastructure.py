@@ -1,35 +1,51 @@
 # -*- coding: utf-8 -*-
 """
-Seeded brutalist megastructures for CarDrive.
+Megastructure generator for CarDrive - a SPINE of tileable megaframe bays.
 
-WHAT THIS IS FOR
-  The world is 103 baked terrain tiles of 100 m, and everything standing on it
-  is house-sized. Nothing in it says "megastructure" - the art direction asks
-  for concrete mass that dwarfs the car, and mass is the one thing a texture
-  cannot fake. So this builds the mass.
+WHAT A MEGASTRUCTURE ACTUALLY IS
+  Not a big brutalist building. The term is from 1960s urbanism (Maki 1964,
+  Banham 1976). Ralph Wilcoxon's definition, the one Banham works from, is
+  four points:
 
-WHY A GENERATOR AND NOT THREE MODELS
-  Megastructures read as a SYSTEM - the same formwork logic repeated at
-  different sizes. Hand-authoring three loses that; a seeded generator keeps
-  one vocabulary and varies only the numbers, which is how the real ones were
-  built: one contractor, one set of moulds, one budget.
+    1. built of MODULAR UNITS
+    2. capable of great or even UNLIMITED EXTENSION
+    3. a structural FRAMEWORK into which smaller units are built, plugged in
+       or clipped on, having been prefabricated elsewhere
+    4. that framework outlives the units it carries, by a long way
 
-DESIGN RULES (Strider / Dreadnought language, scaled up)
-  * Rectangular masses. No ornament. Value contrast carries the read.
-  * NO CHAMFER. On the mechs a 0.04 m chamfer catches a highlight; the same
-    proportional chamfer here would be 0.3 m and still sub-pixel at the
-    distance these are seen from. Beton brut is formwork-sharp anyway, so the
-    polygons go into RIBS and SILHOUETTE instead, which do survive distance.
-  * NO BOOLEANS. A passage is built as boxes framing the gap, not as a box
-    minus a box. Deterministic, all quads, nothing to clean up.
+  Maki: "a large frame in which all the functions of a city are housed... it is
+  a man-made feature of the landscape."
+
+  The first version of this file got all four wrong. It made four finished
+  towers - one scale, one material, a composed silhouette with a top, standing
+  as objects on the ground. Brutalist, yes. Megastructure, no.
+
+WHAT THAT MEANS FOR GEOMETRY
+  * TWO SCALES, VISIBLY DIFFERENT. A coarse permanent MEGAFRAME (pylons,
+    transfer trusses, decks, service ducts) and a fine transient INFILL
+    (dwelling cells clipped into slots). If both read at one scale it is a
+    building. The value split does the work: pale frame, dark cells.
+  * IT MUST RUN OFF-FRAME. So the unit of production is a BAY that tiles end
+    to end, not a structure with a footprint. Everything crossing the seam is
+    exactly one bay long and butts. That is points 1 and 2, built in.
+  * EMPTY SLOTS. Cells are prefabricated and clipped on, so some slots are not
+    filled yet, or not any more. An empty slot is the clearest possible
+    statement of point 3 - you can see the frame is the permanent thing.
+  * CIRCULATION IS THE FORM. The deck is artificial ground carrying a road
+    (Park Hill's "streets in the sky" were wide enough for a milk float;
+    Tange's Boston Harbor put roads and monorail inside the structure). In a
+    driving game this is the whole point: you drive UNDER it through the pylon
+    bays, and the deck above carries a road you can see.
+
+DESIGN RULES kept from the mechs
+  * Rectangular masses, no ornament, value contrast carries the read.
+  * NO CHAMFER, NO BOOLEANS. Openings are built as boxes framing the gap.
   * World-scale UV at 1 m per repeat - the same tile as the mechs, so concrete
-    is the same concrete whether it is a robot's hip or a hundred-metre wall.
-    A 100 m face therefore reaches uv 100; that is intended, and mipmaps carry
-    the far end.
+    is the same concrete everywhere.
 
 Run:
     blender -b --python build_megastructure.py
-    blender -b --python build_megastructure.py -- --seeds 7,11,23
+    blender -b --python build_megastructure.py -- --seeds 3,17
 """
 import json
 import os
@@ -51,9 +67,17 @@ OUT_DIR = r"E:\GamePJ\CarDrive\Assets\_Project\04.Art\02.Models\Megastructure"
 BLEND_PATH = r"E:\GamePJ\CarDrive\Art\Blender\Megastructure.blend"
 UV_TILE = 1.0
 
+# --- The one dimension everything else hangs off ----------------------------
+# 한 베이의 길이입니다. <b>이 숫자만은 씨앗이 흔들지 않습니다.</b> 베이가 서로 다른
+# 길이면 이어 붙지 않고, 이어 붙지 않으면 "무한히 연장 가능"이 거짓말이 됩니다.
+BAY = 42.0
+
+# 데크 밑을 차가 지나갑니다.
+CLEARANCE = 9.0
+
 # --- Materials --------------------------------------------------------------
-# 로봇과 같은 세 층입니다. 콘크리트가 덩어리, 강철이 띠, 어두운 것이 그림자 홈.
-# 이름만 다르고 역할은 같으므로 유니티에서 같은 지도를 물립니다.
+# 로봇과 같은 세 층입니다. 여기서 역할이 하나 더 붙습니다 - <b>콘크리트는 골조,
+# 어두운 것은 꽂아 넣은 캡슐</b>. 값이 수명이 다른 두 층을 갈라 줍니다.
 
 MATS = [
     ("M_Mega_Concrete", (0.465, 0.452, 0.430, 1.0), 0.95, 0.00),
@@ -88,24 +112,35 @@ class Mass:
         self.faces = []
         self.mats = []
 
-    def box(self, center, size, mat=MAT_CONCRETE, taper=0.0):
+    def box(self, center, size, mat=MAT_CONCRETE, taper=0.0, taper_axis=2):
         """
-        축 정렬 상자입니다. <c>taper</c> 는 윗면을 좁히는 비율입니다.
+        축 정렬 상자입니다. <c>taper</c> 는 <c>taper_axis</c> 의 양(+) 쪽 끝을 좁힙니다.
 
-        기단에 조금 주면 아래가 벌어져 땅을 누르는 모양이 됩니다. 브루탈리즘
-        건물이 바닥에서 두꺼워지는 그 처리이고, 면 수는 상자와 똑같습니다.
+        기둥 밑을 벌리는 데 씁니다 - 발이 벌어진 A 자 다리가 메가프레임의 기본
+        문법입니다(Sant'Elia 1914 -> Tange). 면 수는 상자와 똑같습니다.
         """
-        cx, cy, cz = center
-        hx, hy, hz = size[0] * 0.5, size[1] * 0.5, size[2] * 0.5
-        tx, ty = hx * (1.0 - taper), hy * (1.0 - taper)
+        c = list(center)
+        h = [size[0] * 0.5, size[1] * 0.5, size[2] * 0.5]
+
+        lo = [c[i] - h[i] for i in range(3)]
+        hi = [c[i] + h[i] for i in range(3)]
+
+        k = 1.0 - taper
+        other = [i for i in range(3) if i != taper_axis]
+
+        def corner(u, v, top):
+            p = [0.0, 0.0, 0.0]
+            p[taper_axis] = hi[taper_axis] if top else lo[taper_axis]
+            for axis, sign in zip(other, (u, v)):
+                half = h[axis] * (k if top else 1.0)
+                p[axis] = c[axis] + sign * half
+            return tuple(p)
 
         i = len(self.verts)
-        self.verts += [
-            (cx - hx, cy - hy, cz - hz), (cx + hx, cy - hy, cz - hz),
-            (cx + hx, cy + hy, cz - hz), (cx - hx, cy + hy, cz - hz),
-            (cx - tx, cy - ty, cz + hz), (cx + tx, cy - ty, cz + hz),
-            (cx + tx, cy + ty, cz + hz), (cx - tx, cy + ty, cz + hz),
-        ]
+        self.verts += [corner(-1, -1, False), corner(1, -1, False),
+                       corner(1, 1, False), corner(-1, 1, False),
+                       corner(-1, -1, True), corner(1, -1, True),
+                       corner(1, 1, True), corner(-1, 1, True)]
         self.faces += [
             (i + 0, i + 3, i + 2, i + 1), (i + 4, i + 5, i + 6, i + 7),
             (i + 0, i + 1, i + 5, i + 4), (i + 1, i + 2, i + 6, i + 5),
@@ -113,88 +148,45 @@ class Mass:
         ]
         self.mats += [mat] * 6
 
-    def framed(self, center, size, gap_w, gap_h, mat=MAT_CONCRETE, lintel=MAT_DARK):
+    def bay_box(self, center, size, half, mat=MAT_CONCRETE):
         """
-        가운데가 뚫린 덩어리입니다. 상자 셋으로 구멍을 두릅니다.
+        베이 경계에서 <b>잘라 낸</b> 상자입니다. x 로 ±<c>half</c> 밖은 버립니다.
 
-        <b>왜 불리언을 쓰지 않는가.</b> 결과가 매번 같아야 하기 때문입니다. 불리언은
-        접평면에서 얇은 조각을 남기고, 그 조각이 상자 투영 UV 에서 늘어난 텍셀로
-        드러납니다. 여기서는 애초에 구멍이 아니라 <b>구멍 둘레</b>를 만듭니다.
+        <b>왜 잘라야 하는가.</b> 이음매를 지나는 부재를 안 자르면 베이가 제 길이보다
+        길어지고, 이어 붙일 때 이웃과 겹칩니다. 실측에서 42 m 베이가 47.88 m 로
+        나왔습니다 - 트러스의 끝 살과 슬롯 살이 각각 밖으로 나가 있었습니다.
+        잘린 반쪽은 <b>옆 베이의 반쪽과 만나 온전한 하나</b>가 됩니다.
+        """
+        lo = max(center[0] - size[0] * 0.5, -half)
+        hi = min(center[0] + size[0] * 0.5, half)
+
+        if hi - lo <= 1e-6:
+            return
+
+        self.box(((lo + hi) * 0.5, center[1], center[2]),
+                 (hi - lo, size[1], size[2]), mat)
+
+    def pierced(self, center, size, holes, hole_w, hole_h, mat=MAT_CONCRETE):
+        """
+        긴 보에 <b>경량화 구멍</b>을 냅니다. 구멍이 아니라 구멍 사이의 살을 세웁니다.
+
+        <b>왜 구멍이 필요한가.</b> 통짜 벽으로 두면 두께가 안 읽혀 그냥 벽이 됩니다.
+        구멍이 뚫려 있어야 <b>깊은 보</b>로, 즉 구조로 보입니다.
+
+        불리언을 쓰지 않는 이유는 결과가 매번 같아야 하기 때문입니다. 불리언은
+        접평면에 얇은 조각을 남기고, 그것이 상자 투영 UV 에서 늘어난 텍셀이 됩니다.
         """
         cx, cy, cz = center
         w, d, h = size
-        side = (w - gap_w) * 0.5
-        head = h - gap_h
+        pitch = w / holes
+        web = pitch - hole_w
+        rim = (h - hole_h) * 0.5
 
-        self.box((cx - (gap_w + side) * 0.5, cy, cz), (side, d, h), mat)
-        self.box((cx + (gap_w + side) * 0.5, cy, cz), (side, d, h), mat)
-        self.box((cx, cy, cz + (h - head) * 0.5), (gap_w, d, head), lintel)
+        for i in range(holes + 1):
+            self.bay_box((cx - w * 0.5 + i * pitch, cy, cz), (web, d, h), w * 0.5, mat)
 
-    def facade(self, axis, face, span, height, cols, rows, relief, rng=None):
-        """
-        면 하나에 <b>셀 수 있는 격자</b>를 붙입니다. 어두운 판 위에 밝은 기둥과 인방입니다.
-
-        <b>왜 이것이 필요한가.</b> 덩어리만으로는 크기를 알 수 없습니다. 100 m 벽과
-        10 m 벽은 실루엣이 같습니다. 크기를 말해 주는 것은 <b>셀 수 있는 반복 단위</b>이고,
-        그 단위가 사람 몸에 묶여 있어야 합니다(층 4 m, 베이 5 m). 눈이 그것을 세는
-        순간 벽의 높이가 정해집니다.
-
-        <b>왜 리브가 아니라 격자인가.</b> 처음에는 세로 지느러미만 세웠는데 렌더에서
-        거의 보이지 않았습니다. 얇은 판은 자기 그림자를 못 만듭니다. 어두운 판을
-        먼저 깔고 그 앞에 밝은 부재를 세우면, 그림자에 기대지 않고 <b>값 대비</b>로
-        읽힙니다 — 해가 어디 있든 무너지지 않습니다.
-
-        axis 는 면의 법선 축(1=Y, 0=X), face 는 그 축 위의 좌표와 부호입니다.
-        """
-        nrm, sign, other, z0 = face
-        w = span[1] - span[0]
-        h = height[1] - height[0]
-
-        def put(cx, co, sx, so, sz, cz, mat):
-            # 면의 축에 맞춰 x/y 를 바꿔 끼웁니다. 격자 논리는 한 번만 씁니다.
-            if axis == 1:
-                self.box((co, nrm + sign * cx, cz), (so, sx, sz), mat)
-            else:
-                self.box((nrm + sign * cx, co, cz), (sx, so, sz), mat)
-
-        # 어두운 판. 격자 뒤에 깔려 그림자 노릇을 합니다.
-        put(relief * 0.5, (span[0] + span[1]) * 0.5, relief, w, h,
-            (height[0] + height[1]) * 0.5, MAT_DARK)
-
-        # 세로 기둥
-        pitch = w / cols
-        for i in range(cols + 1):
-            put(relief * 1.2, span[0] + i * pitch, relief * 1.4, pitch * 0.34, h,
-                (height[0] + height[1]) * 0.5, MAT_CONCRETE)
-
-        # 가로 인방
-        step = h / rows
-        for j in range(rows + 1):
-            put(relief * 0.9, (span[0] + span[1]) * 0.5, relief * 1.0, w,
-                step * 0.26, height[0] + j * step, MAT_CONCRETE)
-
-        if rng is None:
-            return
-
-        # <b>결번.</b> 칸이 전부 뚫려 있으면 사무실 건물로 읽힙니다. 브루탈리즘
-        # 메가스트럭처는 대부분이 막힌 벽이고 뚫린 곳이 예외입니다. 몇 칸을 통판으로
-        # 메워 그 비율을 뒤집습니다.
-        for i in range(cols):
-            for j in range(rows):
-                if rng.random() > 0.30:
-                    continue
-                # 앞면 깊이가 어두운 판과 <b>정확히 같으면 z-파이팅</b>이 납니다. 실제로
-                # 첫 렌더에서 메운 칸마다 대각선 이음매가 보였습니다. 0.3·relief 만큼
-                # 앞으로 내밀어 띄우되, 기둥·인방보다는 뒤에 둡니다 - 틀 뒤의 채움판입니다.
-                put(relief * 0.95, span[0] + (i + 0.5) * pitch, relief * 0.7,
-                    pitch * 0.72, step * 0.68, height[0] + (j + 0.5) * step,
-                    MAT_CONCRETE)
-
-        # <b>설비층.</b> 대여섯 층마다 통째로 막힌 띠가 지나갑니다. 층수를 끊어 세게
-        # 만들고, 무엇보다 이것이 <b>건물이 아니라 설비</b>라고 말합니다.
-        for j in range(3, rows, rng.randint(5, 8)):
-            put(relief * 1.45, (span[0] + span[1]) * 0.5, relief * 1.7, w,
-                step * 0.95, height[0] + (j + 0.5) * step, MAT_CONCRETE)
+        for sign in (-1.0, 1.0):
+            self.box((cx, cy, cz + sign * (h - rim) * 0.5), (w, d, rim), mat)
 
     def to_object(self, name):
         mesh = bpy.data.meshes.new(name)
@@ -217,132 +209,172 @@ class Mass:
 
 def spec(seed):
     """
-    씨앗 하나에서 한 구조물의 치수를 뽑습니다.
+    씨앗 하나에서 한 <b>베이</b>의 치수를 뽑습니다.
 
-    <b>범위가 곧 양식입니다.</b> 값이 무엇이 되든 브루탈리즘 밖으로 나가지 못하게
-    묶어 둡니다 - 얇은 탑도, 유리 상자도, 계단식 피라미드도 나오지 않습니다.
-
-    <b>베이와 층은 미터가 아니라 사람으로 정합니다.</b> 층 3.6~4.4 m, 베이 5~7 m 는
-    실제로 지어진 치수이고, 이것이 보는 사람에게 자 노릇을 합니다. 높이는 그 자의
-    눈금 수로 정해집니다 - 90 m 는 "높다"가 아니라 "22 층"으로 읽힙니다.
+    <b>골조 치수는 흔들지 않습니다.</b> 베이 길이·데크 높이·기둥 간격이 베이마다
+    다르면 이어 붙지 않고, 이어 붙지 않으면 연장이 불가능합니다. 흔드는 것은
+    <b>꽂혀 있는 것</b>입니다 - 어느 슬롯이 찼는지, 캡슐이 얼마나 튀어나왔는지,
+    이 베이에 계단탑이 있는지. 그 자체가 "골조는 영구, 캡슐은 임시"라는 뜻입니다.
     """
     rng = random.Random(seed)
 
-    width = rng.uniform(26.0, 44.0)
-    height = rng.uniform(55.0, 110.0)
-
     return dict(
         seed=seed,
-        width=width,
-        depth=rng.uniform(18.0, 30.0),
-        height=height,
-        # 지형에 파묻힐 몫입니다. 비탈에 놓아도 밑이 뜨지 않습니다.
-        buried=8.0,
-        apron=rng.uniform(10.0, 18.0),
-        apron_reach=rng.uniform(12.0, 30.0),
-        apron_side=rng.choice((-1.0, 1.0)),
-        bay=rng.uniform(5.0, 7.0),
-        floor=rng.uniform(3.6, 4.4),
-        relief=rng.uniform(1.2, 2.0),
-        cantilever=rng.random() < 0.75,
-        cant_at=rng.uniform(0.62, 0.82),
-        cant_reach=rng.uniform(0.5, 1.1),
-        cant_thick=rng.uniform(8.0, 14.0),
-        cores=rng.randint(1, 2),
-        core_side=rng.uniform(0.30, 0.46),
-        core_rise=rng.uniform(7.0, 17.0),
-        passage=rng.random() < 0.75,
-        passage_w=rng.uniform(11.0, 18.0),
-        passage_h=rng.uniform(7.0, 10.0),
-        buttress=rng.randint(2, 3),
+        # ---- 골조(영구) ----
+        bay=BAY,
+        width=34.0,
+        gate=22.0,          # 다리 구간. 이 밑으로 차가 지나갑니다.
+        leg=(9.0, 11.0),
+        truss=8.0,
+        deck=2.0,
+        parapet=1.4,
+        duct=2.4,
+        tiers=4,            # 캡슐 층수
+        tier=5.6,
+        upper=22.0,         # 상부 포털 높이
+        post=3.4,
+        # ---- 채움(가변) ----
+        cell=(6.4, 5.0, 4.4),
+        fill=rng.uniform(0.42, 0.74),
+        stair=rng.random() < 0.5,
+        tank=rng.random() < 0.45,
     )
 
 
 def build(s):
     """
-    치수 하나를 덩어리로 세웁니다. 원점은 <b>지면</b>이고, 기단은 그 아래로 더 갑니다.
+    베이 하나를 세웁니다. 원점은 <b>지면이자 베이의 한가운데</b>입니다.
 
-    <b>구성이 하나의 기둥에서 시작합니다.</b> 처음에는 널찍한 기단 위에 판을 쌓았는데,
-    렌더에서 기단과 본체가 <b>따로 노는 두 건물</b>로 보였습니다. 케이크 받침 같았습니다.
-    지금은 땅에서 꼭대기까지 이어지는 덩어리가 먼저 있고, 앞치마·캔틸레버·코어가
-    거기에 <b>겹쳐 붙습니다.</b> 떠 있는 것이 하나도 없습니다.
+    x 가 스파인 방향이고 베이는 x 로 <c>bay</c> 만큼 차지합니다. 같은 것을
+    <c>bay</c> 간격으로 늘어놓으면 이어집니다.
+
+    <b>단면이 골조와 채움을 번갈아 갑니다.</b> 첫 판에서는 캡슐이 골조를 덮어 버려
+    긴 선반 위의 상자 더미로 보였습니다 - Wilcoxon 의 3·4 번(골조가 주인이고 더
+    오래 산다)이 그림에서 뒤집힌 것입니다. 지금은 이렇게 쌓입니다:
+
+        0  ~ 22   다리 구간 - 골조만. 차가 지나갑니다.
+       22 ~ 30    이송 트러스 - 골조. 구멍이 뚫린 깊은 보.
+       30 ~ 32    주 데크 - 골조이자 <b>인공 지반</b>. 도로가 놓입니다.
+       32 ~ 54    캡슐 구간 - 채움. 슬롯 기둥이 캡슐보다 <b>바깥</b>에 섭니다.
+       54 ~ 56    상부 데크 - 두 번째 인공 지반.
+       56 ~ 78    상부 포털 - 골조만. 하늘이 비쳐 "위로도 계속된다"가 됩니다.
     """
     m = Mass()
+    rng = random.Random(s["seed"] * 104729 + 7)
 
-    w, d, h = s["width"], s["depth"], s["height"]
-    apron = s["apron"]
-    buried = s["buried"]
+    L, W = s["bay"], s["width"]
+    lx, ly = s["leg"]
+    gate = s["gate"]
+    truss = s["truss"]
+    deck_z = gate + truss
+    deck_top = deck_z + s["deck"]
 
-    # ---- 기둥 --------------------------------------------------------------
-    m.box((0.0, 0.0, (h - buried) * 0.5), (w, d, h + buried), MAT_CONCRETE)
+    # ---- 다리 --------------------------------------------------------------
+    # 베이 한가운데에 한 쌍. 밑이 벌어진 A 자입니다(Sant'Elia -> Tange).
+    for sign in (-1.0, 1.0):
+        m.box((0.0, sign * (W * 0.5 - ly * 0.5), (gate + 8.0) * 0.5 - 4.0),
+              (lx, ly, gate + 8.0), MAT_CONCRETE, taper=0.30)
 
-    # ---- 앞치마 ------------------------------------------------------------
-    # 한쪽으로만 뻗습니다. 좌우 대칭이면 받침대로 보입니다.
-    reach = s["apron_reach"]
-    ax = s["apron_side"] * (w * 0.5 + reach * 0.5)
+        # 기둥머리
+        m.box((0.0, sign * (W * 0.5 - ly * 0.5), gate - 1.4),
+              (lx + 3.4, ly + 2.6, 2.8), MAT_CONCRETE)
 
-    if s["passage"]:
-        # 차가 지나갈 굴입니다. 운전 게임이므로 <b>지나갈 수 있는 구멍</b>이 있는 편이
-        # 구조물을 배경이 아니라 장소로 만듭니다.
-        m.framed((ax, 0.0, (apron - buried) * 0.5), (reach, d * 1.8, apron + buried),
-                 s["passage_w"], s["passage_h"] + buried)
-    else:
-        m.box((ax, 0.0, (apron - buried) * 0.5), (reach, d * 1.8, apron + buried),
-              MAT_CONCRETE, taper=0.08)
+    # 다리를 잇는 인방. 차가 지나가는 문의 위쪽입니다.
+    m.box((0.0, 0.0, gate + truss * 0.34), (lx + 1.2, W - ly * 2.0 + 2.4, truss * 0.68),
+          MAT_CONCRETE)
 
-    m.box((ax, 0.0, apron + 0.5), (reach + 1.4, d * 1.8 + 1.4, 1.0), MAT_DARK)
+    # ---- 이송 트러스 -------------------------------------------------------
+    # 스파인 방향으로 흐르는 깊은 보. 이음매를 지나므로 정확히 한 베이 길이입니다.
+    for sign in (-1.0, 1.0):
+        m.pierced((0.0, sign * (W * 0.5 - ly * 0.42), gate + truss * 0.5),
+                  (L, ly * 0.84, truss), 3, L / 3.0 * 0.56, truss * 0.5)
 
-    # ---- 버팀벽 ------------------------------------------------------------
-    # 앞치마에서 기둥으로 기대는 큰 쐐기입니다. 작게 여러 개면 톱니로 보입니다.
-    for i in range(s["buttress"]):
-        t = (i + 0.5) / s["buttress"]
-        y = (t - 0.5) * d * 1.5
-        m.box((s["apron_side"] * (w * 0.5 + 3.0), y, apron * 0.9),
-              (7.0, d * 0.30, apron * 2.4), MAT_CONCRETE, taper=0.62)
+    # ---- 설비 덕트 ---------------------------------------------------------
+    # 데크 밑을 따라 끝없이 흐릅니다. 이음매에서 끊기면 안 됩니다.
+    duct = s["duct"]
+    for sign in (-1.0, 1.0):
+        m.box((0.0, sign * (W * 0.5 - ly * 1.05), gate + duct * 0.4),
+              (L, duct, duct), MAT_STEEL)
+    m.box((0.0, 0.0, gate - duct * 0.5), (L, duct * 1.8, duct * 0.9), MAT_STEEL)
 
-    # ---- 격자 --------------------------------------------------------------
-    grain = random.Random(s["seed"] * 7919 + 13)
-    cols = max(3, int(round(w / s["bay"])))
-    rows = min(24, max(4, int(round((h - apron - 6.0) / s["floor"]))))
-    top = h - 4.0
+    # ---- 주 데크 -----------------------------------------------------------
+    m.box((0.0, 0.0, deck_z + s["deck"] * 0.5), (L, W, s["deck"]), MAT_CONCRETE)
+    m.box((0.0, 0.0, deck_top + 0.08), (L, W - 4.0, 0.16), MAT_DARK)
 
     for sign in (-1.0, 1.0):
-        m.facade(1, (sign * d * 0.5, sign, 0.0, 0.0),
-                 (-w * 0.46, w * 0.46), (apron + 3.0, top),
-                 cols, rows, s["relief"], grain)
+        m.box((0.0, sign * (W * 0.5 - 0.6), deck_top + s["parapet"] * 0.5),
+              (L, 1.2, s["parapet"]), MAT_CONCRETE)
 
-    # ---- 캔틸레버 ----------------------------------------------------------
-    # 하나의 몸짓입니다. 이것이 없으면 그냥 탑이고, 있으면 구조물이 됩니다.
-    if s["cantilever"]:
-        z = h * s["cant_at"]
-        out = w * s["cant_reach"]
-        cx = -s["apron_side"] * (w * 0.5 + out * 0.5)
+    # ---- 캡슐 구간 ---------------------------------------------------------
+    # <b>슬롯 기둥이 캡슐보다 바깥에 섭니다.</b> 그래야 골조가 앞에 서고 캡슐이
+    # 그 뒤에 꽂힌 것으로 읽힙니다. 반대로 두면 캡슐이 골조를 덮습니다.
+    cw, cd, ch = s["cell"]
+    cols = max(2, int(L / (cw + 1.2)))
+    pitch = L / cols
+    tier = s["tier"]
+    zone = s["tiers"] * tier
 
-        m.box((cx, 0.0, z + s["cant_thick"] * 0.5), (out, d * 1.15, s["cant_thick"]),
-              MAT_CONCRETE)
-        m.box((cx, 0.0, z - 0.5), (out + 0.8, d * 1.15 + 0.8, 1.0), MAT_DARK)
+    for sign in (-1.0, 1.0):
+        yc = sign * (W * 0.5 - cd * 0.5)
 
-        # 뿌리를 기둥 안까지 물립니다. 끝에서 딱 끊기면 붙여 놓은 것으로 보입니다.
-        m.box((-s["apron_side"] * w * 0.25, 0.0, z + s["cant_thick"] * 0.75),
-              (w * 0.5, d * 0.55, s["cant_thick"] * 1.5), MAT_CONCRETE)
+        # 슬롯 기둥
+        for i in range(cols + 1):
+            m.bay_box((-L * 0.5 + i * pitch, sign * (W * 0.5 + 0.4),
+                       deck_top + zone * 0.5),
+                      (1.6, cd * 0.55, zone), L * 0.5, MAT_CONCRETE)
 
-    # ---- 코어 --------------------------------------------------------------
-    # <b>탑 폭에 대한 비율</b>로 잡습니다. 고정 미터로 두었더니 100 m 탑 옆에서
-    # 안테나처럼 가늘어 보였습니다 - 계단실은 굵어야 계단실로 보입니다.
-    side = max(6.0, w * s["core_side"])
-    for i in range(s["cores"]):
-        sx = 1.0 if i == 0 else -1.0
-        x = sx * (w * 0.5 - side * 0.5)
-        y = -d * 0.5 + side * 0.5
-        peak = h + s["core_rise"] * (1.0 if i == 0 else 0.6)
+        # 층 바닥판. 이것이 없으면 기둥만 서 있어 캡슐이 떠 보입니다.
+        for t in range(s["tiers"] + 1):
+            m.box((0.0, sign * (W * 0.5 + 0.2), deck_top + t * tier),
+                  (L, cd * 0.75, 0.7), MAT_CONCRETE)
 
-        m.box((x, y, (apron + peak) * 0.5), (side, side, peak - apron), MAT_CONCRETE)
-        m.box((x, y, peak + 0.4), (side + 0.9, side + 0.9, 0.8), MAT_STEEL)
+        # 캡슐
+        for t in range(s["tiers"]):
+            for col in range(cols):
+                if rng.random() > s["fill"]:
+                    continue
+                x = -L * 0.5 + (col + 0.5) * pitch
+                m.box((x, yc, deck_top + (t + 0.5) * tier),
+                      (cw, cd * 1.5, ch), MAT_DARK)
+                m.box((x, yc - sign * cd * 0.72, deck_top + (t + 0.62) * tier),
+                      (cw * 0.5, 0.4, ch * 0.28), MAT_STEEL)
 
-    # 꼭대기 테두리
-    m.box((0.0, 0.0, h + 0.6), (w + 1.6, d + 1.6, 1.2), MAT_DARK)
+    # ---- 상부 데크 ---------------------------------------------------------
+    up_z = deck_top + zone
+    m.box((0.0, 0.0, up_z + 1.0), (L, W - 3.0, 2.0), MAT_CONCRETE)
+    m.box((0.0, 0.0, up_z + 2.08), (L, W - 9.0, 0.16), MAT_DARK)
 
-    return m.to_object("SM_Mega_%d" % s["seed"])
+    # ---- 상부 포털 ---------------------------------------------------------
+    # <b>열려 있어야 합니다.</b> 여기를 막으면 데크가 지붕이 되고 전체가 건물이 됩니다.
+    post = s["post"]
+    top = up_z + 2.0 + s["upper"]
+
+    for sign in (-1.0, 1.0):
+        for i in (-1, 1):
+            m.box((i * L * 0.30, sign * (W * 0.5 - post * 0.8), (up_z + 2.0 + top) * 0.5),
+                  (post, post, top - up_z - 2.0), MAT_CONCRETE)
+
+    m.pierced((0.0, 0.0, top + 1.6), (L, W - post * 0.8, 3.2), 3, L / 3.0 * 0.62, 1.8)
+
+    for sign in (-1.0, 1.0):
+        m.box((0.0, sign * (W * 0.5 - post * 0.8), top - 1.4), (L, post * 0.7, 1.4),
+              MAT_STEEL)
+
+    # ---- 이 베이에만 있는 것 -----------------------------------------------
+    # 전부 같으면 압출한 것으로 보입니다. 베이마다 다른 것이 하나쯤 있어야
+    # <b>덧붙여 자란 것</b>으로 읽힙니다.
+    if s["stair"]:
+        side = rng.choice((-1.0, 1.0))
+        m.box((L * 0.30, side * (W * 0.5 + 5.0), (top + 3.0) * 0.5),
+              (7.0, 7.0, top + 3.0), MAT_CONCRETE)
+        m.box((L * 0.30, side * (W * 0.5 + 5.0), top + 3.6), (8.4, 8.4, 1.4), MAT_STEEL)
+
+    if s["tank"]:
+        side = rng.choice((-1.0, 1.0))
+        m.box((-L * 0.28, side * (W * 0.5 - post * 2.4), up_z + 2.0 + 4.0),
+              (10.0, 9.0, 8.0), MAT_STEEL)
+
+    return m.to_object("SM_Mega_Bay_%d" % s["seed"])
 
 
 # --- Run --------------------------------------------------------------------
@@ -389,28 +421,41 @@ def run(seeds):
         report.append(dict(
             name=obj.name, seed=seed,
             tris=sum(len(p.vertices) - 2 for p in obj.data.polygons),
-            verts=len(obj.data.vertices),
             size=[round(hi[i] - lo[i], 2) for i in range(3)],
-            top=round(hi[2], 2), buried=round(-lo[2], 2),
-            passage=s["passage"],
-            uv=uv_worldscale.density_report([obj]),
+            # 이음매가 맞는지의 증거입니다. x 길이가 베이 길이와 같아야 합니다.
+            span_x=round(hi[0] - lo[0], 3), bay=s["bay"],
+            tiles=abs((hi[0] - lo[0]) - s["bay"]) < 0.01,
+            clearance=round(s["gate"], 2),
+            uv=uv_worldscale.density_report([obj])[1],
             fbx=os.path.getsize(path)))
 
     return report
 
 
-def lay_out(seeds):
-    """전부 한 줄로 세워 blend 에 남깁니다. 눈으로 나란히 보려는 용도입니다."""
+def lay_out(seeds, length=11):
+    """
+    베이를 <b>실제로 이어 붙여</b> blend 에 남깁니다.
+
+    한 베이만 보면 이어지는지 알 수 없습니다. 늘어놓아야 이음매가 맞는지, 덕트가
+    끊기지 않는지, 그리고 무엇보다 <b>끝이 안 보이는지</b>가 보입니다.
+    """
     wipe()
     ensure_materials()
 
-    x = 0.0
+    made = {}
     for seed in seeds:
-        s = spec(seed)
-        obj = build(s)
+        obj = build(spec(seed))
         uv_worldscale.box_uv(obj, UV_TILE)
-        obj.location.x = x
-        x += s["width"] + 60.0
+        obj.location.y = 4000.0
+        made[seed] = obj
+
+    rng = random.Random(20260908)
+    for i in range(length):
+        source = made[rng.choice(seeds)]
+        copy = source.copy()
+        copy.data = source.data
+        copy.location = (i - length * 0.5) * BAY, 0.0, 0.0
+        bpy.context.scene.collection.objects.link(copy)
 
     bpy.ops.wm.save_as_mainfile(filepath=BLEND_PATH)
 
