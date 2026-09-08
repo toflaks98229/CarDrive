@@ -15,7 +15,8 @@
    "length": 42.0,
    "weight": 5,
    "top": 36.6,
-   "tris": 24
+   "tris": 24,
+   "parts": 1
   },
   {
    "name": "Habitat",
@@ -24,7 +25,8 @@
    "length": 42.0,
    "weight": 6,
    "top": 168.4,
-   "tris": 4848
+   "tris": 5964,
+   "parts": 9
   },
   {
    "name": "Industry",
@@ -33,7 +35,8 @@
    "length": 42.0,
    "weight": 3,
    "top": 115.8,
-   "tris": 2004
+   "tris": 1716,
+   "parts": 1
   },
   {
    "name": "Junction",
@@ -42,7 +45,8 @@
    "length": 84.0,
    "weight": 2,
    "top": 122.4,
-   "tris": 2556
+   "tris": 2316,
+   "parts": 1
   },
   {
    "name": "Citadel",
@@ -51,7 +55,8 @@
    "length": 126.0,
    "weight": 1,
    "top": 438.2,
-   "tris": 66744
+   "tris": 72528,
+   "parts": 10
   },
   {
    "name": "Ramp",
@@ -60,7 +65,8 @@
    "length": 84.0,
    "weight": 2,
    "top": 36.8,
-   "tris": 372
+   "tris": 372,
+   "parts": 1
   },
   {
    "name": "Crane",
@@ -69,7 +75,8 @@
    "length": 42.0,
    "weight": 3,
    "top": 172.0,
-   "tris": 768
+   "tris": 816,
+   "parts": 1
   },
   {
    "name": "Breach",
@@ -78,7 +85,8 @@
    "length": 42.0,
    "weight": 2,
    "top": 166.6,
-   "tris": 2316
+   "tris": 2448,
+   "parts": 1
   },
   {
    "name": "Overpass",
@@ -87,7 +95,8 @@
    "length": 84.0,
    "weight": 2,
    "top": 62.8,
-   "tris": 204
+   "tris": 204,
+   "parts": 1
   },
   {
    "name": "Spur",
@@ -96,7 +105,8 @@
    "length": 42.0,
    "weight": 2,
    "top": 50.4,
-   "tris": 432
+   "tris": 432,
+   "parts": 1
   },
   {
    "name": "Shaft",
@@ -105,7 +115,8 @@
    "length": 84.0,
    "weight": 1,
    "top": 264.4,
-   "tris": 840
+   "tris": 888,
+   "parts": 1
   },
   {
    "name": "CapsuleTower",
@@ -114,7 +125,8 @@
    "length": 84.0,
    "weight": 1,
    "top": 212.2,
-   "tris": 1272
+   "tris": 1200,
+   "parts": 1
   }
  ]
 }

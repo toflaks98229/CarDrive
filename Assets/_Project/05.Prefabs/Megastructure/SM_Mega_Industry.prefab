@@ -75,7 +75,7 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2e6c318a31048334e836233f3eca848d,
         type: 3}
       insertIndex: -1
-      addedObject: {fileID: 5889073430142066960}
+      addedObject: {fileID: 5470185196652830124}
   m_SourcePrefab: {fileID: 100100000, guid: 2e6c318a31048334e836233f3eca848d, type: 3}
 --- !u!1 &9068634119009584980 stripped
 GameObject:
@@ -83,7 +83,7 @@ GameObject:
     type: 3}
   m_PrefabInstance: {fileID: 8150155775545768453}
   m_PrefabAsset: {fileID: 0}
---- !u!64 &5889073430142066960
+--- !u!64 &5470185196652830124
 MeshCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

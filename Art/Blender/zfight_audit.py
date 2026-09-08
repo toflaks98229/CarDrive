@@ -29,7 +29,7 @@ Run:
 import json
 import os
 import sys
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 
 import bpy
 
@@ -79,10 +79,26 @@ def faces_of(obj):
     return out
 
 
-def audit(obj):
+def preset_of(name):
+    """
+    파츠 이름에서 <b>프리셋 이름</b>을 뽑습니다.
+
+    프리셋 하나가 오브젝트 여럿으로 쪼개진 뒤로, 오브젝트마다 따로 보면 <b>파츠
+    사이에 걸친 겹침을 통째로 놓칩니다.</b> 게임에서는 같이 그려지므로 같이 깜빡이는데
+    감사만 못 보는 것이라, 나누는 방식을 바꿀 때마다 수치가 이유 없이 오르내렸습니다.
+    """
+    bits = name.split("_")
+
+    if len(bits) >= 4 and bits[1] == "Mega":
+        return "_".join(bits[:3])
+
+    return name
+
+
+def audit(faces):
     buckets = defaultdict(list)
 
-    for axis, facing, offset, lo, hi in faces_of(obj):
+    for axis, facing, offset, lo, hi in faces:
         buckets[(axis, facing, round(offset / EPS))].append((lo, hi))
 
     hits = []
@@ -125,15 +141,21 @@ def main():
         bpy.ops.wm.open_mainfile(filepath=blend)
 
         seen = set()
+        groups = OrderedDict()
+
         for obj in bpy.data.objects:
             if obj.type != 'MESH' or obj.data.name in seen:
                 continue
 
             seen.add(obj.data.name)
-            hits = audit(obj)
+            key = preset_of(obj.name)
+            groups.setdefault(key, []).extend(faces_of(obj))
+
+        for key, faces in groups.items():
+            hits = audit(faces)
 
             report.append(dict(
-                name=obj.name, faces=len(obj.data.polygons),
+                name=key, faces=len(faces),
                 pairs=len(hits),
                 area=round(sum(h["area"] for h in hits), 1),
                 worst=sorted(hits, key=lambda h: -h["area"])[:8]))

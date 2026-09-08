@@ -35,6 +35,7 @@ WHAT MAKES THEM INTERLOCK
 Run:
     blender -b --python build_megastructure.py
 """
+import hashlib
 import json
 import math
 import os
@@ -49,6 +50,11 @@ if HERE not in sys.path:
 
 import hardsurface  # noqa: E402
 import uv_worldscale  # noqa: E402
+
+# 방의 치수와 생김새는 <b>저쪽이 주인</b>입니다. 여기서 6.0 x 4.6 이라고 다시 적으면
+# 저쪽을 고치는 순간 캡슐 안이 조용히 어긋납니다.
+import build_interiors  # noqa: E402
+from mathutils import Matrix  # noqa: E402
 
 OUT_DIR = r"E:\GamePJ\CarDrive\Assets\_Project\04.Art\02.Models\Megastructure"
 MANIFEST = r"E:\GamePJ\CarDrive\Assets\_Project\04.Art\02.Models\Megastructure\presets.json"
@@ -109,8 +115,16 @@ PRESETS = {
     # 사람이 사는 칸. 골조 슬롯에 캡슐이 꽂히고 몇 자리는 비어 있습니다.
     # 한쪽 난간을 끊어 <b>데크에서 뛰어내릴 수 있게</b> 합니다. 거주 구간마다 있으면
     # 흔해지므로 폭을 좁게 둡니다 - 노려서 맞춰야 하는 자리입니다.
+    # <b>들어갈 수 있는 방</b>이 여기 있습니다. (쪽, 층, 슬롯, 밖으로 이어지는 방들)
+    #
+    # 난간벽 끊긴 자리(x=0)와 <b>같은 슬롯</b>에 통로를 답니다 - 데크에서 걸어 나와
+    # 통로를 지나 캡슐로 들어가는 한 줄이 됩니다. 문만 그려 두고 못 들어가면
+    # 캡슐은 창고이지 집이 아닙니다.
     "Habitat": dict(bays=1, tiers=4, upper=22.0, fill=0.62, weight=6, levels=(0, 1, 2),
-                    gaps=((-1.0, 0.0, 9.0),)),
+                    gaps=((-1.0, 0.0, 9.0),),
+                    rooms=((-1.0, 0, 2, ("Corridor", "Cell")),
+                           (-1.0, 0, 1, ("Cell",)),
+                           (-1.0, 0, 3, ("Plant",)))),
 
     # 설비. 탱크와 굴뚝, 데크 위를 건너는 컨베이어 갠트리.
     "Industry": dict(bays=1, tiers=2, upper=15.0, fill=0.35, tanks=True, weight=3,
@@ -298,9 +312,18 @@ def parapet(m, length, y, gaps):
 # --- Preset parts -----------------------------------------------------------
 
 
-def capsules(m, s, length, rng, y_half=None, base=None, fade=False, deck=None):
+def capsules(m, s, length, rng, y_half=None, base=None, fade=False, deck=None,
+             open_at=(), band=None, band_tiers=7):
     """
     골조 슬롯에 꽂힌 거주 캡슐입니다. <b>빈 슬롯이 핵심</b>입니다.
+
+    <c>band</c> 를 주면 층을 <c>band_tiers</c> 개씩 묶어 <b>파츠를 갈아 가며</b>
+    쌓습니다. 시타델처럼 한 번에 120 m 를 올리는 곳에서, 데크에 서면 눈에 들어오는
+    것은 맨 아래 띠뿐인데도 통째로 그려지고 있었습니다.
+
+    <b>따로 여러 번 부르면 안 됩니다.</b> 그렇게 나누면 띠가 끝나는 높이와 다음
+    띠가 시작하는 높이에 <b>같은 슬래브가 두 벌</b> 생겨 그 면이 깜빡입니다. 한
+    번에 훑으면서 이름표만 바꿔야 겹치는 것이 없습니다.
 
     캡슐은 다른 데서 만들어 와 꽂는 것이므로 아직 안 찼거나 이미 빠진 자리가 있어야
     합니다. 빈 슬롯 하나가 Wilcoxon 의 3·4 번(골조가 영구, 캡슐이 임시)을 눈으로
@@ -327,6 +350,31 @@ def capsules(m, s, length, rng, y_half=None, base=None, fade=False, deck=None):
     walk = 2.6
     reach = W + walk
 
+    def holes(sign, t):
+        """이 층 이 쪽에서 <b>난간을 끊을</b> 구간입니다. 방이 들어가는 자리입니다."""
+        out = []
+        for o_sign, o_tier, o_col in open_at:
+            if o_sign == sign and o_tier == t:
+                cx = -inner * 0.5 + (o_col + 0.5) * pitch
+                out.append((cx - pitch * 0.5, cx + pitch * 0.5))
+
+        return sorted(out)
+
+    def segments(gaps):
+        edge = -inner * 0.5
+        for lo, hi in gaps:
+            if lo > edge:
+                yield edge, lo
+            edge = max(edge, hi)
+
+        if edge < inner * 0.5:
+            yield edge, inner * 0.5
+
+    def tag(t):
+        # 슬롯 기둥은 층을 꿰고 서 있으므로 띠로 못 자릅니다. 나머지만 자릅니다.
+        if band:
+            m.group("%s%d" % (band, t // band_tiers))
+
     for sign in (-1.0, 1.0):
         for i in range(cols + 1):
             m.box((-inner * 0.5 + i * pitch, sign * (W + 0.4),
@@ -334,25 +382,43 @@ def capsules(m, s, length, rng, y_half=None, base=None, fade=False, deck=None):
                   (1.6, cd * 0.55, s["tiers"] * tier), CONCRETE)
 
         for t in range(s["tiers"] + 1):
+            tag(min(t, s["tiers"] - 1))
             m.box((0.0, sign * (W + 0.2), z0 + t * tier), (inner, cd * 0.75, 0.7), CONCRETE)
 
         # 통로 바닥과 난간. 난간은 무릎이 아니라 <b>가슴</b> 높이입니다 - 30 m 위입니다.
+        #
+        # <b>난간은 토막으로 세웁니다.</b> 한 줄로 죽 세웠더니 캡슐 문 앞을 그대로
+        # 가로막아, 문이 달려 있어도 들어갈 수 없는 <b>그림</b>이었습니다. 방이
+        # 들어가는 자리에서는 끊어야 문이 문이 됩니다.
         for t in range(s["tiers"]):
+            tag(t)
             m.box((0.0, sign * (W + walk * 0.5 + 0.6), z0 + t * tier + 0.35),
                   (inner, walk, 0.3), CONCRETE)
-            m.box((0.0, sign * (W + walk + 0.5), z0 + t * tier + 1.1),
-                  (inner, 0.25, 1.1), CONCRETE)
-            m.box((0.0, sign * (W + walk + 0.5), z0 + t * tier + 1.72),
-                  (inner, 0.45, 0.14), DARK)
+
+            for lo, hi in segments(holes(sign, t)):
+                m.box(((lo + hi) * 0.5, sign * (W + walk + 0.5), z0 + t * tier + 1.1),
+                      (hi - lo, 0.25, 1.1), CONCRETE)
+                m.box(((lo + hi) * 0.5, sign * (W + walk + 0.5), z0 + t * tier + 1.72),
+                      (hi - lo, 0.45, 0.14), DARK)
 
         for t in range(s["tiers"]):
             # 위로 갈수록 덜 찹니다. 아직 못 올라간 것이지 지어진 적 없는 것이 아닙니다.
+            tag(t)
+
             chance = s.get("fill", 0.6)
             if fade:
                 chance *= 1.0 - 0.75 * (t / max(1, s["tiers"] - 1))
 
             for col in range(cols):
-                if rng.random() > chance:
+                # <b>주사위를 먼저 굴립니다.</b> 빈 슬롯에서 건너뛰며 굴리지 않으면
+                # 그 뒤 슬롯들이 전부 다른 눈을 받아, 방 하나 넣었다고 프리셋 전체의
+                # 캡슐 배치가 바뀝니다.
+                roll = rng.random()
+
+                if (sign, t, col) in open_at:
+                    continue
+
+                if roll > chance:
                     continue
 
                 x = -inner * 0.5 + (col + 0.5) * pitch
@@ -798,7 +864,7 @@ def tower(m, s, length, rng):
     m.box((0.0, side * (W * 0.5 + 4.0), TOP_DECK - 0.15), (4.0, 8.0, 0.3), CONCRETE)
 
 
-def endwall(m, half_x, half_y, z0, z1, rng, fill):
+def endwall(m, half_x, half_y, z0, z1, rng, fill, band=None, band_rows=2):
     """
     덩어리의 <b>끝면</b>입니다. 스파인을 따라 달리면 정면으로 보게 되는 면입니다.
 
@@ -822,15 +888,23 @@ def endwall(m, half_x, half_y, z0, z1, rng, fill):
 
         # 살과 띠는 벽 <b>바깥으로</b> 나옵니다. 벽면과 같은 평면에 두면 같은 쪽을
         # 보는 면이 겹쳐 깜빡입니다. 안쪽 면은 벽을 등지므로 그려지지 않습니다.
+        # 세로 살은 단 전체를 꿰고 서 있으므로 띠로 자를 수 없습니다. 26 개뿐이라
+        # 통째로 두어도 잃는 것이 없습니다.
         for i in range(ny + 1):
             m.box((x + sign * 0.7, -half_y + i * py, (z0 + z1) * 0.5),
                   (1.4, 1.8, z1 - z0), CONCRETE)
 
         for j in range(nz + 1):
+            if band:
+                m.group("%s%d" % (band, min(j, nz - 1) // band_rows))
+
             m.box((x + sign * 0.5, 0.0, z0 + j * pz),
                   (1.0, half_y * 2.0, 1.6), CONCRETE)
 
         for j in range(nz):
+            if band:
+                m.group("%s%d" % (band, j // band_rows))
+
             for i in range(ny):
                 if rng.random() > fill:
                     continue
@@ -842,6 +916,97 @@ def endwall(m, half_x, half_y, z0, z1, rng, fill):
                 m.box((x + sign * 3.4, y, z), (6.0, py * 0.55, pz * 0.5), DARK)
                 m.box((x + sign * 6.7, y, z + pz * 0.16),
                       (0.6, py * 0.3, 0.6), STEEL)
+
+
+def rooms(m, s, length, prefix):
+    """
+    갤러리에 <b>실제로 들어갈 수 있는 방</b>을 답니다.
+
+    지금까지 캡슐은 속이 없는 상자였습니다. 문틀이 그려져 있어도 열리지 않고, 그
+    앞은 난간이 가로막고 있었습니다. 메가스트럭처의 3·4 번 항목(골조에 유닛이
+    꽂힌다 / 골조가 유닛보다 오래 산다)은 <b>유닛 안에 들어가 봐야</b> 몸으로
+    읽힙니다 - Nakagin 이 유명한 것은 겉모습이 아니라 그 안이 방이어서입니다.
+
+    방은 <b>따로 선 오브젝트</b>입니다. 프리셋 메시에 구워 넣으면 캡슐 하나 고치는
+    데 454 m 짜리 덩어리를 다시 구워야 하고, 컬링도 통째로만 됩니다.
+
+    바깥으로 이어 답니다 - 통로 다음에 방, 각 방의 문은 스파인 쪽을 봅니다.
+    """
+    spec = s.get("rooms")
+    if not spec:
+        return []
+
+    W = SOCKET["width"] * 0.5
+    walk = 2.6
+    front = W + walk + 0.6      # 통로 바닥의 <b>바깥</b> 끝. 여기서부터 방입니다
+    tier = 5.6
+    inner = length - SOCKET["inset"] * 2.0
+    cols = max(2, int(inner / (6.4 + 1.2)))
+    pitch = inner / cols
+
+    made = []
+
+    for sign, level, col, chain in spec:
+        x = -inner * 0.5 + (col + 0.5) * pitch
+
+        # 통로 바닥 윗면이 z0 + 0.5 입니다. 6 cm 만 올려 <b>같은 평면을 피합니다</b> -
+        # 딱 맞추면 방 바닥과 통로 바닥이 같은 높이에서 같은 쪽을 봐 깜빡입니다.
+        z = DECKS[level] + 0.56
+        off = 0.0
+
+        for name in chain:
+            spec_room = build_interiors.ROOMS[name]
+            depth = spec_room["inner"][1] + build_interiors.WALL * 2.0
+
+            obj = build_interiors.shell(name, spec_room)
+            obj.name = "%s_Room%d%s" % (prefix, col, name)
+
+            # 트랜스폼을 <b>메시에 구워 넣습니다.</b> 오브젝트 위치로 두면 이음매
+            # 검사가 로컬 좌표를 보므로 방이 어디 있는지 모릅니다.
+            obj.data.transform(
+                Matrix.Translation((x, sign * (front + off + depth * 0.5), z))
+                @ Matrix.Rotation(math.pi if sign < 0.0 else 0.0, 4, "Z"))
+
+            made.append(obj)
+
+            # <b>바깥은 캡슐이어야 합니다.</b> 방 껍데기가 밝은 콘크리트라 갤러리에
+            # 놓으니 주변 캡슐(어두움)과 재질 문법이 어긋났습니다 — 이 언어에서 밝은
+            # 것은 <b>영구 골조</b>이고 어두운 것은 꽂아 넣은 유닛이므로, 밝은 방은
+            # "골조가 방 모양으로 튀어나왔다" 고 말하게 됩니다.
+            #
+            # 그래서 어두운 외피를 <b>벽 바깥에 따로</b> 두릅니다. 벽 재질을 통째로
+            # 바꾸면 안이 새까매져 들어갈 수 없는 방이 됩니다. 안은 콘크리트, 밖은
+            # 캡슐 — Nakagin 도 그랬습니다.
+            w_in, d_in, h_in = spec_room["inner"]
+            w_out = w_in + build_interiors.WALL * 2.0
+            h_out = h_in + build_interiors.SLAB
+            mid = sign * (front + off + depth * 0.5)
+            skin = 0.22
+
+            for edge in (-1.0, 1.0):
+                m.box((x + edge * (w_out * 0.5 + skin * 0.5), mid, z + h_out * 0.5),
+                      (skin, depth, h_out + skin), DARK)
+
+            m.box((x, mid, z + h_out + skin * 0.5),
+                  (w_out + skin * 2.0, depth, skin), DARK)
+
+            # 막힌 끝에만 답니다. 통로는 양쪽이 문이라 막으면 통로가 아닙니다.
+            if not any(o[0] == "+z" for o in spec_room["openings"]):
+                m.box((x, sign * (front + off + depth + skin * 0.5), z + h_out * 0.5),
+                      (w_out, skin, h_out), DARK)
+
+            off += depth
+
+        # 데크에서 통로로 건너가는 <b>발판</b>. 데크 끝이 48.25, 통로 시작이 48.6 이라
+        # 35 cm 가 뚫려 있습니다. 난간벽이 끊긴 자리에서만 답니다 - 벽이 서 있는
+        # 자리에 놓으면 벽을 뚫고 지나가는 판이 됩니다.
+        for g_sign, g_at, g_wide in s.get("gaps", ()):
+            if g_sign != sign or abs(x - g_at) > g_wide * 0.5:
+                continue
+
+            m.box((x, sign * 47.75, DECKS[level] + 0.35), (pitch, 1.9, 0.3), CONCRETE)
+
+    return made
 
 
 def citadel(m, s, length, rng):
@@ -876,6 +1041,8 @@ def citadel(m, s, length, rng):
     # 통로 위의 인방. 여기부터 위가 덩어리로 이어집니다.
     lid = DECKS[0] + SOCKET["parapet"] + 12.0
 
+    m.group("Base")
+
     for sign in (-1.0, 1.0):
         y = sign * (W * 0.5 + 3.0 + flank * 0.5)
         m.box((0.0, y, (lid - SOCKET["burial"]) * 0.5),
@@ -886,6 +1053,10 @@ def citadel(m, s, length, rng):
     step = (top - lid) / stages
 
     for k in range(stages):
+        # 단 하나가 오브젝트 하나입니다. 122 m 짜리 상자 넷이 454 m 짜리 상자
+        # 하나보다 <b>훨씬 잘 걸러집니다</b> — 발밑에 서 있으면 위 두 단은 화면 밖입니다.
+        m.group("Stage%d" % k)
+
         z0 = lid + step * k
         z1 = z0 + step
         d = depth - k * 24.0
@@ -899,6 +1070,11 @@ def citadel(m, s, length, rng):
         # 0.4 m 올려 두 면을 갈라 놓습니다.
         m.box((0.0, 0.0, z0 + 1.4), (w + 1.4, d + 1.4, 2.0), DARK)
 
+        # <b>껍질을 덩어리에서 뗍니다.</b> 단의 삼각형은 거의 전부가 이 껍질(격자와
+        # 캡슐)이고, 그것은 가까이서만 읽힙니다. 나중에 먼 거리에서 껍질만 걷어낼 때
+        # 실루엣을 그대로 두려면 <b>지금 갈라 두어야</b> 합니다.
+        m.group("Stage%dSkin" % k)
+
         endwall(m, w * 0.5, d * 0.5, z0 + 2.6, z1, rng, 0.34 - k * 0.09)
 
         # 테라스 난간에 붙는 캡슐 갤러리. 단마다 <b>덜 찹니다</b> - 위층은 아직
@@ -906,6 +1082,8 @@ def citadel(m, s, length, rng):
         tiers = max(2, int(step / 5.6) - 1)
         capsules(m, dict(tiers=tiers, fill=s["fill"] * (0.46 - k * 0.12)),
                  w, rng, y_half=d * 0.5, base=z0 + 4.0, fade=True)
+
+    m.group("Peak")
 
     # 꼭대기의 코어와 테두리
     peak_w = inner - 16.0 - (stages - 1) * 9.0
@@ -934,6 +1112,10 @@ def build_core():
     """
     m = hardsurface.Mass(MATS)
     core(m, SOCKET["bay"], 1)
+
+    # <b>뼈대는 안 나눕니다.</b> 1,344 삼각형이고 베이마다 놓이므로 38 벌입니다.
+    # 셋으로 나누면 렌더러가 114 개가 되는데, 걸러서 아끼는 삼각형보다 드로우
+    # 제출이 더 비쌉니다. 나누는 것은 <b>덩치가 큰 쪽만</b>입니다.
     return m.to_object("SM_Mega_Core")
 
 
@@ -950,7 +1132,13 @@ def build(name):
     length = bays * SOCKET["bay"]
 
     m = hardsurface.Mass(MATS)
-    rng = random.Random(abs(hash(name)) % 100000)
+    # <b>hash() 를 쓰면 안 됩니다.</b> 파이썬 문자열 해시는 프로세스마다 뿌려지는
+    # 값이 달라, 같은 스크립트를 두 번 돌리면 캡슐이 전부 다른 자리에 꽂혔습니다.
+    # 삼각형 수가 빌드마다 흔들려 <b>고친 것과 흔들린 것을 가릴 수 없었습니다.</b>
+    rng = random.Random(int(hashlib.md5(name.encode()).hexdigest()[:8], 16))
+    prefix = "SM_Mega_" + name
+
+    m.group("Frame")
 
     W = SOCKET["width"]
     for sign in (-1.0, 1.0):
@@ -960,42 +1148,54 @@ def build(name):
     # <b>층마다 세웁니다.</b> 프리셋이 한 층에만 붙으면 아무리 넓혀도 아래만 찬
     # 구조물이 됩니다. 층마다 쓰임이 다르게 채워야 <b>겹친 보람</b>이 생깁니다.
     # 위로 갈수록 덜 채워 하늘이 보이는 비율이 늘게 합니다.
+    open_at = tuple((r[0], 0, r[2]) for r in s.get("rooms", ()))
+
     for i, level in enumerate(s.get("levels", (0,))):
         thin = dict(s)
         thin["fill"] = s.get("fill", 0.6) * (1.0 - 0.22 * i)
 
-        capsules(m, thin, length, rng, deck=DECKS[level])
+        # 층 하나가 파츠 하나입니다. 층은 <b>54 m 씩 떨어져</b> 있으므로 데크에 서면
+        # 늘 한 층만 가깝고, 나머지는 시야 밖으로 나갈 수 있어야 합니다.
+        m.group("L%d" % level)
+
+        capsules(m, thin, length, rng, deck=DECKS[level],
+                 open_at=open_at if level == 0 else ())
         access(m, thin, length, rng, deck=DECKS[level])
 
         if level == s.get("levels", (0,))[-1]:
             portal(m, thin, length, rng, deck=DECKS[level])
 
-    industry(m, s, length, rng)
-    branch(m, s, length, rng)
-    citadel(m, s, length, rng)
-    ramp(m, s, length, rng)
-    crane(m, s, length, rng)
-    breach(m, s, length, rng)
-    overpass(m, s, length, rng)
-    spur(m, s, length, rng)
-    shaft(m, s, length, rng)
-    tower(m, s, length, rng)
+    # 나머지는 <b>함수 하나가 파츠 하나</b>입니다. 각각이 한 자리에 뭉친 물건이라
+    # 그대로 공간 덩어리가 됩니다 - 탱크, 가지, 경사로, 크레인, 수직 코어.
+    for tag, fn in (("Industry", industry), ("Branch", branch), ("Citadel", citadel),
+                    ("Ramp", ramp), ("Crane", crane), ("Breach", breach),
+                    ("Overpass", overpass), ("Spur", spur), ("Shaft", shaft),
+                    ("Tower", tower)):
+        m.group(tag)
+        fn(m, s, length, rng)
 
-    return m.to_object("SM_Mega_" + name)
+    m.group("Landing")
+    inside = rooms(m, s, length, prefix)
+
+    return m.to_parts(prefix) + inside
 
 
-def seam(obj, x):
+def seam(objs, x):
     """
     끝면에 닿는 꼭짓점의 (y, z) 목록입니다. <b>연동 규약의 증거</b>입니다.
 
     두 프리셋의 이 목록이 같으면 어떤 순서로 붙여도 단면이 맞습니다. 말로 "맞춰
     두었다" 고 적는 것과 <b>재서 같다는 것</b>은 다릅니다.
+
+    파츠 <b>전부</b>를 봅니다. 하나만 보면 이음매에 걸친 것이 다른 파츠에 있을 때
+    통과해 버립니다.
     """
     out = set()
 
-    for v in obj.data.vertices:
-        if abs(v.co.x - x) < 1e-4:
-            out.add((round(v.co.y, 3), round(v.co.z, 3)))
+    for obj in objs:
+        for v in obj.data.vertices:
+            if abs(v.co.x - x) < 1e-4:
+                out.add((round(v.co.y, 3), round(v.co.z, 3)))
 
     return out
 
@@ -1033,19 +1233,30 @@ def verify(made):
     return len(profiles[first])
 
 
-def emit(obj, report_extra=None):
-    """UV 를 깔고 FBX 로 내보냅니다. 부품마다 파일 하나입니다."""
-    uv_worldscale.box_uv(obj, UV_TILE)
+def emit(name, objs, report_extra=None):
+    """
+    UV 를 깔고 FBX 로 내보냅니다. <b>프리셋마다 파일 하나, 그 안에 파츠 여럿.</b>
 
-    path = os.path.join(OUT_DIR, obj.name + ".fbx")
+    내보내기가 씬 전체를 담으므로(<c>use_selection=False</c>) 파츠를 따로 지정할
+    것이 없습니다. 대신 <b>치수는 합쳐서</b> 냅니다 - 유니티가 읽는 것은 프리셋
+    하나의 크기이지 파츠 하나의 크기가 아닙니다.
+    """
+    for obj in objs:
+        uv_worldscale.box_uv(obj, UV_TILE)
+
+    path = os.path.join(OUT_DIR, name + ".fbx")
     written = hardsurface.export_fbx(path)
 
-    lo, hi = hardsurface.bounds(obj)
+    edge = [hardsurface.bounds(obj) for obj in objs]
+    lo = [min(e[0][a] for e in edge) for a in range(3)]
+    hi = [max(e[1][a] for e in edge) for a in range(3)]
 
-    out = dict(mesh=obj.name,
+    out = dict(mesh=name,
                size=[round(hi[a] - lo[a], 2) for a in range(3)],
                top=round(hi[2], 1),
-               tris=sum(len(p.vertices) - 2 for p in obj.data.polygons),
+               tris=sum(sum(len(p.vertices) - 2 for p in o.data.polygons)
+                        for o in objs),
+               parts=len(objs),
                fbx=written)
 
     if report_extra:
@@ -1060,20 +1271,20 @@ def run():
     # ---- 뼈대 한 벌 --------------------------------------------------------
     hardsurface.wipe()
     hardsurface.ensure_materials(MATS)
-    core_report = emit(build_core(), dict(bay=SOCKET["bay"]))
+    core_report = emit("SM_Mega_Core", [build_core()], dict(bay=SOCKET["bay"]))
 
     # ---- 프리셋이 더하는 것 ------------------------------------------------
     for name in PRESETS:
         hardsurface.wipe()
         hardsurface.ensure_materials(MATS)
 
-        obj = build(name)
+        objs = build(name)
         want = PRESETS[name]["bays"] * SOCKET["bay"]
 
-        lo, hi = hardsurface.bounds(obj)
-        span = hi[0] - lo[0]
+        edge = [hardsurface.bounds(o) for o in objs]
+        span = max(e[1][0] for e in edge) - min(e[0][0] for e in edge)
 
-        report.append(emit(obj, dict(
+        report.append(emit("SM_Mega_" + name, objs, dict(
             preset=name, bays=PRESETS[name]["bays"], length=want,
             span=round(span, 3),
             # 부품이 프리셋 길이를 넘으면 이웃을 파고듭니다.
@@ -1094,7 +1305,7 @@ def run():
             seamPoints=points,
             presets=[dict(name=r["preset"], mesh=r["mesh"], bays=r["bays"],
                           length=r["length"], weight=r["weight"], top=r["top"],
-                          tris=r["tris"])
+                          tris=r["tris"], parts=r["parts"])
                      for r in report]), f, indent=1)
 
     return core_report, report, points
@@ -1117,10 +1328,12 @@ def lay_out():
 
     made = {}
     for name in PRESETS:
-        obj = build(name)
-        uv_worldscale.box_uv(obj, UV_TILE)
-        obj.location.y = 6000.0
-        made[name] = obj
+        objs = build(name)
+        for obj in objs:
+            uv_worldscale.box_uv(obj, UV_TILE)
+            obj.location.y = 6000.0
+
+        made[name] = objs
 
     order = ["Viaduct", "Habitat", "Viaduct", "Shaft", "Viaduct",
              "Habitat", "Viaduct", "CapsuleTower", "Viaduct", "Ramp",
@@ -1137,10 +1350,11 @@ def lay_out():
             piece.location = (x + (b + 0.5) * SOCKET["bay"], 0.0, 0.0)
             bpy.context.scene.collection.objects.link(piece)
 
-        part = made[name].copy()
-        part.data = made[name].data
-        part.location = (x + span * 0.5, 0.0, 0.0)
-        bpy.context.scene.collection.objects.link(part)
+        for source in made[name]:
+            part = source.copy()
+            part.data = source.data
+            part.location = (x + span * 0.5, 0.0, 0.0)
+            bpy.context.scene.collection.objects.link(part)
 
         x += span
 

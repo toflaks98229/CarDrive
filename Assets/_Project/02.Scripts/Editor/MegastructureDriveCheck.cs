@@ -74,6 +74,7 @@ public static class MegastructureDriveCheck
         Deck(spine, deck, manifest);
         Edges(spine, deck, manifest);
         Ramps(spine, deck);
+        Rooms(spine, deck);
 
         if (Application.isBatchMode) EditorApplication.Exit(0);
     }
@@ -304,6 +305,100 @@ public static class MegastructureDriveCheck
     ///
     /// 그래서 찾는 높이 바로 위에서 짧게 쏩니다. 창을 좁히면 그 높이의 면만 걸립니다.
     /// </summary>
+    /// <summary>
+    /// 갤러리에 단 방에 <b>정말로 들어갈 수 있는지</b> 봅니다.
+    ///
+    /// 캡슐은 오래 <b>속이 없는 상자</b>였습니다. 문틀이 그려져 있었지만 열리지
+    /// 않았고, 그 앞은 난간이 끊김 없이 가로막고 있었습니다. 그림으로는 멀쩡해
+    /// 보이므로 <b>재지 않으면 알 수 없습니다.</b>
+    ///
+    /// 셋을 봅니다:
+    ///   · 바닥 — 방 한가운데에 설 자리가 있는가.
+    ///   · 문 — 문 앞 1 m 에서 방 안으로 <b>수평선이 통과하는가.</b> 막혀 있으면
+    ///     난간이나 벽이 문을 가리고 있는 것입니다.
+    ///   · 천장 — 머리 위가 막혀 있는가. 안 막혀 있으면 방이 아니라 벽 조각입니다.
+    /// </summary>
+    private static void Rooms(Transform spine, float deck)
+    {
+        List<Renderer> found = new List<Renderer>();
+
+        foreach (Renderer r in spine.GetComponentsInChildren<Renderer>(true))
+        {
+            if (r.name.Contains("_Room")) found.Add(r);
+        }
+
+        if (found.Count == 0)
+        {
+            Debug.Log("MegastructureDriveCheck: 갤러리 방 없음");
+            return;
+        }
+
+        Debug.Log($"MegastructureDriveCheck: 갤러리 방 {found.Count} 곳");
+
+        int ok = 0;
+
+        foreach (Renderer room in found.OrderBy(r => r.name))
+        {
+            MeshFilter filter = room.GetComponent<MeshFilter>();
+            if (filter == null || filter.sharedMesh == null) continue;
+
+            // <b>방 자신의 축으로 잽니다.</b> 월드 축으로 두드렸더니 전부 비스듬히
+            // 맞았습니다 - 스파인이 75° 돌아가 있어 월드 ±X/±Z 중 어느 것도 방의
+            // 면과 나란하지 않고, 폭 1 m 짜리 문은 비스듬한 선으로는 못 찾습니다.
+            Transform t = room.transform;
+            Bounds local = filter.sharedMesh.bounds;
+
+            Vector3 middle = t.TransformPoint(local.center);
+            Bounds box = room.bounds;
+
+            // 바닥. 방 한가운데 천장 밑에서 아래로 쏩니다.
+            float floor = float.NaN;
+            if (Physics.Raycast(new Vector3(middle.x, box.max.y - 0.15f, middle.z),
+                                Vector3.down, out RaycastHit down, box.size.y + 1f))
+            {
+                floor = down.point.y;
+            }
+
+            // <b>문턱 밑</b>에서 두드립니다. 1.0 m 에서 쐈더니 캡슐의 창(문턱 0.9 m)이
+            // 열린 면으로 잡혀, 창밖에 없는 벽을 문이라고 했습니다. 0.5 m 로 내리면
+            // 문(문턱 0)만 남습니다.
+            float head = float.IsNaN(floor) ? middle.y : floor + 0.5f;
+            Vector3 eye = new Vector3(middle.x, head, middle.z);
+
+            // 네 옆면을 다 두드립니다. 밖에서 안으로 수평선이 통과하는 면이 문입니다 -
+            // 어느 쪽에 났는지 몰라도 <b>들어갈 수 있는지</b>는 알 수 있습니다.
+            string door = null;
+
+            foreach ((string label, Vector3 dir, float half) in new[]
+            {
+                ("+x", t.right, local.extents.x), ("-x", -t.right, local.extents.x),
+                ("+z", t.forward, local.extents.z), ("-z", -t.forward, local.extents.z),
+            })
+            {
+                float out_ = half + 1.2f;
+                Vector3 outside = eye + dir * out_;
+
+                if (Physics.Raycast(outside, -dir, out_ - 0.15f)) continue;
+
+                door = label;
+                break;
+            }
+
+            bool open = door != null;
+            bool lid = Physics.Raycast(eye, Vector3.up, box.size.y + 1f);
+
+            bool good = !float.IsNaN(floor) && open && lid;
+            if (good) ok++;
+
+            Debug.Log($"  {room.name.Replace("SM_Mega_", ""),-28} " +
+                      $"바닥 {(float.IsNaN(floor) ? "없음" : $"{floor - deck,5:F2} m(데크 기준)")} · " +
+                      $"문 {(open ? door + " 열림" : "막힘 ")} · 천장 {(lid ? "있음" : "없음")} " +
+                      $"{(good ? "" : " ◀ 못 들어감")}");
+        }
+
+        Debug.Log($"  들어갈 수 있는 방 {ok}/{found.Count}");
+    }
+
     private static bool SurfaceNear(Vector3 at, Transform root, float want, float window,
                                     out float y, out Vector3 normal)
     {

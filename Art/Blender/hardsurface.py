@@ -65,6 +65,34 @@ class Mass:
         self.faces = []
         self.slots = []
 
+        # 면마다의 <b>파츠 이름</b>입니다. to_parts() 가 이걸로 갈라 냅니다.
+        self.part = "Frame"
+        self.parts = []
+
+    def group(self, name):
+        """
+        이 뒤로 쌓는 상자가 속할 <b>파츠</b>입니다.
+
+        <b>왜 나누는가.</b> 한 프리셋을 메시 하나로 구우면 시타델이 454 m 짜리
+        바운딩 박스 하나가 됩니다. 그 상자는 데크 위 어디에서나 화면에 걸리므로
+        <b>꼭대기의 6 만 삼각형이 발밑에 서 있을 때도 통째로 그려집니다.</b> 컬링은
+        렌더러 단위라, 나누지 않으면 나눌 방법이 없습니다.
+
+        <b>잘게 나누면 오히려 손해입니다.</b> 이 프로젝트의 병목은 삼각형이 아니라
+        드로우 제출(렌더 스레드 87%)이라, 렌더러를 늘리는 것 자체가 비용입니다.
+        그래서 <b>공간적으로 뭉치는 덩어리</b>로만 나눕니다 - 층, 단, 방 하나.
+
+        면을 늘리는 곳이 여럿(box·slope·pierced·reveal)이라 <b>여기서만</b> 밀린
+        만큼을 채웁니다. 생성기마다 태그를 달게 하면 새 생성기를 더할 때 조용히
+        빠뜨립니다.
+        """
+        self._tag()
+        self.part = name
+
+    def _tag(self):
+        while len(self.parts) < len(self.faces):
+            self.parts.append(self.part)
+
     def box(self, center, size, mat=0, taper=0.0, taper_axis=2):
         """축 정렬 상자입니다. <c>taper</c> 는 <c>taper_axis</c> 의 양(+) 쪽 끝을 좁힙니다."""
         c = list(center)
@@ -223,6 +251,8 @@ class Mass:
             put(0.0, nose, sign * (h + jamb) * 0.5, w + jamb * 2.0, thick, jamb, mat)
 
     def to_object(self, name):
+        self._tag()
+
         mesh = bpy.data.meshes.new(name)
         mesh.from_pydata(self.verts, [], self.faces)
         mesh.update()
@@ -236,6 +266,60 @@ class Mass:
         obj = bpy.data.objects.new(name, mesh)
         bpy.context.scene.collection.objects.link(obj)
         return obj
+
+    def to_parts(self, name, min_faces=1500):
+        """
+        파츠마다 오브젝트 하나입니다. <b>같은 FBX 안에 나란히</b> 나갑니다.
+
+        <b>작으면 도로 합칩니다.</b> 200 삼각형짜리를 셋으로 나누면 걸러서 아끼는
+        것은 거의 없는데 드로우만 셋이 됩니다. 실측에서 전부 나누니 드로우가
+        48 → 70 으로 늘고 삼각형은 12% 밖에 안 줄어, 드로우 제출이 병목인 이
+        프로젝트에서는 작은 것까지 나누는 것이 <b>순손해</b>였습니다.
+
+        FBX 내보내기가 <c>object_types={'MESH'}</c> 라 빈 부모는 나가지 않습니다.
+        전부 원점에 있으므로 부모 없이 나란히 두면 유니티에서 FBX 루트의 자식으로
+        들어오고, MegastructureSetup.BuildBay 가 자식마다 콜라이더를 답니다 —
+        그쪽은 이미 자식 여럿을 전제로 쓰여 있습니다.
+        """
+        self._tag()
+
+        if len(self.faces) < min_faces:
+            return [self.to_object(name)]
+
+        order = []
+        for g in self.parts:
+            if g not in order:
+                order.append(g)
+
+        made = []
+        for g in order:
+            keep = [f for f, p in zip(self.faces, self.parts) if p == g]
+            slots = [m for m, p in zip(self.slots, self.parts) if p == g]
+
+            index = {}
+            used = []
+            for face in keep:
+                for v in face:
+                    if v not in index:
+                        index[v] = len(used)
+                        used.append(v)
+
+            mesh = bpy.data.meshes.new(name + "_" + g)
+            mesh.from_pydata([self.verts[v] for v in used], [],
+                             [tuple(index[v] for v in f) for f in keep])
+            mesh.update()
+
+            for mat_name, _, _, _ in self.mats:
+                mesh.materials.append(bpy.data.materials[mat_name])
+
+            for poly, slot in zip(mesh.polygons, slots):
+                poly.material_index = slot
+
+            obj = bpy.data.objects.new(name + "_" + g, mesh)
+            bpy.context.scene.collection.objects.link(obj)
+            made.append(obj)
+
+        return made
 
 
 # --- Scene ------------------------------------------------------------------

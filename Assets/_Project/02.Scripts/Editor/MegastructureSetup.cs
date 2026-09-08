@@ -223,6 +223,21 @@ public static class MegastructureSetup
         Shoot(cam, new Vector3(-span, height * 0.5f, all.center.z),
               new Vector3(0f, height * 0.5f, all.center.z), "side");
 
+        // <b>갤러리와 방.</b> 캡슐 안이 방이 되었는지는 여기서만 보입니다 - 멀리서
+        // 보면 캡슐이 꽂혔는지까지만 알 수 있고, 그 안이 창고인지 집인지는 모릅니다.
+        Renderer gallery = spine.GetComponentsInChildren<Renderer>(true)
+            .FirstOrDefault(r => r.name.Contains("_Room"));
+
+        if (gallery != null)
+        {
+            Bounds room = gallery.bounds;
+            Vector3 back = (room.center - new Vector3(0f, room.center.y, room.center.z));
+            back = back.sqrMagnitude > 1f ? back.normalized : Vector3.right;
+
+            Shoot(cam, room.center + back * 52f + Vector3.up * 20f,
+                  room.center + back * 4f, "rooms");
+        }
+
         // <b>올려다보는 그림.</b> 넓이는 옆에서 보면 알지만 높이는 밑에서 봐야 압니다.
         // 사람이 서는 자리에서 찍어야 층이 몇 겹인지가 화면에 나옵니다.
         Shoot(cam, new Vector3(span * 0.22f, 1.7f, all.center.z + all.extents.z * 0.34f),
