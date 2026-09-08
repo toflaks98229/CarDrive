@@ -46,6 +46,28 @@ public static class PropMeshSetup
         Convex,
     }
 
+    private const string InteriorDir = "Assets/_Project/04.Art/02.Models/Interior";
+
+    /// <summary>
+    /// 씬에 <b>직접 지어진</b> 방과 그것을 대신할 메시입니다.
+    ///
+    /// 상점과 집은 프리팹이 아니라 씬 오브젝트라 프리팹 교체가 통하지 않습니다.
+    /// 껍데기(바닥·벽·천장·지붕)만 갈고 <b>안에 있는 것은 손대지 않습니다</b> —
+    /// 계산대·진열대·점원·침대는 벽에 맞춰 놓여 있으므로, 안쪽 치수를 그대로 두는
+    /// 한 그대로 쓸 수 있습니다.
+    /// </summary>
+    private static readonly (string group, string mesh)[] Rooms =
+    {
+        ("VillageMart", "SM_Room_Mart"),
+        ("PlayerHome", "SM_Room_Home"),
+    };
+
+    /// <summary>새 껍데기가 대신하는, 씬에 있던 부품 이름입니다.</summary>
+    private static readonly string[] ShellParts =
+    {
+        "Floor", "Ceiling", "Roof", "Wall_N", "Wall_S", "Wall_E", "Wall_W",
+    };
+
     /// <summary>갈아 끼울 소품 무리입니다. 프리팹 폴더 · FBX 폴더 · 콜라이더 방식.</summary>
     private static readonly (string prefabs, string models, Hull hull)[] Families =
     {
@@ -105,7 +127,69 @@ public static class PropMeshSetup
             }
         }
 
+        SurveyRooms(scene);
+
         if (Application.isBatchMode) EditorApplication.Exit(0);
+    }
+
+    /// <summary>
+    /// 씬에 <b>직접 지어진</b> 방들을 잽니다. 프리팹이 아니라 씬 오브젝트입니다.
+    ///
+    /// 상점과 집 안쪽은 프리팹으로 묶여 있지 않고 벽·바닥·천장이 씬에 흩어져 있습니다.
+    /// 갈아 끼우려면 <b>안쪽 치수</b>를 알아야 합니다 — 바깥 봉투만 맞추면 문이 벽을
+    /// 향하거나 진열대가 벽에 박힙니다.
+    /// </summary>
+    private static void SurveyRooms(Scene scene)
+    {
+        foreach (GameObject root in scene.GetRootGameObjects())
+        {
+            foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name != "VillageMart" && t.name != "PlayerHome") continue;
+
+                Renderer[] all = t.GetComponentsInChildren<Renderer>(true);
+                if (all.Length == 0) continue;
+
+                Bounds box = all[0].bounds;
+                for (int i = 1; i < all.Length; i++) box.Encapsulate(all[i].bounds);
+
+                Debug.Log($"PropMeshSetup: {t.name} — 바깥 {box.size.x:F2} × {box.size.z:F2} × " +
+                          $"{box.size.y:F2} m · 바닥 {box.min.y:F2} · 자리 " +
+                          $"({t.position.x:F1}, {t.position.z:F1}) · 부품 {all.Length} 개");
+
+                // <b>파일로 씁니다.</b> Debug.Log 는 배치모드 로그에서 잘려 나가
+                // 부품을 몇 개만 보고 판단하게 됩니다 - 실제로 벽을 못 보고 지나쳤습니다.
+                System.Text.StringBuilder sb = new System.Text.StringBuilder();
+
+                // <b>손자까지 봅니다.</b> 벽은 문 둘레로 쪼개져 자식에 렌더러를 답니다 -
+                // 직계 자식만 보다가 벽을 통째로 놓쳤습니다.
+                foreach (Transform part in t.GetComponentsInChildren<Transform>(true))
+                {
+                    if (part == t) continue;
+
+                    Renderer r = part.GetComponent<Renderer>();
+                    MeshFilter f = part.GetComponent<MeshFilter>();
+                    if (r == null) continue;
+
+                    Vector3 local = t.InverseTransformPoint(r.bounds.center);
+
+                    string path = part.name;
+                    for (Transform up = part.parent; up != null && up != t; up = up.parent)
+                    {
+                        path = up.name + "/" + path;
+                    }
+
+                    sb.AppendLine($"{path,-28} 크기 {r.bounds.size.x,6:F2} × {r.bounds.size.z,6:F2} × " +
+                                  $"{r.bounds.size.y,6:F2} · 가운데({local.x,6:F2},{local.y,5:F2},{local.z,6:F2}) · " +
+                                  $"{(f != null && f.sharedMesh != null ? f.sharedMesh.vertexCount : 0),4}v " +
+                                  $"{(f != null && f.sharedMesh != null ? f.sharedMesh.triangles.Length / 3 : 0),4}tri · " +
+                                  $"{(r.sharedMaterial != null ? r.sharedMaterial.name : "-")}");
+                }
+
+                System.IO.Directory.CreateDirectory("Logs/Rooms");
+                System.IO.File.WriteAllText("Logs/Rooms/" + t.name + ".txt", sb.ToString());
+            }
+        }
     }
 
     public static void Run()
@@ -129,6 +213,8 @@ public static class PropMeshSetup
                     Swap(path.Replace('\\', '/'), models, hull, materials);
                 }
             }
+
+            SwapRooms(materials);
 
             AssetDatabase.SaveAssets();
             Debug.Log("PropMeshSetup: 완료");
@@ -182,6 +268,97 @@ public static class PropMeshSetup
         }
 
         return map;
+    }
+
+    /// <summary>
+    /// 씬의 방 껍데기를 갈아 끼웁니다.
+    ///
+    /// 옛 부품은 <b>지우지 않고 끕니다.</b> 지우면 되돌릴 때 씬 파일을 통째로
+    /// 되감아야 하는데, 꺼 두면 껍데기 하나만 지우면 원래대로 돌아옵니다. 껍데기가
+    /// 마음에 안 들 가능성이 남아 있는 동안에는 그쪽이 낫습니다.
+    /// </summary>
+    private static void SwapRooms(Dictionary<string, Material> materials)
+    {
+        Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+        bool touched = false;
+
+        foreach ((string group, string mesh) in Rooms)
+        {
+            string modelPath = InteriorDir + "/" + mesh + ".fbx";
+
+            if (!File.Exists(modelPath))
+            {
+                Debug.Log($"PropMeshSetup: {mesh} 의 FBX 가 없어 건너뜁니다");
+                continue;
+            }
+
+            Transform room = Find(scene, group);
+            if (room == null)
+            {
+                Debug.Log($"PropMeshSetup: 씬에 {group} 이 없습니다");
+                continue;
+            }
+
+            Configure(modelPath, materials);
+
+            GameObject model = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
+            MeshFilter source = model.GetComponentInChildren<MeshFilter>(true);
+            Renderer sourceRenderer = model.GetComponentInChildren<Renderer>(true);
+
+            foreach (string name in ShellParts)
+            {
+                Transform part = room.Find(name);
+                if (part != null) part.gameObject.SetActive(false);
+            }
+
+            Transform shell = room.Find("Shell");
+            if (shell == null)
+            {
+                shell = new GameObject("Shell").transform;
+                shell.SetParent(room, false);
+            }
+
+            shell.gameObject.layer = room.gameObject.layer;
+            shell.localPosition = Vector3.zero;
+            shell.localRotation = Quaternion.identity;
+
+            MeshFilter filter = shell.GetComponent<MeshFilter>();
+            if (filter == null) filter = shell.gameObject.AddComponent<MeshFilter>();
+            filter.sharedMesh = source.sharedMesh;
+
+            MeshRenderer renderer = shell.GetComponent<MeshRenderer>();
+            if (renderer == null) renderer = shell.gameObject.AddComponent<MeshRenderer>();
+            renderer.sharedMaterials = sourceRenderer.sharedMaterials;
+
+            // 안으로 걸어 들어가야 하므로 상자가 아니라 메시 콜라이더입니다.
+            MeshCollider collider = shell.GetComponent<MeshCollider>();
+            if (collider == null) collider = shell.gameObject.AddComponent<MeshCollider>();
+            collider.sharedMesh = source.sharedMesh;
+            collider.convex = false;
+
+            touched = true;
+
+            Debug.Log($"PropMeshSetup: {group} ← {mesh} · " +
+                      $"{source.sharedMesh.triangles.Length / 3} tris · 옛 껍데기 끔");
+        }
+
+        if (!touched) return;
+
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene);
+    }
+
+    private static Transform Find(Scene scene, string name)
+    {
+        foreach (GameObject root in scene.GetRootGameObjects())
+        {
+            foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name == name) return t;
+            }
+        }
+
+        return null;
     }
 
     private static void Swap(string prefabPath, string modelDir, Hull hull,
