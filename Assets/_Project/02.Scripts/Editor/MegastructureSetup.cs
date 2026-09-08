@@ -32,14 +32,43 @@ public static class MegastructureSetup
     private const string ShotDir = "Logs/Megastructure";
 
     /// <summary>
-    /// 스파인 하나에 들어가는 베이 수입니다.
+    /// 스파인이 덮어야 할 최소 길이(m)입니다.
     ///
-    /// 실측한 지형이 1100 × 1200 m 입니다. 24 베이(1008 m)로는 세계 안에서 <b>양 끝이
-    /// 보입니다</b> — 끝이 보이면 "무한히 연장 가능"이 거짓말이 됩니다. 32 베이면
-    /// 1344 m 라 가장 긴 축(1200 m)보다 길어 어느 방향으로 놓아도 밖으로 나갑니다.
-    /// 길이는 미학이 아니라 정의에서 나오는 값입니다.
+    /// 실측한 지형이 1100 × 1200 m 입니다. 그보다 짧으면 세계 안에서 <b>양 끝이
+    /// 보이고</b>, 끝이 보이면 "무한히 연장 가능"이 거짓말이 됩니다. 프리셋마다 길이가
+    /// 다르므로 개수가 아니라 <b>길이</b>로 정합니다.
     /// </summary>
-    private const int SpineBays = 32;
+    private const float SpineLength = 1340f;
+
+    private const string ManifestPath = ModelDir + "/presets.json";
+
+    // --- Manifest ---
+
+    /// <summary>
+    /// 블렌더가 낸 프리셋 목록입니다. <b>길이는 여기서 읽습니다.</b>
+    ///
+    /// C# 에 42 라고 적어 두면 블렌더 쪽 상수가 바뀌는 순간 조용히 틈이 생기거나
+    /// 겹칩니다. 리그 JSON 과 같은 원칙입니다 — 치수는 만든 쪽이 적고 쓰는 쪽은 읽습니다.
+    /// </summary>
+    [Serializable]
+    private class Manifest
+    {
+        public float bay;
+        public float width;
+        public int seamPoints;
+        public Preset[] presets;
+    }
+
+    [Serializable]
+    private class Preset
+    {
+        public string name;
+        public string mesh;
+        public int bays;
+        public float length;
+        public int weight;
+        public float top;
+    }
 
     /// <summary>
     /// FBX 안의 이름 → 프로젝트 머티리얼 이름과 <b>설계한 명도</b>입니다.
@@ -76,17 +105,29 @@ public static class MegastructureSetup
 
             Directory.CreateDirectory(PrefabDir);
 
-            List<GameObject> bays = new List<GameObject>();
+            Manifest manifest = JsonUtility.FromJson<Manifest>(
+                System.IO.File.ReadAllText(ManifestPath));
+
+            if (manifest == null || manifest.presets == null || manifest.presets.Length == 0)
+            {
+                throw new Exception("프리셋 목록을 읽지 못했습니다: " + ManifestPath);
+            }
+
+            Dictionary<string, GameObject> made = new Dictionary<string, GameObject>();
+
             foreach (string model in models)
             {
                 Configure(model, materials);
-                bays.Add(BuildBay(model));
+                GameObject piece = BuildBay(model);
+
+                Preset owner = manifest.presets.FirstOrDefault(p => p.mesh == piece.name);
+                if (owner != null) made[owner.name] = piece;
             }
 
-            BuildSpine(bays);
+            BuildSpine(manifest, made);
 
             AssetDatabase.SaveAssets();
-            Debug.Log($"MegastructureSetup: 베이 {bays.Count} 종 · 스파인 {SpineBays} 베이 완료");
+            Debug.Log($"MegastructureSetup: 프리셋 {made.Count} 종 · 이음매 {manifest.seamPoints} 점 확인됨");
         }
         catch (Exception e)
         {
@@ -279,50 +320,119 @@ public static class MegastructureSetup
     }
 
     /// <summary>
-    /// 베이를 이어 스파인 하나를 만듭니다.
+    /// 프리셋을 <b>순서대로</b> 이어 스파인 하나를 만듭니다.
     ///
-    /// <b>베이 길이는 재서 씁니다.</b> 42 라고 적어 두면 블렌더 쪽 상수가 바뀌는 순간
-    /// 조용히 틈이 생기거나 겹칩니다. 메시의 x 폭이 곧 베이 길이이므로 그것을 읽고,
-    /// <b>모든 베이가 같은 길이인지 확인</b>합니다 — 다르면 이어 붙는다는 전제가
-    /// 깨진 것이라 여기서 멈춰야 합니다.
+    /// <b>변화는 잡음이 아니라 순서에서 옵니다.</b> 맨 골조가 이어지다 거주 구간이 오고,
+    /// 설비가 붙고, 분기가 갈라지고, 한 번 초거대 덩어리를 지나 다시 맨 골조로
+    /// 돌아갑니다. 값을 흔들어 만든 비슷한 조각을 늘어놓는 것과는 다른 결과입니다.
+    ///
+    /// 규칙은 셋뿐입니다:
+    ///   · 양 끝은 맨 골조입니다. 세계 밖으로 나가는 부분에 프로그램을 쓰면 낭비입니다.
+    ///   · 큰 조각(2 베이 이상)끼리는 붙이지 않습니다. 사이에 맨 골조가 들어가야
+    ///     각각이 <b>사건</b>으로 읽힙니다.
+    ///   · 초거대는 한 번만. 두 번 나오면 초거대가 아닙니다.
     /// </summary>
-    private static void BuildSpine(List<GameObject> bays)
+    private static void BuildSpine(Manifest manifest, Dictionary<string, GameObject> made)
     {
-        float length = Measure(bays[0]).size.x;
-
-        foreach (GameObject bay in bays)
-        {
-            float other = Measure(bay).size.x;
-            if (Mathf.Abs(other - length) > 0.01f)
-            {
-                throw new Exception($"베이 길이가 다릅니다: {bays[0].name} {length:F3} m vs " +
-                                    $"{bay.name} {other:F3} m — 이어 붙지 않습니다");
-            }
-        }
+        List<Preset> order = Sequence(manifest);
 
         GameObject root = new GameObject("MegaSpine");
 
         try
         {
-            System.Random rng = new System.Random(20260908);
+            float total = order.Sum(p => p.length);
+            float at = -total * 0.5f;
 
-            for (int i = 0; i < SpineBays; i++)
+            foreach (Preset preset in order)
             {
-                GameObject bay = (GameObject)PrefabUtility.InstantiatePrefab(bays[rng.Next(bays.Count)]);
-                bay.transform.SetParent(root.transform, false);
-                bay.transform.localPosition = new Vector3(0f, 0f, (i - SpineBays * 0.5f + 0.5f) * length);
+                GameObject piece = (GameObject)PrefabUtility.InstantiatePrefab(made[preset.name]);
+                piece.transform.SetParent(root.transform, false);
+                piece.transform.localPosition = new Vector3(0f, 0f, at + preset.length * 0.5f);
 
                 // 스파인이 z 로 흐르게 돌립니다. 블렌더에서는 x 가 진행 방향이었습니다.
-                bay.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
+                piece.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
+
+                at += preset.length;
             }
 
             PrefabUtility.SaveAsPrefabAsset(root, SpinePath);
-            Debug.Log($"MegastructureSetup: 스파인 {SpineBays} 베이 × {length:F1} m = {SpineBays * length:F0} m");
+
+            Debug.Log($"MegastructureSetup: 스파인 {order.Count} 조각 · {total:F0} m — " +
+                      string.Join(" ", order.Select(p => p.name)));
         }
         finally
         {
             UnityEngine.Object.DestroyImmediate(root);
         }
+    }
+
+    private static List<Preset> Sequence(Manifest manifest)
+    {
+        Dictionary<string, Preset> byName = manifest.presets.ToDictionary(p => p.name);
+
+        if (!byName.TryGetValue("Viaduct", out Preset link))
+        {
+            throw new Exception("이어 주는 Viaduct 프리셋이 없습니다");
+        }
+
+        // 길이가 베이의 정수배가 아니면 격자가 깨집니다. 여기서 멈추는 편이 낫습니다.
+        foreach (Preset preset in manifest.presets)
+        {
+            float bays = preset.length / manifest.bay;
+            if (Mathf.Abs(bays - Mathf.Round(bays)) > 0.01f)
+            {
+                throw new Exception($"{preset.name} 의 길이 {preset.length:F2} m 가 " +
+                                    $"베이 {manifest.bay:F1} m 의 정수배가 아닙니다");
+            }
+        }
+
+        // <b>맨 골조도 후보에 남깁니다.</b> 처음에 이것을 빼 두었더니 가운데가 통째로
+        // 프로그램으로 차서, 사이가 없어 각 구간이 사건으로 안 읽혔습니다.
+        // 무게 5 로 가장 흔한 조각이 되어 사이를 벌립니다.
+        //
+        // 초거대는 여기서 뽑지 않습니다. 무작위로 뽑으면 끝에 붙어 세계 밖으로
+        // 나갈 수 있는데, 한 번뿐인 지표를 못 보게 되는 것은 그냥 손해입니다.
+        List<Preset> pool = manifest.presets.Where(p => p.bays < 3).ToList();
+        Preset huge = manifest.presets.OrderByDescending(p => p.bays).First();
+
+        List<Preset> order = new List<Preset> { link, link };
+
+        System.Random rng = new System.Random(20260908);
+        float length = order.Sum(p => p.length) + huge.length + link.length * 4f;
+
+        while (length < SpineLength)
+        {
+            int total = pool.Sum(p => Mathf.Max(1, p.weight));
+            int roll = rng.Next(total);
+            Preset pick = pool[0];
+
+            foreach (Preset candidate in pool)
+            {
+                roll -= Mathf.Max(1, candidate.weight);
+                if (roll < 0) { pick = candidate; break; }
+            }
+
+            // 큰 조각끼리는 붙이지 않습니다. 사이에 맨 골조가 들어가야 각각이
+            // <b>사건</b>으로 읽힙니다.
+            if (pick.bays >= 2 && order[order.Count - 1].bays >= 2)
+            {
+                order.Add(link);
+                length += link.length;
+            }
+
+            order.Add(pick);
+            length += pick.length;
+        }
+
+        order.Add(link);
+        order.Add(link);
+
+        // 초거대는 <b>한가운데</b>에 끼웁니다. 세계를 가로지르는 스파인의 중간이므로
+        // 어느 방향에서 와도 보이고, 양옆에 맨 골조를 붙여 홀로 서게 합니다.
+        int middle = order.Count / 2;
+        order.InsertRange(middle, new[] { link, huge, link });
+
+        return order;
     }
 
     private static Bounds Measure(GameObject go)

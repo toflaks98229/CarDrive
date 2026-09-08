@@ -1,59 +1,47 @@
 # -*- coding: utf-8 -*-
 """
-Megastructure generator for CarDrive - a SPINE of tileable megaframe bays.
+Megastructure generator for CarDrive - INTERLOCKING PRESETS on a shared socket.
 
-WHAT A MEGASTRUCTURE ACTUALLY IS
-  Not a big brutalist building. The term is from 1960s urbanism (Maki 1964,
-  Banham 1976). Ralph Wilcoxon's definition, the one Banham works from, is
-  four points:
+WHAT A MEGASTRUCTURE IS (Maki 1964, Banham 1976, Wilcoxon's four points)
+  1. built of MODULAR UNITS
+  2. capable of great or even UNLIMITED EXTENSION
+  3. a FRAMEWORK into which smaller units are plugged or clipped, having been
+     prefabricated elsewhere
+  4. the framework outlives the units it carries, by a long way
 
-    1. built of MODULAR UNITS
-    2. capable of great or even UNLIMITED EXTENSION
-    3. a structural FRAMEWORK into which smaller units are built, plugged in
-       or clipped on, having been prefabricated elsewhere
-    4. that framework outlives the units it carries, by a long way
+WHY PRESETS AND NOT SEEDS
+  The first working version drew every number from a range with a seed. That
+  gave four bays that differed, but it could not give a megastructure a
+  PROGRAMME: a stretch of bare viaduct, then habitation, then a junction, then
+  something enormous, then viaduct again. Random values inside one range can
+  only ever produce one kind of thing at slightly different sizes.
 
-  Maki: "a large frame in which all the functions of a city are housed... it is
-  a man-made feature of the landscape."
+  Presets are named, coherent parameter blocks - Viaduct, Habitat, Industry,
+  Junction, Citadel. A spine is then a SEQUENCE of presets, and the variety
+  comes from the sequence rather than from noise. That is also how the real
+  ones were drawn: Tange's Tokyo Bay is a spine with distinct programme pieces
+  hung off it, not one bay repeated with jitter.
 
-  The first version of this file got all four wrong. It made four finished
-  towers - one scale, one material, a composed silhouette with a top, standing
-  as objects on the ground. Brutalist, yes. Megastructure, no.
+WHAT MAKES THEM INTERLOCK
+  A contract, not a convention. Every preset builds the SAME core - legs,
+  transfer truss, deck, road, parapets, service ducts - from <c>SOCKET</c>, and
+  <b>only the core crosses the seam</b>. Everything a preset adds is inset from
+  both ends. So any preset can follow any other, and <c>verify()</c> checks it
+  by comparing the actual vertex profile at the two end planes.
 
-WHAT THAT MEANS FOR GEOMETRY
-  * TWO SCALES, VISIBLY DIFFERENT. A coarse permanent MEGAFRAME (pylons,
-    transfer trusses, decks, service ducts) and a fine transient INFILL
-    (dwelling cells clipped into slots). If both read at one scale it is a
-    building. The value split does the work: pale frame, dark cells.
-  * IT MUST RUN OFF-FRAME. So the unit of production is a BAY that tiles end
-    to end, not a structure with a footprint. Everything crossing the seam is
-    exactly one bay long and butts. That is points 1 and 2, built in.
-  * EMPTY SLOTS. Cells are prefabricated and clipped on, so some slots are not
-    filled yet, or not any more. An empty slot is the clearest possible
-    statement of point 3 - you can see the frame is the permanent thing.
-  * CIRCULATION IS THE FORM. The deck is artificial ground carrying a road
-    (Park Hill's "streets in the sky" were wide enough for a milk float;
-    Tange's Boston Harbor put roads and monorail inside the structure). In a
-    driving game this is the whole point: you drive UNDER it through the pylon
-    bays, and the deck above carries a road you can see.
-
-DESIGN RULES kept from the mechs
-  * Rectangular masses, no ornament, value contrast carries the read.
-  * NO CHAMFER, NO BOOLEANS. Openings are built as boxes framing the gap.
-  * World-scale UV at 1 m per repeat - the same tile as the mechs, so concrete
-    is the same concrete everywhere.
+  A preset may be several bays long. Its length is always a whole number of
+  bays, so the grid never breaks.
 
 Run:
     blender -b --python build_megastructure.py
-    blender -b --python build_megastructure.py -- --seeds 3,17
 """
 import json
+import math
 import os
 import random
 import sys
 
 import bpy
-from mathutils import Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
@@ -62,31 +50,31 @@ if HERE not in sys.path:
 import hardsurface  # noqa: E402
 import uv_worldscale  # noqa: E402
 
-# --- Paths ------------------------------------------------------------------
-
 OUT_DIR = r"E:\GamePJ\CarDrive\Assets\_Project\04.Art\02.Models\Megastructure"
+MANIFEST = r"E:\GamePJ\CarDrive\Assets\_Project\04.Art\02.Models\Megastructure\presets.json"
 BLEND_PATH = r"E:\GamePJ\CarDrive\Art\Blender\Megastructure.blend"
 UV_TILE = 1.0
 
-# --- The one dimension everything else hangs off ----------------------------
-# 한 베이의 길이입니다. <b>이 숫자만은 씨앗이 흔들지 않습니다.</b> 베이가 서로 다른
-# 길이면 이어 붙지 않고, 이어 붙지 않으면 "무한히 연장 가능"이 거짓말이 됩니다.
-BAY = 42.0
+# --- The interlock contract -------------------------------------------------
+# <b>이 값들은 프리셋이 흔들 수 없습니다.</b> 하나라도 프리셋마다 다르면 이음매가
+# 어긋나고, 어긋나면 "무한히 연장 가능"이 거짓말이 됩니다. 이음매를 지나는 부재는
+# 전부 이 표에서 나오고, 프리셋이 더하는 것은 <b>양 끝에서 안으로 물러나 있습니다.</b>
 
-# 데크 밑을 차가 지나갑니다.
-CLEARANCE = 9.0
+SOCKET = dict(
+    bay=42.0,        # 한 베이의 길이
+    width=34.0,      # 스파인의 폭
+    gate=22.0,       # 지면에서 트러스 밑까지. 이 밑으로 차가 지나갑니다
+    leg=(9.0, 11.0),
+    truss=8.0,
+    deck=2.0,
+    parapet=1.4,
+    duct=2.4,
+    burial=14.0,     # 다리가 원점 아래로 내려가는 깊이. 지형 기복을 파묻습니다
+    inset=1.2,       # 프리셋 부재가 이음매에서 물러나는 거리
+)
 
-# 다리가 원점 아래로 내려가는 깊이입니다.
-#
-# <b>고가도로의 상판은 수평이고 다리 길이가 다릅니다.</b> 그런데 베이는 메시 하나라
-# 다리 길이가 고정입니다. 그래서 원점 아래로 넉넉히 내려 두고 지형에 <b>파묻어</b>
-# 해결합니다 - 실측에서 이 세계의 가장 평탄한 선도 기복이 8.5 m 였고, 여유가 4 m
-# 였을 때는 다리가 4.5 m 떠올랐습니다. 파묻힌 부분은 안 보이므로 남아도 손해가 없습니다.
-BURIAL = 14.0
-
-# --- Materials --------------------------------------------------------------
-# 로봇과 같은 세 층입니다. 여기서 역할이 하나 더 붙습니다 - <b>콘크리트는 골조,
-# 어두운 것은 꽂아 넣은 캡슐</b>. 값이 수명이 다른 두 층을 갈라 줍니다.
+DECK_Z = SOCKET["gate"] + SOCKET["truss"]
+DECK_TOP = DECK_Z + SOCKET["deck"]
 
 MATS = [
     ("M_Mega_Concrete", (0.465, 0.452, 0.430, 1.0), 0.95, 0.00),
@@ -94,254 +82,405 @@ MATS = [
     ("M_Mega_Dark", (0.048, 0.050, 0.054, 1.0), 0.65, 1.00),
 ]
 
-MAT_CONCRETE, MAT_STEEL, MAT_DARK = 0, 1, 2
+CONCRETE, STEEL, DARK = 0, 1, 2
+
+# --- Presets ----------------------------------------------------------------
+# 각각이 <b>한 가지 용도</b>입니다. 값을 조금씩 흔든 같은 물건이 아닙니다.
+
+PRESETS = {
+    # 연결 조직. 아무것도 얹지 않은 맨 골조입니다. 사이사이에 이것이 있어야
+    # 나머지가 <b>얹힌 것</b>으로 보입니다 — 전부 채우면 그냥 긴 건물입니다.
+    "Viaduct": dict(bays=1, tiers=0, upper=0.0, weight=5),
+
+    # 사람이 사는 칸. 골조 슬롯에 캡슐이 꽂히고 몇 자리는 비어 있습니다.
+    "Habitat": dict(bays=1, tiers=4, upper=22.0, fill=0.62, weight=6),
+
+    # 설비. 탱크와 굴뚝, 데크 위를 건너는 컨베이어 갠트리.
+    "Industry": dict(bays=1, tiers=2, upper=15.0, fill=0.35, tanks=True, weight=3),
+
+    # 분기. 스파인에서 직각으로 갈라지는 두 번째 데크와 큰 코어.
+    "Junction": dict(bays=2, tiers=3, upper=30.0, fill=0.5, branch=True, weight=2),
+
+    # <b>초거대.</b> 스파인이 뚫고 지나가는 덩어리. 세 베이에 걸치고 170 m 를 올라갑니다.
+    "Citadel": dict(bays=3, tiers=22, upper=118.0, fill=0.62, block=True, weight=1),
+}
 
 
-# --- Geometry ---------------------------------------------------------------
+# --- Shared core ------------------------------------------------------------
 
 
-# --- Dimensions -------------------------------------------------------------
-
-
-def spec(seed):
+def core(m, length, bays):
     """
-    씨앗 하나에서 한 <b>베이</b>의 치수를 뽑습니다.
+    모든 프리셋이 똑같이 세우는 뼈대입니다. <b>이음매를 지나는 것은 전부 여기 있습니다.</b>
 
-    <b>골조 치수는 흔들지 않습니다.</b> 베이 길이·데크 높이·기둥 간격이 베이마다
-    다르면 이어 붙지 않고, 이어 붙지 않으면 연장이 불가능합니다. 흔드는 것은
-    <b>꽂혀 있는 것</b>입니다 - 어느 슬롯이 찼는지, 캡슐이 얼마나 튀어나왔는지,
-    이 베이에 계단탑이 있는지. 그 자체가 "골조는 영구, 캡슐은 임시"라는 뜻입니다.
+    다리는 베이마다 한 쌍씩 한가운데에 섭니다. 트러스·데크·노면·난간·덕트는 프리셋
+    전체 길이를 지나 양 끝에서 정확히 끊깁니다. 그래서 어떤 프리셋 뒤에 어떤 프리셋을
+    붙여도 이 단면끼리 맞닿습니다.
     """
-    rng = random.Random(seed)
-
-    return dict(
-        seed=seed,
-        # ---- 골조(영구) ----
-        bay=BAY,
-        width=34.0,
-        gate=22.0,          # 다리 구간. 이 밑으로 차가 지나갑니다.
-        leg=(9.0, 11.0),
-        truss=8.0,
-        deck=2.0,
-        parapet=1.4,
-        duct=2.4,
-        tiers=4,            # 캡슐 층수
-        tier=5.6,
-        upper=22.0,         # 상부 포털 높이
-        post=3.4,
-        # ---- 채움(가변) ----
-        cell=(6.4, 5.0, 4.4),
-        fill=rng.uniform(0.42, 0.74),
-        stair=rng.random() < 0.5,
-        tank=rng.random() < 0.45,
-    )
-
-
-def build(s):
-    """
-    베이 하나를 세웁니다. 원점은 <b>지면이자 베이의 한가운데</b>입니다.
-
-    x 가 스파인 방향이고 베이는 x 로 <c>bay</c> 만큼 차지합니다. 같은 것을
-    <c>bay</c> 간격으로 늘어놓으면 이어집니다.
-
-    <b>단면이 골조와 채움을 번갈아 갑니다.</b> 첫 판에서는 캡슐이 골조를 덮어 버려
-    긴 선반 위의 상자 더미로 보였습니다 - Wilcoxon 의 3·4 번(골조가 주인이고 더
-    오래 산다)이 그림에서 뒤집힌 것입니다. 지금은 이렇게 쌓입니다:
-
-        0  ~ 22   다리 구간 - 골조만. 차가 지나갑니다.
-       22 ~ 30    이송 트러스 - 골조. 구멍이 뚫린 깊은 보.
-       30 ~ 32    주 데크 - 골조이자 <b>인공 지반</b>. 도로가 놓입니다.
-       32 ~ 54    캡슐 구간 - 채움. 슬롯 기둥이 캡슐보다 <b>바깥</b>에 섭니다.
-       54 ~ 56    상부 데크 - 두 번째 인공 지반.
-       56 ~ 78    상부 포털 - 골조만. 하늘이 비쳐 "위로도 계속된다"가 됩니다.
-    """
-    m = hardsurface.Mass(MATS)
-    rng = random.Random(s["seed"] * 104729 + 7)
-
-    L, W = s["bay"], s["width"]
-    lx, ly = s["leg"]
-    gate = s["gate"]
-    truss = s["truss"]
-    deck_z = gate + truss
-    deck_top = deck_z + s["deck"]
+    W = SOCKET["width"]
+    lx, ly = SOCKET["leg"]
+    gate = SOCKET["gate"]
+    truss = SOCKET["truss"]
+    duct = SOCKET["duct"]
 
     # ---- 다리 --------------------------------------------------------------
-    # 베이 한가운데에 한 쌍. 밑이 벌어진 A 자입니다(Sant'Elia -> Tange).
-    for sign in (-1.0, 1.0):
-        m.box((0.0, sign * (W * 0.5 - ly * 0.5), (gate + 4.0 - BURIAL) * 0.5),
-              (lx, ly, gate + 4.0 + BURIAL), MAT_CONCRETE, taper=0.30)
+    for b in range(bays):
+        x = (b - bays * 0.5 + 0.5) * SOCKET["bay"]
 
-        # 기둥머리
-        m.box((0.0, sign * (W * 0.5 - ly * 0.5), gate - 1.4),
-              (lx + 3.4, ly + 2.6, 2.8), MAT_CONCRETE)
+        for sign in (-1.0, 1.0):
+            m.box((x, sign * (W * 0.5 - ly * 0.5),
+                   (gate + 4.0 - SOCKET["burial"]) * 0.5),
+                  (lx, ly, gate + 4.0 + SOCKET["burial"]), CONCRETE, taper=0.30)
 
-    # 다리를 잇는 인방. 차가 지나가는 문의 위쪽입니다.
-    m.box((0.0, 0.0, gate + truss * 0.34), (lx + 1.2, W - ly * 2.0 + 2.4, truss * 0.68),
-          MAT_CONCRETE)
+            m.box((x, sign * (W * 0.5 - ly * 0.5), gate - 1.4),
+                  (lx + 3.4, ly + 2.6, 2.8), CONCRETE)
+
+        # 다리를 잇는 인방. 차가 지나가는 문의 위쪽입니다.
+        m.box((x, 0.0, gate + truss * 0.34),
+              (lx + 1.2, W - ly * 2.0 + 2.4, truss * 0.68), CONCRETE)
 
     # ---- 이송 트러스 -------------------------------------------------------
-    # 스파인 방향으로 흐르는 깊은 보. 이음매를 지나므로 정확히 한 베이 길이입니다.
     for sign in (-1.0, 1.0):
         m.pierced((0.0, sign * (W * 0.5 - ly * 0.42), gate + truss * 0.5),
-                  (L, ly * 0.84, truss), 3, L / 3.0 * 0.56, truss * 0.5,
-                  MAT_CONCRETE, clip=L * 0.5)
+                  (length, ly * 0.84, truss), bays * 3,
+                  SOCKET["bay"] / 3.0 * 0.56, truss * 0.5,
+                  CONCRETE, clip=length * 0.5)
 
     # ---- 설비 덕트 ---------------------------------------------------------
-    # 데크 밑을 따라 끝없이 흐릅니다. 이음매에서 끊기면 안 됩니다.
-    duct = s["duct"]
     for sign in (-1.0, 1.0):
-        m.box((0.0, sign * (W * 0.5 - ly * 1.05), gate + duct * 0.4),
-              (L, duct, duct), MAT_STEEL)
-    m.box((0.0, 0.0, gate - duct * 0.5), (L, duct * 1.8, duct * 0.9), MAT_STEEL)
+        m.box((0.0, sign * (W * 0.5 - ly * 1.05), gate - duct * 0.6),
+              (length, duct, duct), STEEL)
 
-    # ---- 주 데크 -----------------------------------------------------------
-    m.box((0.0, 0.0, deck_z + s["deck"] * 0.5), (L, W, s["deck"]), MAT_CONCRETE)
-    m.box((0.0, 0.0, deck_top + 0.08), (L, W - 4.0, 0.16), MAT_DARK)
+    m.box((0.0, 0.0, gate - duct * 0.45), (length, duct * 1.8, duct * 0.9), STEEL)
 
-    for sign in (-1.0, 1.0):
-        m.box((0.0, sign * (W * 0.5 - 0.6), deck_top + s["parapet"] * 0.5),
-              (L, 1.2, s["parapet"]), MAT_CONCRETE)
-
-    # ---- 캡슐 구간 ---------------------------------------------------------
-    # <b>슬롯 기둥이 캡슐보다 바깥에 섭니다.</b> 그래야 골조가 앞에 서고 캡슐이
-    # 그 뒤에 꽂힌 것으로 읽힙니다. 반대로 두면 캡슐이 골조를 덮습니다.
-    cw, cd, ch = s["cell"]
-    cols = max(2, int(L / (cw + 1.2)))
-    pitch = L / cols
-    tier = s["tier"]
-    zone = s["tiers"] * tier
+    # ---- 데크 --------------------------------------------------------------
+    m.box((0.0, 0.0, DECK_Z + SOCKET["deck"] * 0.5), (length, W, SOCKET["deck"]), CONCRETE)
+    m.box((0.0, 0.0, DECK_TOP + 0.08), (length, W - 4.0, 0.16), DARK)
 
     for sign in (-1.0, 1.0):
-        yc = sign * (W * 0.5 - cd * 0.5)
+        m.box((0.0, sign * (W * 0.5 - 0.6), DECK_TOP + SOCKET["parapet"] * 0.5),
+              (length, 1.2, SOCKET["parapet"]), CONCRETE)
 
-        # 슬롯 기둥
+
+# --- Preset parts -----------------------------------------------------------
+
+
+def capsules(m, s, length, rng, y_half=None, base=None, fade=False):
+    """
+    골조 슬롯에 꽂힌 거주 캡슐입니다. <b>빈 슬롯이 핵심</b>입니다.
+
+    캡슐은 다른 데서 만들어 와 꽂는 것이므로 아직 안 찼거나 이미 빠진 자리가 있어야
+    합니다. 빈 슬롯 하나가 Wilcoxon 의 3·4 번(골조가 영구, 캡슐이 임시)을 눈으로
+    증명합니다. 슬롯 기둥은 캡슐보다 <b>바깥</b>에 서서 골조가 앞에 오게 합니다.
+    """
+    if s["tiers"] <= 0:
+        return
+
+    W = y_half if y_half is not None else SOCKET["width"] * 0.5
+    z0 = base if base is not None else DECK_TOP
+
+    cw, cd, ch = 6.4, 5.0, 4.4
+    inner = length - SOCKET["inset"] * 2.0
+    cols = max(2, int(inner / (cw + 1.2)))
+    pitch = inner / cols
+    tier = 5.6
+
+    for sign in (-1.0, 1.0):
         for i in range(cols + 1):
-            m.clipped((-L * 0.5 + i * pitch, sign * (W * 0.5 + 0.4),
-                       deck_top + zone * 0.5),
-                      (1.6, cd * 0.55, zone), 0, L * 0.5, MAT_CONCRETE)
+            m.box((-inner * 0.5 + i * pitch, sign * (W + 0.4),
+                   z0 + s["tiers"] * tier * 0.5),
+                  (1.6, cd * 0.55, s["tiers"] * tier), CONCRETE)
 
-        # 층 바닥판. 이것이 없으면 기둥만 서 있어 캡슐이 떠 보입니다.
         for t in range(s["tiers"] + 1):
-            m.box((0.0, sign * (W * 0.5 + 0.2), deck_top + t * tier),
-                  (L, cd * 0.75, 0.7), MAT_CONCRETE)
+            m.box((0.0, sign * (W + 0.2), z0 + t * tier), (inner, cd * 0.75, 0.7), CONCRETE)
 
-        # 캡슐
         for t in range(s["tiers"]):
+            # 위로 갈수록 덜 찹니다. 아직 못 올라간 것이지 지어진 적 없는 것이 아닙니다.
+            chance = s.get("fill", 0.6)
+            if fade:
+                chance *= 1.0 - 0.75 * (t / max(1, s["tiers"] - 1))
+
             for col in range(cols):
-                if rng.random() > s["fill"]:
+                if rng.random() > chance:
                     continue
-                x = -L * 0.5 + (col + 0.5) * pitch
-                m.box((x, yc, deck_top + (t + 0.5) * tier),
-                      (cw, cd * 1.5, ch), MAT_DARK)
-                m.box((x, yc - sign * cd * 0.72, deck_top + (t + 0.62) * tier),
-                      (cw * 0.5, 0.4, ch * 0.28), MAT_STEEL)
 
-    # ---- 상부 데크 ---------------------------------------------------------
-    up_z = deck_top + zone
-    m.box((0.0, 0.0, up_z + 1.0), (L, W - 3.0, 2.0), MAT_CONCRETE)
-    m.box((0.0, 0.0, up_z + 2.08), (L, W - 9.0, 0.16), MAT_DARK)
+                x = -inner * 0.5 + (col + 0.5) * pitch
+                m.box((x, sign * (W + cd * 0.5), z0 + (t + 0.5) * tier),
+                      (cw, cd * 1.5, ch), DARK)
+                m.box((x, sign * (W + cd), z0 + (t + 0.62) * tier),
+                      (cw * 0.5, 0.4, ch * 0.28), STEEL)
 
-    # ---- 상부 포털 ---------------------------------------------------------
-    # <b>열려 있어야 합니다.</b> 여기를 막으면 데크가 지붕이 되고 전체가 건물이 됩니다.
-    post = s["post"]
-    top = up_z + 2.0 + s["upper"]
+
+def portal(m, s, length, rng):
+    """
+    데크 위로 이어지는 열린 골조입니다.
+
+    <b>열려 있어야 합니다.</b> 여기를 막으면 데크가 지붕이 되고 전체가 건물이 됩니다.
+    하늘이 비쳐야 "위로도 계속된다"가 읽힙니다.
+    """
+    if s["upper"] <= 0.0:
+        return
+
+    # 덩어리 프리셋은 위가 막혀 있으므로 열린 포털이 설 자리가 없습니다.
+    if s.get("block"):
+        return
+
+    W = SOCKET["width"]
+    post = 3.4
+    inner = length - SOCKET["inset"] * 2.0
+    top = DECK_TOP + s["upper"]
 
     for sign in (-1.0, 1.0):
         for i in (-1, 1):
-            m.box((i * L * 0.30, sign * (W * 0.5 - post * 0.8), (up_z + 2.0 + top) * 0.5),
-                  (post, post, top - up_z - 2.0), MAT_CONCRETE)
+            m.box((i * inner * 0.34, sign * (W * 0.5 - post * 0.8), (DECK_TOP + top) * 0.5),
+                  (post, post, top - DECK_TOP), CONCRETE)
 
-    m.pierced((0.0, 0.0, top + 1.6), (L, W - post * 0.8, 3.2), 3, L / 3.0 * 0.62, 1.8,
-              MAT_CONCRETE, clip=L * 0.5)
+    # <b>끝에서 잘라야 합니다.</b> 안 자르면 마지막 살이 반쪽만큼 밖으로 나가
+    # 프리셋이 제 길이보다 길어집니다 - 실측에서 42 m 가 44.6 m 로 나왔습니다.
+    holes = max(3, int(inner / 14.0))
+    m.pierced((0.0, 0.0, top + 1.6), (inner, W - post * 0.8, 3.2), holes,
+              inner / holes * 0.62, 1.8, CONCRETE, clip=inner * 0.5)
 
     for sign in (-1.0, 1.0):
-        m.box((0.0, sign * (W * 0.5 - post * 0.8), top - 1.4), (L, post * 0.7, 1.4),
-              MAT_STEEL)
-
-    # ---- 이 베이에만 있는 것 -----------------------------------------------
-    # 전부 같으면 압출한 것으로 보입니다. 베이마다 다른 것이 하나쯤 있어야
-    # <b>덧붙여 자란 것</b>으로 읽힙니다.
-    if s["stair"]:
-        side = rng.choice((-1.0, 1.0))
-        m.box((L * 0.30, side * (W * 0.5 + 5.0), (top + 3.0) * 0.5),
-              (7.0, 7.0, top + 3.0), MAT_CONCRETE)
-        m.box((L * 0.30, side * (W * 0.5 + 5.0), top + 3.6), (8.4, 8.4, 1.4), MAT_STEEL)
-
-    if s["tank"]:
-        side = rng.choice((-1.0, 1.0))
-        m.box((-L * 0.28, side * (W * 0.5 - post * 2.4), up_z + 2.0 + 4.0),
-              (10.0, 9.0, 8.0), MAT_STEEL)
-
-    return m.to_object("SM_Mega_Bay_%d" % s["seed"])
+        m.box((0.0, sign * (W * 0.5 - post * 0.8), top - 1.4), (inner, post * 0.7, 1.4), STEEL)
 
 
-# --- Run --------------------------------------------------------------------
+def industry(m, s, length, rng):
+    """탱크와 굴뚝, 데크를 건너는 갠트리. 설비가 여기 있다고 말하는 어휘입니다."""
+    if not s.get("tanks"):
+        return
+
+    W = SOCKET["width"]
+    inner = length - SOCKET["inset"] * 2.0
+
+    for i in (-1, 1):
+        m.box((i * inner * 0.26, -W * 0.16, DECK_TOP + 5.0), (9.0, 9.0, 10.0), STEEL)
+        m.box((i * inner * 0.26, -W * 0.16, DECK_TOP + 10.4), (10.2, 10.2, 0.8), CONCRETE)
+
+    m.box((inner * 0.32, W * 0.28, DECK_TOP + 13.0), (4.0, 4.0, 26.0), CONCRETE)
+    m.box((inner * 0.32, W * 0.28, DECK_TOP + 26.2), (5.0, 5.0, 0.8), STEEL)
+
+    # 갠트리. 데크를 가로질러 양쪽 캡슐 열을 잇습니다.
+    m.box((0.0, 0.0, DECK_TOP + 16.0), (5.0, W + 10.0, 2.6), STEEL)
 
 
-def run(seeds):
+def branch(m, s, length, rng):
+    """
+    직각으로 갈라지는 두 번째 데크입니다.
+
+    <b>분기가 있어야 체계로 보입니다.</b> 한 줄만 있으면 다리이고, 갈라지는 곳이
+    있어야 이것이 <b>망</b>의 일부라는 것이 읽힙니다.
+    """
+    if not s.get("branch"):
+        return
+
+    W = SOCKET["width"]
+    reach = 46.0
+    side = 1.0
+
+    for i in (-1, 1):
+        m.box((i * 9.0, side * (W * 0.5 + reach * 0.5), DECK_Z + SOCKET["deck"] * 0.5),
+              (7.0, reach, SOCKET["deck"] + 1.4), CONCRETE)
+
+    m.box((0.0, side * (W * 0.5 + reach), (DECK_Z - SOCKET["burial"]) * 0.5),
+          (14.0, 12.0, DECK_Z + SOCKET["burial"]), CONCRETE, taper=0.22)
+
+    m.box((0.0, side * (W * 0.5 + reach * 0.5), DECK_TOP + 0.1),
+          (14.0, reach, 0.2), DARK)
+
+
+def citadel(m, s, length, rng):
+    """
+    <b>초거대 덩어리.</b> 스파인이 뚫고 지나갑니다.
+
+    <b>왜 뚫고 지나가야 하는가.</b> 덩어리를 스파인 옆에 세우면 그냥 큰 건물이고,
+    스파인이 그 안을 지나가면 <b>골조가 먼저 있고 덩어리가 거기 걸린 것</b>이 됩니다.
+    그것이 메가스트럭처와 마천루를 가르는 자리입니다.
+
+    구멍은 뚫지 않고 <b>구멍 둘레</b>를 세웁니다 — 통로 좌우의 살과 그 위의 인방.
+    """
+    if not s.get("block"):
+        return
+
+    W = SOCKET["width"]
+    inner = length - SOCKET["inset"] * 2.0
+    depth = 74.0
+    top = DECK_TOP + s["upper"]
+
+    # 통로 좌우의 살. 스파인이 지나갈 폭은 비웁니다.
+    flank = (depth - W - 6.0) * 0.5
+
+    for sign in (-1.0, 1.0):
+        y = sign * (W * 0.5 + 3.0 + flank * 0.5)
+        m.box((0.0, y, (top - SOCKET["burial"]) * 0.5),
+              (inner, flank, top + SOCKET["burial"]), CONCRETE)
+
+        # 옆구리에 꽂힌 캡슐. <b>덩어리도 골조라는 것</b>을 말합니다.
+        #
+        # 슬롯은 꼭대기까지 올라가고 위로 갈수록 덜 찹니다. 처음에는 열 층만 세웠더니
+        # 위쪽 77 m 가 민짜 콘크리트로 남아 그 부분만 마천루로 보였습니다. 빈 슬롯이
+        # 끝까지 이어져야 <b>아직 안 채운 골조</b>로 읽힙니다.
+        capsules(m, dict(tiers=s["tiers"], fill=s["fill"] * 0.55), inner, rng,
+                 y_half=abs(y) + flank * 0.5, base=DECK_TOP + 8.0, fade=True)
+
+    # 통로 위의 인방. 여기부터 위가 덩어리로 이어집니다.
+    lid = DECK_TOP + SOCKET["parapet"] + 12.0
+    m.box((0.0, 0.0, (lid + top) * 0.5), (inner, W + 6.0, top - lid), CONCRETE)
+    m.box((0.0, 0.0, lid + 0.9), (inner, W + 7.4, 1.8), DARK)
+
+    # 설비 띠. 층수를 끊어 세게 만들고, 민짜 벽이 남지 않게 합니다.
+    for i in range(1, 5):
+        m.box((0.0, 0.0, lid + (top - lid) * i / 5.0), (inner + 0.6, W + 7.0, 2.2), DARK)
+
+    # 꼭대기의 코어와 테두리
+    for i in (-1, 1):
+        m.box((i * inner * 0.3, i * depth * 0.24, top + 11.0), (12.0, 12.0, 22.0), CONCRETE)
+        m.box((i * inner * 0.3, i * depth * 0.24, top + 22.4), (13.6, 13.6, 1.2), STEEL)
+
+    m.box((0.0, 0.0, top + 0.9), (inner + 2.0, depth + 2.0, 1.8), DARK)
+
+
+# --- Build ------------------------------------------------------------------
+
+
+def build(name):
+    """프리셋 하나를 세웁니다. 원점은 <b>지면이자 프리셋의 한가운데</b>입니다."""
+    s = PRESETS[name]
+    bays = s["bays"]
+    length = bays * SOCKET["bay"]
+
+    m = hardsurface.Mass(MATS)
+    rng = random.Random(abs(hash(name)) % 100000)
+
+    core(m, length, bays)
+    capsules(m, s, length, rng)
+    portal(m, s, length, rng)
+    industry(m, s, length, rng)
+    branch(m, s, length, rng)
+    citadel(m, s, length, rng)
+
+    return m.to_object("SM_Mega_" + name)
+
+
+def seam(obj, x):
+    """
+    끝면에 닿는 꼭짓점의 (y, z) 목록입니다. <b>연동 규약의 증거</b>입니다.
+
+    두 프리셋의 이 목록이 같으면 어떤 순서로 붙여도 단면이 맞습니다. 말로 "맞춰
+    두었다" 고 적는 것과 <b>재서 같다는 것</b>은 다릅니다.
+    """
+    out = set()
+
+    for v in obj.data.vertices:
+        if abs(v.co.x - x) < 1e-4:
+            out.add((round(v.co.y, 3), round(v.co.z, 3)))
+
+    return out
+
+
+def verify(made):
+    """모든 프리셋이 양 끝에서 같은 단면을 내미는지 확인합니다."""
+    profiles = {}
+
+    for name, obj in made.items():
+        half = PRESETS[name]["bays"] * SOCKET["bay"] * 0.5
+        lo = seam(obj, -half)
+        hi = seam(obj, half)
+
+        assert lo == hi, "%s 의 양 끝 단면이 서로 다릅니다" % name
+        profiles[name] = lo
+
+    first = next(iter(profiles))
+
+    for name, profile in profiles.items():
+        if profile == profiles[first]:
+            continue
+
+        missing = sorted(profiles[first] - profile)[:4]
+        extra = sorted(profile - profiles[first])[:4]
+        raise AssertionError(
+            "%s 의 이음매가 %s 과 다릅니다 — 없는 것 %s · 남는 것 %s"
+            % (name, first, missing, extra))
+
+    return len(profiles[first])
+
+
+def run():
+    made = {}
     report = []
 
-    for seed in seeds:
+    for name in PRESETS:
         hardsurface.wipe()
         hardsurface.ensure_materials(MATS)
 
-        s = spec(seed)
-        obj = build(s)
+        obj = build(name)
+        made[name] = obj
         uv_worldscale.box_uv(obj, UV_TILE)
 
         path = os.path.join(OUT_DIR, obj.name + ".fbx")
         written = hardsurface.export_fbx(path)
 
         lo, hi = hardsurface.bounds(obj)
+        want = PRESETS[name]["bays"] * SOCKET["bay"]
+
         report.append(dict(
-            name=obj.name, seed=seed,
+            name=obj.name, preset=name, bays=PRESETS[name]["bays"],
+            length=round(hi[0] - lo[0], 3), want=want,
+            tiles=abs((hi[0] - lo[0]) - want) < 0.01,
+            size=[round(hi[a] - lo[a], 2) for a in range(3)],
+            top=round(hi[2], 1),
             tris=sum(len(p.vertices) - 2 for p in obj.data.polygons),
-            size=[round(hi[i] - lo[i], 2) for i in range(3)],
-            # 이음매가 맞는지의 증거입니다. x 길이가 베이 길이와 같아야 합니다.
-            span_x=round(hi[0] - lo[0], 3), bay=s["bay"],
-            tiles=abs((hi[0] - lo[0]) - s["bay"]) < 0.01,
-            clearance=round(s["gate"], 2),
-            uv=uv_worldscale.density_report([obj])[1],
-            fbx=written))
+            weight=PRESETS[name]["weight"], fbx=written))
 
-    return report
+    # 이음매 검사는 <b>전부 만든 뒤</b>에 합니다. 하나만 보고는 알 수 없습니다.
+    hardsurface.wipe()
+    hardsurface.ensure_materials(MATS)
+    fresh = {name: build(name) for name in PRESETS}
+    points = verify(fresh)
+
+    with open(MANIFEST, "w", encoding="utf-8") as f:
+        json.dump(dict(
+            bay=SOCKET["bay"], width=SOCKET["width"], burial=SOCKET["burial"],
+            seamPoints=points,
+            presets=[dict(name=r["preset"], mesh=r["name"], bays=r["bays"],
+                          length=r["length"], weight=r["weight"], top=r["top"])
+                     for r in report]), f, indent=1)
+
+    return report, points
 
 
-def lay_out(seeds, length=11):
-    """
-    베이를 <b>실제로 이어 붙여</b> blend 에 남깁니다.
-
-    한 베이만 보면 이어지는지 알 수 없습니다. 늘어놓아야 이음매가 맞는지, 덕트가
-    끊기지 않는지, 그리고 무엇보다 <b>끝이 안 보이는지</b>가 보입니다.
-    """
+def lay_out():
+    """프리셋을 <b>실제로 이어 붙여</b> blend 에 남깁니다. 늘어놓아야 이음매가 보입니다."""
     hardsurface.wipe()
     hardsurface.ensure_materials(MATS)
 
     made = {}
-    for seed in seeds:
-        obj = build(spec(seed))
+    for name in PRESETS:
+        obj = build(name)
         uv_worldscale.box_uv(obj, UV_TILE)
-        obj.location.y = 4000.0
-        made[seed] = obj
+        obj.location.y = 6000.0
+        made[name] = obj
 
-    rng = random.Random(20260908)
-    for i in range(length):
-        source = made[rng.choice(seeds)]
+    order = ["Viaduct", "Viaduct", "Habitat", "Habitat", "Industry", "Viaduct",
+             "Citadel", "Viaduct", "Habitat", "Junction", "Habitat", "Viaduct",
+             "Industry", "Viaduct", "Viaduct"]
+
+    x = 0.0
+    for name in order:
+        span = PRESETS[name]["bays"] * SOCKET["bay"]
+        source = made[name]
+
         copy = source.copy()
         copy.data = source.data
-        copy.location = (i - length * 0.5) * BAY, 0.0, 0.0
+        copy.location = (x + span * 0.5, 0.0, 0.0)
         bpy.context.scene.collection.objects.link(copy)
+
+        x += span
 
     bpy.ops.wm.save_as_mainfile(filepath=BLEND_PATH)
 
 
 if __name__ == "__main__":
-    argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-
-    seeds = [3, 17, 41, 58]
-    if "--seeds" in argv:
-        seeds = [int(v) for v in argv[argv.index("--seeds") + 1].split(",")]
-
-    out = run(seeds)
-    lay_out(seeds)
-    print("###JSON###" + json.dumps(out))
+    out, points = run()
+    lay_out()
+    print("###JSON###" + json.dumps(dict(presets=out, seamPoints=points)))

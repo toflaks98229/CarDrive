@@ -1,0 +1,48 @@
+{
+ "bay": 42.0,
+ "width": 34.0,
+ "burial": 14.0,
+ "seamPoints": 40,
+ "presets": [
+  {
+   "name": "Viaduct",
+   "mesh": "SM_Mega_Viaduct",
+   "bays": 1,
+   "length": 42.0,
+   "weight": 5,
+   "top": 33.4
+  },
+  {
+   "name": "Habitat",
+   "mesh": "SM_Mega_Habitat",
+   "bays": 1,
+   "length": 42.0,
+   "weight": 6,
+   "top": 57.2
+  },
+  {
+   "name": "Industry",
+   "mesh": "SM_Mega_Industry",
+   "bays": 1,
+   "length": 42.0,
+   "weight": 3,
+   "top": 58.6
+  },
+  {
+   "name": "Junction",
+   "mesh": "SM_Mega_Junction",
+   "bays": 2,
+   "length": 84.0,
+   "weight": 2,
+   "top": 65.2
+  },
+  {
+   "name": "Citadel",
+   "mesh": "SM_Mega_Citadel",
+   "bays": 3,
+   "length": 126.0,
+   "weight": 1,
+   "top": 173.0
+  }
+ ]
+}
