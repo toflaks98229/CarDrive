@@ -55,9 +55,10 @@ CarDrive.UI  CarDrive.Gameplay  CarDrive.Systems  CarDrive.Common
 
 ## 주요 기능 / 시스템
 
-스크립트는 `Assets/_Project/02.Scripts/` 아래에 171개, 약 38,000줄입니다.
-그중 빌드에 들어가는 런타임은 133개 약 24,800줄이고, 나머지 38개 약 13,200줄은
-에디터 전용 툴이라 `CarDrive.Editor` 어셈블리로 분리되어 출시본에 포함되지 않습니다.
+스크립트는 `Assets/_Project/02.Scripts/` 아래에 194개, 약 43,500줄입니다.
+그중 빌드에 들어가는 런타임은 168개 약 37,800줄이고, 나머지 26개 약 5,800줄은
+에디터 전용이라 출시본에 포함되지 않습니다 — `CarDrive.Editor` 어셈블리와,
+`WalkerRobot.Editor.cs` 처럼 `#if UNITY_EDITOR` 로 갈라 둔 partial 파일입니다.
 
 ### 세계의 시계 — 시간 · 날씨 (`Systems/Time/`, `Systems/Weather/`)
 - **TimeSystem**: 게임 시계·시간대(새벽/아침/낮/저녁/밤)·햇빛의 **단일 소스**. 니즈와 날씨가 각자 시간을 세지 않고 여기서 배율을 읽어 가므로, 수면으로 시간을 건너뛰면 모든 시스템이 함께 움직입니다.
@@ -129,7 +130,7 @@ CarDrive/
 ├─ Assets/
 │  ├─ _Project/                        # 자체 제작물 (외부 에셋과 분리)
 │  │  ├─ 01.Scenes/                    # SampleScene.unity (메인 플레이 씬)
-│  │  ├─ 02.Scripts/                   # 게임 로직 (C#, 171개 · 폴더 하나가 어셈블리 하나)
+│  │  ├─ 02.Scripts/                   # 게임 로직 (C#, 194개 · 폴더 하나가 어셈블리 하나)
 │  │  │  ├─ Common/                    # 계약(IGameClock, IRoadConditions, IAnkhView,
 │  │  │  │                             #  IDamageable, IInteractable, ISpeedSource…),
 │  │  │  │                             # GameContext, GameInput, GameLog,
@@ -157,13 +158,14 @@ CarDrive/
 │  │  │  │  ├─ Weather/                # WeatherSystem, WeatherRig, WeatherDefinitions
 │  │  │  │  ├─ Needs/                  # NeedsSystem, NeedSatisfier, NeedsProfile(SO)
 │  │  │  │  ├─ Save/                   # SaveSystem, SaveRegistry, SaveData
-│  │  │  │  ├─ Economy/                # Wallet, CurrencyDefinitions
+│  │  │  │  ├─ Economy/                # Wallet, CurrencyDefinitions,
+│  │  │  │                             # ICurrencySink / ICurrencyBalance / ICurrencyStore
 │  │  │  │  └─ Sky, Grass, World/      # SkyController, 풀 컬링, ViewDistances,
 │  │  │  │                             # TerrainRegistry, WorldProfiler
 │  │  │  ├─ UI/                        # NeedsUI, CurrencyUI, InteractionPromptUI,
 │  │  │  │                             # TextHealthBar, HealthBarImage,
 │  │  │  │                             # AnkhAnimation, DrinkAnimation, UIElementShaker
-│  │  │  └─ Editor/                    # 에디터 전용 툴 38개 (빌드 제외)
+│  │  │  └─ Editor/                    # 에디터 전용 툴 25개 (빌드 제외)
 │  │  ├─ 03.DataAssets/                # Vehicles(CarData), Terrain
 │  │  ├─ 04.Art/                       # 01.Images, 02.Models, 03.Shaders, 04.Animations
 │  │  │                                # (Pixelize / Palette 렌더러 피처 포함)

@@ -102,7 +102,9 @@ namespace CarDrive.Composition
             if (wallet != null)
             {
                 builder.RegisterComponent(wallet)
-                       .As<ICurrencySink>();
+                       .As<ICurrencySink>()
+                       .As<ICurrencyBalance>()
+                       .As<ICurrencyStore>();
             }
 
             if (weatherRig != null) builder.RegisterComponent(weatherRig);

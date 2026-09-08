@@ -27,10 +27,6 @@ namespace CarDrive.Gameplay
         [Tooltip("상하 각도를 읽어 올 대상(보통 메인 카메라). 비워두면 Camera.main을 씁니다.")]
         public Transform aimSource;
 
-        /// <summary>갈증·배뇨를 반영할 니즈 시스템입니다. 비워두면 Start에서 씬을 검색합니다.</summary>
-        [Tooltip("니즈 시스템. 비워두면 씬에서 자동으로 찾습니다.")]
-        public NeedsSystem needsSystem;
-
         /// <summary>시선이 이 각도(도) 위로 올라가면 빗물을 받기 시작합니다.</summary>
         [Header("하늘 보기 판정")]
         [Tooltip("시선이 이 각도(도) 위로 올라가면 받기 시작합니다.")]
@@ -113,14 +109,24 @@ namespace CarDrive.Gameplay
         /// <summary>비의 세기를 알려 주는 쪽입니다. 주입되지 않으면 비가 오지 않습니다.</summary>
         private IExposureConditions weather = NullWeather.Instance;
 
-        /// <summary>날씨와 니즈를 받습니다.</summary>
+        /// <summary>갈증 해소와 배뇨 누적을 흘려보낼 곳입니다. 주입되지 않으면 아무 일도 하지 않습니다.</summary>
+        private INeedsSink needs;
+
+        /// <summary>
+        /// 날씨와 니즈를 받습니다.
+        ///
+        /// <b>넣고 빼는 계약이면 충분합니다.</b> 여기서 하는 일은 갈증을 덜고 배뇨를
+        /// 올리는 것 둘뿐이라, 니즈 시스템 전체를 알 이유가 없습니다.
+        /// 예전에는 인스펙터 칸도 함께 두었는데, 같은 것을 잇는 길이 둘이면
+        /// <b>어느 쪽이 실제로 쓰였는지 코드만 보고는 알 수 없습니다.</b>
+        /// </summary>
         /// <param name="exposure">비의 세기를 알려 주는 쪽</param>
-        /// <param name="needs">갈증을 해소할 니즈 시스템</param>
+        /// <param name="needsSink">니즈를 받는 쪽</param>
         [Inject]
-        public void Construct(IExposureConditions exposure, NeedsSystem needs)
+        public void Construct(IExposureConditions exposure, INeedsSink needsSink)
         {
             if (exposure != null) weather = exposure;
-            if (needsSystem == null) needsSystem = needs;
+            needs = needsSink;
         }
 
         // --- Unity Event Functions ---
@@ -130,7 +136,7 @@ namespace CarDrive.Gameplay
         /// </summary>
         void Start()
         {
-            if (needsSystem == null) GameLog.Warn(GameLog.Channel.Player, "RainDrinking: NeedsSystem이 주입되지 않았습니다.", this);
+            if (needs == null) GameLog.Warn(GameLog.Channel.Player, "RainDrinking: 니즈가 주입되지 않아 빗물을 마셔도 갈증이 줄지 않습니다.", this);
 
             IsUnderOpenSky = true;
         }
@@ -156,7 +162,7 @@ namespace CarDrive.Gameplay
                 return;
             }
 
-            if (needsSystem == null) return;
+            if (needs == null) return;
 
             float amount = CalculateAmount();
             SetDrinking(amount);
@@ -164,8 +170,8 @@ namespace CarDrive.Gameplay
             if (amount <= 0f) return;
 
             float dt = Time.deltaTime;
-            needsSystem.Satisfy(NeedType.Thirst, thirstReliefPerSecond * amount * dt);
-            needsSystem.Add(NeedType.Urine, urineGainPerSecond * amount * dt);
+            needs.Satisfy(NeedType.Thirst, thirstReliefPerSecond * amount * dt);
+            needs.Add(NeedType.Urine, urineGainPerSecond * amount * dt);
         }
 
         // --- Private Methods ---

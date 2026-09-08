@@ -51,6 +51,10 @@ namespace CarDrive.Gameplay
         /// </code>
         /// <b>다리가 홀수면 교대보를 쓰지 않습니다.</b> 절반으로 못 나누므로 한쪽이 하나만 남아
         /// 버티는 발이 부족해집니다. 그때는 파도보로 물러납니다. (3족 스트라이더가 이 경우입니다)
+        ///
+        /// <b>뜀걸음은 예외입니다.</b> 앞줄과 뒷줄로 나눌 뿐이라 홀수에서도 식이 성립하고,
+        /// 3족에서는 앞이 나갈 때 <b>뒷발 하나만 남는 것을 일부러 받아들입니다.</b>
+        /// 그 한 발 구간이 몸을 앞으로 떨어뜨렸다 받치는 구간이라, 안정을 내주고 역동을 얻는 선택입니다.
         /// </summary>
         /// <param name="gait">보행 종류</param>
         /// <param name="legCount">다리 개수</param>
@@ -71,6 +75,10 @@ namespace CarDrive.Gameplay
                 case WalkerGaitType.Lateral when legCount == 4:
                     return Fill(groups, legCount, i => i % 2);
 
+                // 뜀걸음은 <b>앞줄과 뒷줄</b>을 나눌 뿐이라 홀수 다리에서도 뜻이 성립합니다.
+                // 3족이면 {앞왼·앞오} {뒤} 가 되어, 앞이 나갈 때는 <b>뒷발 하나로 버팁니다.</b>
+                // 그 한 발 구간이 곧 몸이 앞으로 떨어졌다 받쳐지는 구간입니다.
+                case WalkerGaitType.Bound when legCount == 3:
                 case WalkerGaitType.Bound when legCount == 4:
                     return Fill(groups, legCount, i => i / 2);
 
@@ -90,6 +98,10 @@ namespace CarDrive.Gameplay
             {
                 case WalkerGaitType.Wave: return true;
                 case WalkerGaitType.Alternate: return legCount == 2 || (legCount >= 4 && legCount % 2 == 0);
+
+                // 뜀걸음만 3족까지 내려옵니다. 앞줄·뒷줄로 나누는 데에 짝수가 필요 없습니다.
+                case WalkerGaitType.Bound: return legCount == 3 || legCount == 4;
+
                 default: return legCount == 4;
             }
         }

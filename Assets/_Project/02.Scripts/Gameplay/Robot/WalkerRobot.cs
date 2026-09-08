@@ -1,3 +1,4 @@
+﻿using System.Collections.Generic;
 using UnityEngine;
 using CarDrive.Common;
 
@@ -105,7 +106,7 @@ namespace CarDrive.Gameplay
     /// </summary>
     [ExecuteAlways]
     [DisallowMultipleComponent]
-    public class WalkerRobot : MonoBehaviour
+    public partial class WalkerRobot : MonoBehaviour
     {
         // --- Public Member Variables : 배선 ---
 
@@ -220,6 +221,21 @@ namespace CarDrive.Gameplay
         public float alternateSpeed = 0.9f;
 
         /// <summary>
+        /// <b>절반으로 못 나누는 다리 수</b>(3족)에서 걷기와 뜀걸음을 섞는 속도 구간입니다.
+        /// x 에서 섞이기 시작해 y 에서 완전히 뜀걸음이 됩니다.
+        ///
+        /// <b>왜 갈아타지 않고 섞는가.</b> 묶음 번호는 정수라 사이값이 없습니다. 그래서 보행을
+        /// 바꾸면 그 프레임에 다리가 통째로 다른 짝이 되어 <b>걸음이 한 번 끊깁니다.</b>
+        /// 대신 묶음은 뜀걸음으로 <b>고정해 두고</b>, 같은 묶음 안에서 다리들이 출발하는
+        /// <b>시차</b>만 줄입니다. 시차가 1이면 앞다리가 하나씩 차례로 나가 파도보와 같은 3걸음
+        /// 주기가 되고, 0이면 둘이 함께 나가 뜀걸음이 됩니다. 그 사이는 전부 이어져 있습니다.
+        ///
+        /// 실제 네발짐승도 이렇게 바뀝니다 — 다리의 <b>상대 위상</b>이 연속으로 미끄러집니다.
+        /// </summary>
+        [Tooltip("걷기↔뜀걸음을 섞는 속도 구간(m/s). x=섞기 시작, y=완전히 뜀걸음. 3족처럼 절반으로 못 나누는 다리 수에서만 쓰입니다")]
+        public Vector2 boundSpeedRange = new Vector2(1.5f, 4f);
+
+        /// <summary>
         /// 다리가 뻗을 수 있는 길이의 몇 배까지 쓸지입니다. 작업 반경이 여기서 나옵니다.
         /// 1에 가까우면 다리가 완전히 펴진 자세까지 쓰므로 보폭은 커지지만 실루엣이 뻣뻣해집니다.
         /// </summary>
@@ -253,6 +269,51 @@ namespace CarDrive.Gameplay
         /// <summary>발이 들리는 높이입니다.</summary>
         [Tooltip("발이 들리는 높이(m)")]
         public float stepHeight = 0.3f;
+
+        // --- Public Member Variables : 흔들림 ---
+
+        /// <summary>
+        /// 발이 <b>닿을 때마다</b> 몸통을 휘청이게 하는 세기입니다. 0이면 끕니다.
+        ///
+        /// <b>왜 새 용수철을 만들지 않는가.</b> <see cref="AddImpact"/> 가 두드리는
+        /// <see cref="impactSpring"/> 은 이미 저감쇠(ζ 0.22)라 울리도록 만들어져 있고,
+        /// <see cref="impactMaxTilt"/> 로 잘려 있어 폭주하지 않습니다. 걸음이 만드는 흔들림도
+        /// 결국 "몸통이 한 번 얻어맞는 것"이므로 <b>같은 통로를 쓰는 것이 맞습니다.</b>
+        ///
+        /// 양수면 딛는 발의 <b>반대쪽</b>으로 젖혀지고(지면 반력에 밀리는 모양), 음수면 그쪽으로 기웁니다.
+        /// </summary>
+        [Header("흔들림")]
+        [Tooltip("발이 닿을 때 몸통을 휘청이게 하는 세기(m/s). 0=끔. 음수면 반대로 기웁니다")]
+        public float footfallImpact;
+
+        /// <summary>
+        /// 들린 발이 <b>지지 평면을 기울이는</b> 정도입니다. 0이면 평지에서 몸통이 절대 안 기웁니다.
+        ///
+        /// <b>왜 이 값이 없으면 안 흔들리는가.</b> <see cref="ComputeStance"/> 는 지지 평면을
+        /// <see cref="FootGround"/>(들린 높이를 <b>뺀</b> 자리)로 계산합니다. 그래서 평지에서는
+        /// 발이 뜨든 말든 법선이 언제나 정확히 위쪽이고, <b>걸음이 몸통 회전을 흔들 통로가 없습니다.</b>
+        /// 가속·선회·피격만이 몸통을 기울입니다.
+        ///
+        /// 1에 가까울수록 뜬 발 쪽 모서리가 들려 법선이 <b>남은 지지 쪽으로</b> 기울고,
+        /// 몸통이 그쪽으로 실립니다. 한 발을 들면 남은 발 위로 체중을 옮기는 그 동작입니다.
+        /// </summary>
+        [Tooltip("들린 발이 지지 평면을 기울이는 정도. 0=평지에서 몸통이 안 기움, 1=발 높이를 그대로 씀")]
+        [Range(0f, 1f)]
+        public float swingTilt;
+
+        /// <summary>
+        /// 몸이 지지면에서 <b>쏠린 만큼 발을 그쪽으로 더 내미는</b> 정도입니다.
+        ///
+        /// <see cref="stepPrediction"/> 은 <b>속도</b>만 봅니다. 그래서 밀려서 자세가 무너져도
+        /// 발은 원래 가려던 자리로 갑니다. 여기에 <b>지금 얼마나 쏠려 있는지</b>를 더하면
+        /// 발이 넘어지는 쪽으로 먼저 나가 몸을 받칩니다. 흔들림이 <b>노이즈가 아니라 회복</b>이 됩니다.
+        ///
+        /// SIMBICON (Yin·Loken·van de Panne, SIGGRAPH 2007) 의 균형 되먹임과 같은 항입니다.
+        /// 그 논문의 표현대로 이 항이 컨트롤러의 <b>흡인 영역</b>을 넓혀 밀침과 지형 변화를 견디게 합니다.
+        /// </summary>
+        [Tooltip("몸이 지지면에서 쏠린 만큼 발을 그쪽으로 더 내미는 정도. 0=끔")]
+        [Range(0f, 2f)]
+        public float balanceFeedback;
 
         /// <summary>
         /// 힘이 풀린 다리가 <b>얼마나 뻗은 채</b> 매달리는지입니다. 뻗을 수 있는 길이에 대한 비율입니다.
@@ -317,6 +378,21 @@ namespace CarDrive.Gameplay
         [Tooltip("다리가 자기 몸통·다른 다리와 부딪히게 합니다. 리그가 겹쳐 있으면 끄세요.")]
         public bool selfCollision = true;
 
+        /// <summary>
+        /// 몸통 용수철의 진동수를 <b>걸음 주파수의 몇 배</b>로 묶을지입니다. 0이면 묶지 않습니다.
+        ///
+        /// <b>왜 묶는가.</b> 인스펙터에 적어 둔 진동수는 고정인데 걸음 주파수는 속도에 따라 변합니다.
+        /// 둘이 같아지는 속도에서 몸통이 걸음과 <b>공진</b>해 흔들림이 갑자기 몇 배가 됩니다.
+        /// 감쇠를 낮춰 둘수록 그 봉우리가 날카롭습니다. 배수로 묶어 두면 어떤 속도에서도
+        /// <b>같은 비율</b>이 유지되어 봉우리를 지나가는 일이 없습니다.
+        ///
+        /// 1보다 크면 몸통이 걸음보다 빨라 또박또박 따라붙고, 1보다 작으면 늦어져 크게 출렁입니다.
+        /// (Daniel Holden, "Spring-It-On" 의 resonance 항목)
+        /// </summary>
+        [Tooltip("몸통 용수철 진동수를 걸음 주파수의 몇 배로 묶을지. 0=묶지 않고 인스펙터 값을 그대로 씀")]
+        [Range(0f, 4f)]
+        public float bodySpringGaitRatio;
+
         /// <summary>씬 뷰에 발 자리와 지지 다각형을 그릴지 여부입니다.</summary>
         [Header("디버그")]
         [Tooltip("씬 뷰에 발 자리와 지지 다각형을 그립니다")]
@@ -363,6 +439,27 @@ namespace CarDrive.Gameplay
         /// <summary>다리마다의 묶음 번호입니다.</summary>
         private int[] gaitGroups;
 
+        /// <summary>지난 프레임에 걸음 중이었는지입니다. 발이 <b>닿는 순간</b>을 잡는 데 씁니다.</summary>
+        private bool[] wasStepping;
+
+        /// <summary>
+        /// <b>다음에 어느 다리가 나갈지</b>를 정하는 규칙입니다.
+        /// 이 클래스는 그 답을 받아 발을 뗄 뿐, 규칙 자체는 갖고 있지 않습니다.
+        /// </summary>
+        private readonly WalkerStepPlanner stepPlanner = new WalkerStepPlanner();
+
+        /// <summary>계획자에게 넘길 다리 상태입니다. 매 프레임 채워 넣습니다.</summary>
+        private WalkerLegState[] legStates;
+
+        /// <summary>이번 프레임에 출발할 다리 번호입니다. 계획자가 채워 줍니다.</summary>
+        private readonly List<int> stepsToBegin = new List<int>();
+
+        /// <summary>
+        /// 같은 묶음 안에서 다리들이 <b>얼마나 늦게 출발하는지</b>입니다. 걸음 시간에 대한 비율입니다.
+        /// 1이면 하나가 끝난 뒤 다음이 나가고(파도보), 0이면 전부 함께 나갑니다(뜀걸음).
+        /// </summary>
+        private float gaitStagger;
+
         /// <summary>묶음의 개수입니다. 한 바퀴를 이루는 걸음 수이기도 합니다.</summary>
         private int groupCount = 1;
 
@@ -374,12 +471,6 @@ namespace CarDrive.Gameplay
 
         /// <summary>다리별로 그 자리의 지면 법선입니다.</summary>
         private Vector3[] stepNormals;
-
-        /// <summary>다리별로 발이 <b>가려는 자리</b>에서 얼마나 떨어져 있는지입니다.</summary>
-        private float[] strideErrors;
-
-        /// <summary>다리별로 발이 <b>제자리</b>에서 얼마나 벗어났는지입니다. 작업 반경과 견주는 값입니다.</summary>
-        private float[] homeDistances;
 
         /// <summary>배선이 온전한지입니다. 하나라도 어긋나면 아무 일도 하지 않습니다.</summary>
         private bool ready;
@@ -426,23 +517,8 @@ namespace CarDrive.Gameplay
         /// <summary>이 다리가 이미 발을 떼기 시작했는지입니다.</summary>
         private bool[] riseStarted;
 
-        /// <summary>인스펙터에서 무언가 바뀌어 리그를 다시 읽어야 하는지입니다. 편집 중에만 씁니다.</summary>
-        private bool editorRigDirty;
-
-        /// <summary>지난 그리기 때의 넓적마디 길이입니다. 무엇이 바뀌었는지 알아내는 데 씁니다.</summary>
-        private float[] syncUpper;
-
-        /// <summary>지난 그리기 때의 종아리마디 길이입니다.</summary>
-        private float[] syncLower;
-
-        /// <summary>지난 그리기 때의 고관절 자리(몸통 기준)입니다.</summary>
-        private Vector3[] syncHip;
-
-        /// <summary>지난 그리기 때의 발자리입니다. 좌우 짝을 찾는 기준이기도 합니다.</summary>
-        private Vector3[] syncHome;
-
-        /// <summary>기억해 둔 모양이 쓸 만한지입니다. 처음 불러왔을 때는 비교할 것이 없습니다.</summary>
-        private bool syncReady;
+        /// <summary>다리별 지금 발 높이(m)입니다. 기립 차례를 정하는 규칙에 넘겨 줍니다.</summary>
+        private float[] footHeights;
 
         /// <summary>다리마다 <b>몇 번째</b>로 딛을지입니다. 같은 번호끼리는 함께 나갑니다.</summary>
         private int[] riseSlots;
@@ -476,12 +552,6 @@ namespace CarDrive.Gameplay
         /// <summary>다리가 이보다 적으면 걸을 수 없습니다.</summary>
         private const int MinLegCount = 2;
 
-        /// <summary>리그가 달라졌다고 볼 최소 차이(m)입니다. 부동소수 잡음보다 크고 손으로 옮긴 것보다 작습니다.</summary>
-        private const float RigEpsilon = 1e-4f;
-
-        /// <summary>좌우 짝으로 볼 발자리 차이(m)입니다.</summary>
-        private const float MirrorTolerance = 0.05f;
-
         // --- Public Properties ---
 
         /// <summary>다리의 개수입니다.</summary>
@@ -495,6 +565,12 @@ namespace CarDrive.Gameplay
 
         /// <summary>부드럽게 만든 루트 속도입니다.</summary>
         public Vector3 SmoothVelocity { get { return smoothVelocity; } }
+
+        /// <summary>
+        /// 같은 묶음 안에서 다리들이 늦게 출발하는 정도입니다. 1=하나씩(파도보), 0=함께(뜀걸음).
+        /// 걷기와 뜀걸음 사이 어디쯤인지를 그대로 보여 줍니다.
+        /// </summary>
+        public float GaitStagger { get { return gaitStagger; } }
 
         /// <summary>다리 중 가장 좁은 작업 반경입니다.</summary>
         public float StrideRadius { get { return strideRadius; } }
@@ -553,14 +629,16 @@ namespace CarDrive.Gameplay
 
             stepTargets = new Vector3[count];
             stepNormals = new Vector3[count];
-            strideErrors = new float[count];
-            homeDistances = new float[count];
             gaitGroups = new int[count];
+            wasStepping = new bool[count];
+            legStates = new WalkerLegState[count];
+            stepPlanner.Resize(count);
             ringOrder = new int[count];
             riseDelays = new float[count];
             riseTargets = new Vector3[count];
             riseNormals = new Vector3[count];
             riseStarted = new bool[count];
+            footHeights = new float[count];
             riseSlots = new int[count];
             riseSorted = new int[count];
             limpLegs = new VerletChain[count];
@@ -612,14 +690,6 @@ namespace CarDrive.Gameplay
             supportHeight = transform.position.y;
         }
 
-        /// <summary>인스펙터에서 값이 바뀌면 다음 그리기 때 리그를 다시 읽습니다.</summary>
-        private void OnValidate()
-        {
-            if (Application.isPlaying) return;
-
-            editorRigDirty = true;
-        }
-
         /// <summary>루트를 땅 위로 올리고, 발을 내려놓고, 몸통을 그 위에 세웁니다.</summary>
         private void Start()
         {
@@ -641,7 +711,9 @@ namespace CarDrive.Gameplay
         {
             if (!Application.isPlaying)
             {
+#if UNITY_EDITOR
                 PoseInEditor();
+#endif
                 return;
             }
 
@@ -665,57 +737,15 @@ namespace CarDrive.Gameplay
 
             UpdateGait();
             UpdateFootTargets();
-            ScheduleSteps();
+            ScheduleSteps(dt);
 
             for (int i = 0; i < legs.Length; i++) legs[i].Advance(dt);
+
+            ReportFootfalls();
 
             PoseBody(dt);
 
             for (int i = 0; i < legs.Length; i++) legs[i].Solve();
-        }
-
-        /// <summary>발 자리 · 작업 반경 · 지지 다각형을 그립니다.</summary>
-        private void OnDrawGizmos()
-        {
-            if (!drawGizmos || legs == null) return;
-
-            for (int i = 0; i < legs.Length; i++)
-            {
-                if (legs[i] == null) continue;
-
-                Vector3 home = transform.TransformPoint(legs[i].homeOffset);
-
-                // 발이 서 있고 싶은 자리 — 노랑
-                Gizmos.color = new Color(1f, 0.9f, 0.2f, 0.6f);
-                Gizmos.DrawWireSphere(home, 0.06f);
-
-                if (!ready || !Application.isPlaying) continue;
-
-                // 발이 놓일 수 있는 범위 — 주황 원. 이 밖으로 나가면 다리가 뻗은 채 끌립니다.
-                Gizmos.color = new Color(1f, 0.6f, 0.1f, 0.5f);
-                DrawCircle(home, legs[i].StrideRadius);
-
-                // 발이 지금 있는 자리 — 딛고 있으면 초록, 떼고 있으면 빨강
-                Gizmos.color = legs[i].IsStepping ? new Color(1f, 0.3f, 0.2f) : new Color(0.3f, 1f, 0.4f);
-                Gizmos.DrawSphere(legs[i].FootPosition, 0.05f);
-                Gizmos.DrawLine(legs[i].HipPosition, legs[i].FootPosition);
-
-                Gizmos.color = Color.white;
-                Gizmos.DrawLine(legs[i].FootPosition, stepTargets[i]);
-            }
-
-            if (!ready || !Application.isPlaying || legs.Length < 3) return;
-
-            // 지지 다각형 — 발을 둘레 순서로 이은 도형
-            Gizmos.color = new Color(0.3f, 0.8f, 1f, 0.8f);
-
-            for (int i = 0; i < ringOrder.Length; i++)
-            {
-                Vector3 a = legs[ringOrder[i]].FootPosition;
-                Vector3 b = legs[ringOrder[(i + 1) % ringOrder.Length]].FootPosition;
-
-                Gizmos.DrawLine(a, b);
-            }
         }
 
         // --- Public Methods ---
@@ -796,7 +826,11 @@ namespace CarDrive.Gameplay
             }
 
             // 차례를 정한 뒤, 남는 시간을 그 차례 수로 나눠 출발 시각을 벌립니다.
-            int slots = BuildRiseSlots();
+            // 차례를 정하는 규칙 자체는 WalkerRiseOrdering 에 있습니다 — 여기서는 발 높이만 건네줍니다.
+            for (int i = 0; i < legs.Length; i++) footHeights[i] = legs[i].FootPosition.y;
+
+            int slots = WalkerRiseOrdering.BuildSlots(riseOrder, legs.Length, footHeights,
+                                                      gaitGroups, groupCount, riseSlots, riseSorted);
             float gap = slots > 1 ? Mathf.Max(window - riseStepTime, 0f) / (slots - 1) : 0f;
 
             for (int i = 0; i < legs.Length; i++) riseDelays[i] = gap * riseSlots[i];
@@ -1022,6 +1056,9 @@ namespace CarDrive.Gameplay
             groundedFeet = 0;
             float plantedSum = 0f;
 
+            // 예약해 둔 걸음도 지웁니다. 남겨 두면 순간이동·기상 직후에 유령 걸음이 나갑니다.
+            stepPlanner.ClearPending();
+
             for (int i = 0; i < legs.Length; i++)
             {
                 Vector3 home = transform.TransformPoint(legs[i].homeOffset);
@@ -1080,6 +1117,14 @@ namespace CarDrive.Gameplay
             {
                 desired = gait;
             }
+            else if (!WalkerGait.IsMeaningful(WalkerGaitType.Alternate, LegCount)
+                     && WalkerGait.IsMeaningful(WalkerGaitType.Bound, LegCount))
+            {
+                // <b>여기서는 갈아타지 않습니다.</b> 절반으로 못 나누는 다리 수라 빠른 보행이 뜀걸음인데,
+                // 뜀걸음 묶음을 그대로 두고 <see cref="gaitStagger"/> 만 줄이면 파도보에서 뜀걸음까지
+                // 끊김 없이 건너갑니다. 보행을 바꾸는 프레임이 아예 없습니다.
+                desired = WalkerGaitType.Bound;
+            }
             else
             {
                 float speed = PlanningSpeed;
@@ -1094,10 +1139,33 @@ namespace CarDrive.Gameplay
                 }
             }
 
+            UpdateGaitStagger();
+
             if (desired == activeGait) return;
 
             activeGait = desired;
             groupCount = WalkerGait.Assign(activeGait, legs.Length, gaitGroups);
+        }
+
+        /// <summary>
+        /// 지금 속도에서 <b>묶음 안의 시차</b>가 얼마인지 정합니다.
+        ///
+        /// 느리면 1(하나씩 차례로 = 파도보), <see cref="boundSpeedRange"/>.y 를 넘으면 0(함께 = 뜀걸음)입니다.
+        /// 자동 전환이 꺼져 있거나 뜀걸음이 아니면 시차를 두지 않습니다 — 손으로 고른 보행은
+        /// 그 보행이 정한 묶음 그대로 나가야 합니다.
+        /// </summary>
+        private void UpdateGaitStagger()
+        {
+            if (!autoGait || activeGait != WalkerGaitType.Bound)
+            {
+                gaitStagger = 0f;
+                return;
+            }
+
+            float low = Mathf.Min(boundSpeedRange.x, boundSpeedRange.y);
+            float high = Mathf.Max(boundSpeedRange.x, boundSpeedRange.y);
+
+            gaitStagger = 1f - Mathf.InverseLerp(low, high, PlanningSpeed);
         }
 
         /// <summary>걸음을 계획할 때 쓰는 속도입니다. 실측과 <b>내려는 속도</b> 중 큰 쪽입니다.</summary>
@@ -1120,6 +1188,10 @@ namespace CarDrive.Gameplay
             Quaternion turn = Quaternion.AngleAxis(yawRate * predict, Vector3.up);
             Vector3 drift = smoothVelocity * predict;
 
+            // 속도만 보는 예측에 <b>지금 쏠린 양</b>을 더합니다. 밀려서 자세가 무너지면
+            // 발이 그쪽으로 먼저 나가 몸을 받칩니다. (SIMBICON 의 균형 되먹임)
+            if (balanceFeedback > 0f) drift += BalanceOffset() * balanceFeedback;
+
             groundedFeet = 0;
             float plantedSum = 0f;
 
@@ -1137,8 +1209,8 @@ namespace CarDrive.Gameplay
 
                 stepTargets[i] = point;
                 stepNormals[i] = normal;
-                strideErrors[i] = Vector3.Distance(legs[i].FootPosition, point);
-                homeDistances[i] = Vector3.Distance(legs[i].FootPosition, home);
+                legStates[i].strideError = Vector3.Distance(legs[i].FootPosition, point);
+                legStates[i].homeDistance = Vector3.Distance(legs[i].FootPosition, home);
 
                 plantedSum += FootGround(i).y;
             }
@@ -1147,91 +1219,34 @@ namespace CarDrive.Gameplay
         }
 
         /// <summary>
-        /// 어느 묶음이 나갈지 정합니다.
+        /// 어느 다리가 나갈지 <see cref="WalkerStepPlanner"/> 에게 묻고, 그 답대로 발을 뗍니다.
         ///
-        /// <b>모든 발이 땅에 있을 때만</b> 새 걸음이 시작됩니다. 그래야 한 묶음이 통째로 함께
-        /// 출발해 함께 착지하므로 <b>묶음이 어긋난 채 굳는 일</b>이 없습니다.
-        /// 예전에는 "자기 짝을 뺀 나머지가 땅에 있으면" 떼게 했는데, 보행이 바뀌는 순간
-        /// 짝이 서로 다른 위상에 놓이면 둘 중 하나가 언제나 공중에 있게 되어
-        /// <b>나머지 다리가 한 걸음도 떼지 못했습니다.</b>
-        /// (시뮬레이션에서 10초 동안 두 다리는 98걸음, 나머지 둘은 0걸음이었습니다)
+        /// <b>규칙은 여기에 없습니다.</b> "모든 발이 땅에 있을 때만 새 묶음이 나간다" 같은
+        /// 판단은 전부 계획자가 하고, 이 메서드는 <b>지금 다리가 어떤 상태인지 알려 주고
+        /// 결과를 실행</b>하기만 합니다. 그래야 그 규칙을 씬 없이 검증할 수 있습니다.
         /// </summary>
-        private void ScheduleSteps()
+        /// <param name="dt">시간 간격(초)</param>
+        private void ScheduleSteps(float dt)
         {
-            if (!AllFeetPlanted())
-            {
-                RescueStretchedLeg();
-                return;
-            }
+            WalkerStepTuning tuning;
+            tuning.strideUsage = strideUsage;
+            tuning.triggerFraction = stepTriggerFraction;
+            tuning.stagger = gaitStagger;
+            tuning.stepDuration = CurrentStepDuration();
 
-            int bestGroup = -1;
-            float bestScore = 1f;
-
+            // 자리와 거리는 UpdateFootTargets 가 이미 채웠습니다. 여기서는 이번 프레임에
+            // 달라질 수 있는 것만 얹습니다.
             for (int i = 0; i < legs.Length; i++)
             {
-                // 다리마다 작업 반경이 다를 수 있으므로 비율로 견줍니다.
-                float score = strideErrors[i] / StepTrigger(i);
-                if (score <= bestScore) continue;
-
-                bestGroup = gaitGroups[i];
-                bestScore = score;
+                legStates[i].strideRadius = legs[i].StrideRadius;
+                legStates[i].isStepping = legs[i].IsStepping;
+                legStates[i].group = gaitGroups[i];
             }
 
-            if (bestGroup < 0) return;
+            stepsToBegin.Clear();
+            stepPlanner.Plan(dt, legStates, tuning, stepsToBegin);
 
-            for (int i = 0; i < legs.Length; i++)
-            {
-                if (gaitGroups[i] == bestGroup) BeginStep(i);
-            }
-        }
-
-        /// <summary>모든 발이 땅에 있는지 봅니다.</summary>
-        /// <returns>모두 땅에 있으면 true</returns>
-        private bool AllFeetPlanted()
-        {
-            for (int i = 0; i < legs.Length; i++)
-            {
-                if (legs[i].IsStepping) return false;
-            }
-
-            return true;
-        }
-
-        /// <summary>
-        /// 보행 표가 막고 있는 사이에 <b>작업 반경 밖으로 끌려나간</b> 다리를 구합니다.
-        ///
-        /// 걸음 시간을 기하에서 뽑고 계획 속도로 미리 맞추므로 보통은 여기까지 오지 않습니다.
-        /// 그래도 지형이 갑자기 꺼지거나 누군가 로봇을 밀면 생길 수 있고, 그때는
-        /// <b>보행의 규칙보다 다리가 찢어지지 않는 것</b>이 우선입니다. 다만 두 발은 남깁니다.
-        /// </summary>
-        private void RescueStretchedLeg()
-        {
-            int planted = 0;
-            for (int i = 0; i < legs.Length; i++)
-            {
-                if (!legs[i].IsStepping) planted++;
-            }
-
-            if (planted < 2) return;
-
-            int worst = -1;
-            float worstScore = 1f;
-
-            for (int i = 0; i < legs.Length; i++)
-            {
-                if (legs[i].IsStepping) continue;
-
-                // 목표까지의 거리가 아니라 <b>제자리에서 벗어난 거리</b>로 봅니다.
-                float score = homeDistances[i] / Mathf.Max(legs[i].StrideRadius, 0.01f);
-                if (score <= worstScore) continue;
-
-                worst = i;
-                worstScore = score;
-            }
-
-            if (worst < 0) return;
-
-            BeginStep(worst);
+            for (int i = 0; i < stepsToBegin.Count; i++) BeginStep(stepsToBegin[i]);
         }
 
         /// <summary>이 다리가 걸음을 시작하는 문턱 거리입니다.</summary>
@@ -1239,7 +1254,7 @@ namespace CarDrive.Gameplay
         /// <returns>문턱 거리(m)</returns>
         private float StepTrigger(int leg)
         {
-            return Mathf.Max(legs[leg].StrideRadius * strideUsage * stepTriggerFraction, 0.01f);
+            return WalkerStepPlanner.StepTrigger(legs[leg].StrideRadius, strideUsage, stepTriggerFraction);
         }
 
         /// <summary>한 다리의 걸음을 시작합니다. 많이 밀려난 걸음일수록 발을 높이 듭니다.</summary>
@@ -1248,10 +1263,55 @@ namespace CarDrive.Gameplay
         {
             if (legs[leg].IsStepping) return;
 
-            float reach = Mathf.Max(strideErrors[leg] / StepTrigger(leg), 0.5f);
+            float reach = Mathf.Max(legStates[leg].strideError / StepTrigger(leg), 0.5f);
             float height = stepHeight * Mathf.Min(reach, 1.8f);
 
             legs[leg].BeginStep(stepTargets[leg], stepNormals[leg], CurrentStepDuration(), height);
+        }
+
+        /// <summary>
+        /// 몸통 용수철의 진동수를 <b>지금 걸음 주파수</b>에 맞춰 다시 겁니다.
+        ///
+        /// <see cref="bodySpringGaitRatio"/> 가 0이면 아무것도 하지 않고 인스펙터 값을 그대로 씁니다.
+        /// 걸어 두면 속도가 변해도 몸통과 걸음의 <b>비율</b>이 고정되어 공진 봉우리를 지나가지 않습니다.
+        /// 감쇠비와 초기 반응은 건드리지 않습니다 — 성격은 그대로 두고 빠르기만 따라가게 합니다.
+        /// </summary>
+        private void TuneBodySpring()
+        {
+            if (bodySpringGaitRatio <= 0f) return;
+
+            float cycle = CurrentStepDuration() * Mathf.Max(groupCount, 1);
+            float stepFrequency = 1f / Mathf.Max(cycle, 0.001f);
+
+            SecondOrderSettings tuned = bodyPositionSpring;
+            tuned.frequency = Mathf.Max(stepFrequency * bodySpringGaitRatio, 0.01f);
+
+            bodyPositionMotion.Reconfigure(tuned);
+        }
+
+        /// <summary>
+        /// 발이 <b>닿은 다리</b>를 찾아 몸통을 휘청이게 합니다.
+        ///
+        /// <see cref="WalkerLeg"/> 은 걸음이 끝났다고 알려 주지 않으므로 여기서 상태 변화를 봅니다.
+        /// <see cref="WalkerLeg.Advance"/> 뒤, <see cref="PoseBody"/> 앞에 불러야 이번 프레임의
+        /// 착지가 이번 프레임의 자세에 반영됩니다.
+        /// </summary>
+        private void ReportFootfalls()
+        {
+            for (int i = 0; i < legs.Length; i++)
+            {
+                bool stepping = legs[i].IsStepping;
+
+                if (footfallImpact != 0f && wasStepping[i] && !stepping)
+                {
+                    Vector3 toFoot = legs[i].FootPosition - body.position;
+                    toFoot -= transform.up * Vector3.Dot(toFoot, transform.up);
+
+                    if (toFoot.sqrMagnitude > Epsilon) AddImpact(toFoot.normalized * footfallImpact);
+                }
+
+                wasStepping[i] = stepping;
+            }
         }
 
         /// <summary>
@@ -1321,8 +1381,8 @@ namespace CarDrive.Gameplay
 
                 for (int i = 0; i < ringOrder.Length; i++)
                 {
-                    Vector3 a = FootGround(ringOrder[i]);
-                    Vector3 b = FootGround(ringOrder[(i + 1) % ringOrder.Length]);
+                    Vector3 a = StanceCorner(ringOrder[i]);
+                    Vector3 b = StanceCorner(ringOrder[(i + 1) % ringOrder.Length]);
 
                     accumulated.x += (a.y - b.y) * (a.z + b.z);
                     accumulated.y += (a.z - b.z) * (a.x + b.x);
@@ -1342,6 +1402,49 @@ namespace CarDrive.Gameplay
         private Vector3 FootGround(int leg)
         {
             return legs[leg].FootPosition - legs[leg].FootNormal * legs[leg].Lift;
+        }
+
+        /// <summary>
+        /// 지지 평면을 만들 때 쓰는 <b>모서리</b>입니다. <see cref="swingTilt"/> 만큼 들린 발을 섞습니다.
+        ///
+        /// 0이면 <see cref="FootGround"/> 그대로라 평지에서 평면이 절대 안 기울고,
+        /// 1이면 발의 실제 높이를 그대로 써서 <b>뜬 발 쪽 모서리가 들립니다.</b>
+        /// 그러면 법선이 남은 지지 쪽으로 기울어 몸통이 그쪽으로 실립니다.
+        /// </summary>
+        /// <param name="leg">다리 번호</param>
+        /// <returns>평면 계산에 쓸 위치</returns>
+        private Vector3 StanceCorner(int leg)
+        {
+            if (swingTilt <= 0f) return FootGround(leg);
+
+            return Vector3.Lerp(FootGround(leg), legs[leg].FootPosition, swingTilt);
+        }
+
+        /// <summary>
+        /// 몸이 <b>지지면에서 얼마나 쏠려 있는지</b>입니다. 수평 성분만 남긴 루트 기준 벡터입니다.
+        ///
+        /// 딛고 있는 발들의 중심에서 몸통 쪽으로 향하므로, 여기에 발을 더 내밀면 넘어지는 쪽을 받칩니다.
+        /// 걸음 중인 발은 지지에 기여하지 않으므로 뺍니다. 하나도 안 딛고 있으면 0입니다.
+        /// </summary>
+        /// <returns>수평 쏠림(월드)</returns>
+        private Vector3 BalanceOffset()
+        {
+            Vector3 sum = Vector3.zero;
+            int planted = 0;
+
+            for (int i = 0; i < legs.Length; i++)
+            {
+                if (legs[i].IsStepping) continue;
+
+                sum += FootGround(i);
+                planted++;
+            }
+
+            if (planted == 0) return Vector3.zero;
+
+            Vector3 offset = body.position - sum / planted;
+
+            return offset - transform.up * Vector3.Dot(offset, transform.up);
         }
 
         /// <summary>발 평면과 기울임에서 몸통의 목표 회전을 만듭니다.</summary>
@@ -1369,6 +1472,8 @@ namespace CarDrive.Gameplay
         {
             ComputeStance(out Vector3 planted, out Vector3 bob, out Vector3 normal);
 
+            TuneBodySpring();
+
             Vector3 targetPosition = planted + normal * standHeight + bob * bodyBob;
 
             // 선회 가속도 = 각속도 × 속도. 오른쪽으로 돌면 양수입니다.
@@ -1387,202 +1492,6 @@ namespace CarDrive.Gameplay
             body.SetPositionAndRotation(
                 bodyPositionMotion.Update(dt, targetPosition),
                 bodyRotationMotion.Update(dt, targetRotation));
-        }
-
-        /// <summary>
-        /// <b>재생하지 않고도</b> 리그가 제 자세로 서 있게 합니다.
-        ///
-        /// 관절 하나를 끌어 옮기면 나머지가 따라오게 하려는 것입니다. 그러려면 두 가지가 필요합니다.
-        ///  1. 옮긴 결과를 <b>마디 길이로 받아들이기</b> (<see cref="WalkerLeg.MeasureFromRig"/>)
-        ///  2. 그 길이로 <b>IK 를 다시 풀어</b> 아래 마디들을 제자리에 놓기
-        /// 그래서 무릎을 당기면 종아리마디가 따라 늘고, 고관절을 옮기면 다리 전체가 따라옵니다.
-        ///
-        /// <b>스프링은 돌리지 않습니다.</b> 2차 시스템은 시간이 지나야 목표에 닿는데 편집 중에는
-        /// 시간이 흐르지 않습니다. 대신 몸통을 곧장 서 있는 높이에 놓습니다. 지면 탐침도 하지 않습니다 —
-        /// 편집 중에는 발밑에 지형이 없을 수도 있고, 매 그리기마다 레이를 쏘면 씬이 무거워집니다.
-        ///
-        /// 계산이 언제나 같은 답을 내므로, 한 번 자리를 잡은 뒤에는 같은 값을 다시 쓸 뿐입니다.
-        /// 그래서 가만히 두면 씬이 계속 더러워지지 않습니다.
-        /// </summary>
-        private void PoseInEditor()
-        {
-            if (editorRigDirty)
-            {
-                editorRigDirty = false;
-                Awake();
-            }
-
-            if (!ready || body == null) return;
-
-            for (int i = 0; i < legs.Length; i++)
-            {
-                if (legs[i] == null || !legs[i].IsWired) return;
-            }
-
-            body.SetPositionAndRotation(transform.TransformPoint(new Vector3(0f, standHeight, 0f)),
-                transform.rotation * Quaternion.Euler(standPitch, 0f, 0f));
-
-            for (int i = 0; i < legs.Length; i++) legs[i].MeasureFromRig();
-
-            SyncRig();
-
-            for (int i = 0; i < legs.Length; i++)
-            {
-                legs[i].Initialize(transform, strideScale);
-                legs[i].PlaceAt(transform.TransformPoint(legs[i].homeOffset), transform.up);
-                legs[i].Solve();
-            }
-        }
-
-        /// <summary>
-        /// <b>고친 다리 하나를 찾아 나머지에 옮깁니다.</b>
-        ///
-        /// 다리를 넷 만들면서 같은 값을 네 번 넣는 것은 실수가 나기 쉽고, 한 번 어긋나면
-        /// 걸음이 미묘하게 절뚝이는데 눈으로는 어느 다리가 다른지 알기 어렵습니다.
-        /// 그래서 <b>하나만 고치면 나머지가 따라오게</b> 합니다.
-        ///
-        /// <b>누가 본인지는 달라진 것으로 알아냅니다.</b> 지난 그리기 때의 모양을 기억해 두었다가
-        /// 이번에 달라진 다리를 찾습니다. 그 다리가 방금 손댄 다리입니다. 어느 다리를 고쳐도
-        /// 되므로 "0번 다리만 고치세요" 같은 규칙을 외울 필요가 없습니다.
-        ///
-        /// <b>여러 개가 한꺼번에 달라졌으면 손대지 않습니다.</b> 씬을 막 열었거나 프리팹을 다시
-        /// 구운 직후가 그렇습니다. 그때 옮기면 일부러 만든 비대칭을 뭉개 버립니다.
-        /// 기억만 새로 해 두고 넘어갑니다.
-        /// </summary>
-        private void SyncRig()
-        {
-            if (rigSync == WalkerRigSync.Off) return;
-
-            int count = legs.Length;
-
-            if (syncUpper == null || syncUpper.Length != count)
-            {
-                syncUpper = new float[count];
-                syncLower = new float[count];
-                syncHip = new Vector3[count];
-                syncHome = new Vector3[count];
-                syncReady = false;
-            }
-
-            if (!syncReady)
-            {
-                CacheRig();
-                syncReady = true;
-                return;
-            }
-
-            int master = -1;
-            int changed = 0;
-
-            for (int i = 0; i < count; i++)
-            {
-                if (!LegChanged(i)) continue;
-
-                master = i;
-                changed++;
-            }
-
-            if (changed != 1)
-            {
-                if (changed > 1) CacheRig();
-                return;
-            }
-
-            if (rigSync == WalkerRigSync.AllLegs)
-            {
-                for (int i = 0; i < count; i++)
-                {
-                    if (i == master) continue;
-
-                    legs[i].CopyShapeFrom(legs[master]);
-                    MarkEdited(legs[i]);
-                }
-            }
-
-            int partner = MirrorPartner(master);
-
-            if (partner >= 0)
-            {
-                legs[partner].CopyShapeFrom(legs[master]);
-                MirrorInto(master, partner);
-            }
-
-            CacheRig();
-        }
-
-        /// <summary>이 다리가 지난 그리기 때와 달라졌는지입니다.</summary>
-        /// <param name="leg">다리 번호</param>
-        /// <returns>달라졌으면 true</returns>
-        private bool LegChanged(int leg)
-        {
-            if (Mathf.Abs(legs[leg].upperLength - syncUpper[leg]) > RigEpsilon) return true;
-            if (Mathf.Abs(legs[leg].lowerLength - syncLower[leg]) > RigEpsilon) return true;
-            if ((legs[leg].transform.localPosition - syncHip[leg]).sqrMagnitude > RigEpsilon * RigEpsilon) return true;
-
-            return (legs[leg].homeOffset - syncHome[leg]).sqrMagnitude > RigEpsilon * RigEpsilon;
-        }
-
-        /// <summary>지금 모양을 기억해 둡니다.</summary>
-        private void CacheRig()
-        {
-            for (int i = 0; i < legs.Length; i++)
-            {
-                syncUpper[i] = legs[i].upperLength;
-                syncLower[i] = legs[i].lowerLength;
-                syncHip[i] = legs[i].transform.localPosition;
-                syncHome[i] = legs[i].homeOffset;
-            }
-        }
-
-        /// <summary>
-        /// 이 다리의 <b>좌우 짝</b>을 찾습니다. 발자리가 Z 는 같고 X 는 부호만 다른 다리입니다.
-        ///
-        /// <b>바뀌기 전</b>의 발자리로 찾습니다. 본은 방금 옮겨졌으므로 지금 값으로 찾으면
-        /// 짝을 놓칩니다. 가운데에 있는 다리(스트라이더의 뒷다리)는 짝이 없습니다.
-        /// </summary>
-        /// <param name="master">본이 되는 다리 번호</param>
-        /// <returns>짝의 번호. 없으면 -1</returns>
-        private int MirrorPartner(int master)
-        {
-            Vector3 was = syncHome[master];
-
-            if (Mathf.Abs(was.x) < MirrorTolerance) return -1;
-
-            for (int i = 0; i < legs.Length; i++)
-            {
-                if (i == master) continue;
-                if (Mathf.Abs(syncHome[i].x + was.x) > MirrorTolerance) continue;
-                if (Mathf.Abs(syncHome[i].z - was.z) > MirrorTolerance) continue;
-
-                return i;
-            }
-
-            return -1;
-        }
-
-        /// <summary>본이 되는 다리의 자리를 짝에게 X 대칭으로 옮깁니다.</summary>
-        /// <param name="master">본이 되는 다리 번호</param>
-        /// <param name="partner">짝의 번호</param>
-        private void MirrorInto(int master, int partner)
-        {
-            Vector3 hip = legs[master].transform.localPosition;
-            Vector3 home = legs[master].homeOffset;
-            Vector3 pole = legs[master].kneePole;
-
-            legs[partner].transform.localPosition = new Vector3(-hip.x, hip.y, hip.z);
-            legs[partner].homeOffset = new Vector3(-home.x, home.y, home.z);
-            legs[partner].kneePole = new Vector3(-pole.x, pole.y, pole.z);
-
-            MarkEdited(legs[partner]);
-        }
-
-        /// <summary>편집 중에 고친 값이 저장되도록 표시합니다.</summary>
-        /// <param name="leg">표시할 다리</param>
-        private static void MarkEdited(WalkerLeg leg)
-        {
-#if UNITY_EDITOR
-            if (leg != null) UnityEditor.EditorUtility.SetDirty(leg);
-#endif
         }
 
         /// <summary>
@@ -1630,54 +1539,6 @@ namespace CarDrive.Gameplay
                 bodyRotationMotion.Update(dt, transform.rotation));
 
             for (int i = 0; i < legs.Length; i++) legs[i].Solve();
-        }
-
-        /// <summary>
-        /// 다리마다 <b>몇 번째로 딛을지</b>를 정하고, 서로 다른 차례가 몇 개인지 돌려줍니다.
-        ///
-        /// 같은 번호를 받은 다리는 <b>함께</b> 나갑니다. 그래서 보행 묶음을 쓰면 4족이 대각선 둘씩
-        /// 딛고, 차례 수는 넷이 아니라 둘이 됩니다. 남는 시간을 그 수로 나누므로
-        /// <b>차례가 적을수록 한 번에 더 여유 있게</b> 딛습니다.
-        /// </summary>
-        /// <returns>서로 다른 차례의 개수</returns>
-        private int BuildRiseSlots()
-        {
-            switch (riseOrder)
-            {
-                case WalkerRiseOrder.GaitGroups:
-                    for (int i = 0; i < legs.Length; i++) riseSlots[i] = gaitGroups[i];
-                    return Mathf.Max(groupCount, 1);
-
-                case WalkerRiseOrder.LowestFirst:
-                    SortByFootHeight();
-                    for (int rank = 0; rank < riseSorted.Length; rank++) riseSlots[riseSorted[rank]] = rank;
-                    return legs.Length;
-
-                default:
-                    for (int i = 0; i < legs.Length; i++) riseSlots[i] = i;
-                    return legs.Length;
-            }
-        }
-
-        /// <summary>발 높이가 낮은 다리부터 오도록 번호를 정렬합니다. (다리가 여섯을 넘지 않으므로 삽입 정렬)</summary>
-        private void SortByFootHeight()
-        {
-            for (int i = 0; i < riseSorted.Length; i++) riseSorted[i] = i;
-
-            for (int i = 1; i < riseSorted.Length; i++)
-            {
-                int current = riseSorted[i];
-                float key = legs[current].FootPosition.y;
-                int j = i - 1;
-
-                while (j >= 0 && legs[riseSorted[j]].FootPosition.y > key)
-                {
-                    riseSorted[j + 1] = riseSorted[j];
-                    j--;
-                }
-
-                riseSorted[j + 1] = current;
-            }
         }
 
         /// <summary>
@@ -1745,23 +1606,5 @@ namespace CarDrive.Gameplay
                 bodyRotationMotion.Update(dt, Quaternion.Slerp(rideRotation, stanceRotation, blend)));
         }
 
-        /// <summary>수평 원을 그립니다. <see cref="Gizmos"/> 에는 원이 없어 선분으로 잇습니다.</summary>
-        /// <param name="center">원의 중심</param>
-        /// <param name="radius">반지름</param>
-        private static void DrawCircle(Vector3 center, float radius)
-        {
-            const int Segments = 24;
-
-            Vector3 previous = center + new Vector3(radius, 0f, 0f);
-
-            for (int i = 1; i <= Segments; i++)
-            {
-                float angle = i * (2f * Mathf.PI / Segments);
-                Vector3 point = center + new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
-
-                Gizmos.DrawLine(previous, point);
-                previous = point;
-            }
-        }
     }
 }

@@ -43,14 +43,14 @@ namespace CarDrive.Gameplay
         // --- Private Member Variables ---
 
         /// <summary>값을 사람이 읽는 꼴로 적기 위한 지갑입니다. 없으면 숫자만 적습니다.</summary>
-        private Wallet wallet;
+        private ICurrencyBalance wallet;
 
         // --- Injection ---
 
         /// <summary>값 표기에 쓸 지갑을 받습니다.</summary>
         /// <param name="playerWallet">플레이어의 지갑</param>
         [Inject]
-        public void Construct(Wallet playerWallet)
+        public void Construct(ICurrencyBalance playerWallet)
         {
             wallet = playerWallet;
         }

@@ -23,8 +23,13 @@ namespace CarDrive.Systems
     /// 그것들은 <see cref="ICurrencySink"/>를 주입받아 넣습니다 — 예전에는 <c>Report</c>라는
     /// 정적 메서드로 지갑을 찾았지만, 그러면 줍는 물건이 <b>지갑 전체</b>를 알게 되어
     /// 돈을 쓸 능력까지 갖게 됩니다. 계약을 "넣기"로 좁혀 두는 편이 안전합니다.
+    ///
+    /// <b>지갑을 통째로 아는 소비자는 이제 없습니다.</b> 넣기·읽기·쓰기를 세 계약으로
+    /// 나누어 두었고(<see cref="ICurrencySink"/> · <see cref="ICurrencyBalance"/> ·
+    /// <see cref="ICurrencyStore"/>), 누가 무엇을 할 수 있는지는 각 소비자의
+    /// <c>Construct</c> 시그니처에 적혀 있습니다. 돈이 나가는 길은 계산대 하나입니다.
     /// </summary>
-    public class Wallet : MonoBehaviour, ISaveable, ICurrencySink
+    public class Wallet : MonoBehaviour, ISaveable, ICurrencySink, ICurrencyStore
     {
         // --- Public Properties : 상태 ---
 

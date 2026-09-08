@@ -48,11 +48,6 @@ namespace CarDrive.UI
 
         // --- Public Member Variables ---
 
-        /// <summary>값을 읽어올 지갑입니다. 비워두면 Start에서 찾습니다.</summary>
-        [Header("연동")]
-        [Tooltip("표시할 지갑. 비워두면 자동으로 찾습니다.")]
-        public Wallet wallet;
-
         /// <summary>표시할 재화 목록입니다. 여기에 없는 재화는 그리지 않습니다.</summary>
         [Header("표시")]
         [Tooltip("표시할 재화 목록")]
@@ -62,26 +57,38 @@ namespace CarDrive.UI
         [Tooltip("체크하면 설정에 있는 재화 색을 숫자에도 적용합니다.")]
         public bool applyCurrencyColor = true;
 
+        // --- Injection ---
+
+        /// <summary>값을 읽어 올 지갑입니다. 주입되지 않으면 그릴 것이 없어 스스로 꺼집니다.</summary>
+        private ICurrencyBalance wallet;
+
+        /// <summary>
+        /// 값을 읽어 올 지갑을 받습니다.
+        ///
+        /// <b>잔액 계약이면 충분합니다.</b> UI 는 읽기만 하므로 지출까지 할 수 있는
+        /// <see cref="ICurrencyStore"/>를 받을 이유가 없습니다.
+        /// 예전에는 인스펙터 칸도 함께 두었는데, 같은 것을 잇는 길이 둘이면
+        /// <b>어느 쪽이 실제로 쓰였는지 코드만 보고는 알 수 없습니다.</b>
+        /// </summary>
+        /// <param name="playerWallet">값을 읽어 올 지갑</param>
+        [Inject]
+        public void Construct(ICurrencyBalance playerWallet)
+        {
+            wallet = playerWallet;
+        }
+
         // --- Unity Event Functions ---
 
         /// <summary>
-        /// 지갑을 찾고 이름 라벨을 한 번만 채웁니다.
+        /// 이름 라벨과 색을 한 번만 채웁니다.
         /// 지갑이 없으면 경고를 남기고 이 컴포넌트를 끕니다.
         /// </summary>
-        /// <summary>표시할 지갑을 받습니다. UI 는 읽기만 하므로 구체 타입이면 충분합니다.</summary>
-        /// <param name="playerWallet">표시할 지갑</param>
-        [Inject]
-        public void Construct(Wallet playerWallet)
-        {
-            if (wallet == null) wallet = playerWallet;
-        }
-
         void Start()
         {
 
             if (wallet == null)
             {
-                GameLog.Warn(GameLog.Channel.UI, "CurrencyUI: Wallet을 찾을 수 없어 재화를 표시하지 않습니다.", this);
+                GameLog.Warn(GameLog.Channel.UI, "CurrencyUI: 지갑이 주입되지 않아 재화를 표시하지 않습니다.", this);
                 enabled = false;
                 return;
             }

@@ -5,8 +5,9 @@ namespace CarDrive.Systems
     ///
     /// <b>왜 넣기만 있는가.</b> 지금 이 계약을 보는 쪽은 바닥에 떨어진 덩어리를 줍는
     /// <c>CurrencyPickup</c> 하나이고, 줍는 물건이 잔액을 조회하거나 돈을 쓸 이유는 없습니다.
-    /// 상점이 생기면 그때 <c>ICurrencyStore</c>(조회·지출)를 따로 만드십시오 —
-    /// 이 계약을 넓히면 줍는 쪽이 지출 능력까지 갖게 됩니다.
+    /// 값을 읽거나 치러야 하는 쪽은 <see cref="ICurrencyBalance"/>와 <see cref="ICurrencyStore"/>를
+    /// 봅니다. 이 계약을 넓히지 않고 그 둘을 따로 둔 이유가 그것입니다 —
+    /// 넓혔다면 <b>줍는 물건이 돈을 쓸 수 있게</b> 됩니다.
     /// </summary>
     public interface ICurrencySink
     {

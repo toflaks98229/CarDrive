@@ -52,11 +52,6 @@ namespace CarDrive.Gameplay
         [SerializeField]
         private UrineSplatter _splatter;
 
-        /// <summary>니즈를 반영할 시스템입니다. 비워두면 실행 중에 찾습니다.</summary>
-        [Tooltip("니즈 시스템. 비워두면 씬에서 자동으로 찾습니다.")]
-        [SerializeField, FormerlySerializedAs("needsSystem")]
-        private NeedsSystem _needsSystem;
-
         // --- Serialized Fields : 조준 ---
 
         /// <summary>상하 각도를 읽어 올 대상입니다. 보통 메인 카메라입니다.</summary>
@@ -280,22 +275,34 @@ namespace CarDrive.Gameplay
         /// <summary>직전 프레임에 배뇨가 비어 있었는지 여부입니다. 비는 순간에만 이벤트를 던지는 데 씁니다.</summary>
         private bool _wasEmptyLastFrame;
 
+        // --- Injection ---
+
+        /// <summary>배뇨 해소와 더러움 누적을 흘려보낼 곳입니다. 주입되지 않으면 물줄기가 나오지 않습니다.</summary>
+        private INeedsSink _needs;
+
+        /// <summary>
+        /// 배뇨를 해소할 곳을 받습니다.
+        ///
+        /// <b>넣고·덜고·읽는 계약이면 충분합니다.</b> 여기서 니즈에 하는 일은 남은 양을 묻고,
+        /// 덜고, 더하는 셋뿐이라 니즈 시스템 전체를 알 이유가 없습니다.
+        /// 예전에는 인스펙터 칸도 함께 두었는데, 같은 것을 잇는 길이 둘이면
+        /// <b>어느 쪽이 실제로 쓰였는지 코드만 보고는 알 수 없습니다.</b>
+        /// </summary>
+        /// <param name="needsSink">니즈를 받는 쪽</param>
+        [Inject]
+        public void Construct(INeedsSink needsSink)
+        {
+            _needs = needsSink;
+        }
+
         // --- Unity Event Functions ---
 
         /// <summary>
-        /// 니즈 시스템과 파티클을 찾아 뷰를 준비합니다.
+        /// 파티클과 얼룩을 찾아 뷰를 준비합니다.
         /// </summary>
-        /// <summary>배뇨를 해소할 니즈 시스템을 받습니다.</summary>
-        /// <param name="needs">니즈 시스템</param>
-        [Inject]
-        public void Construct(NeedsSystem needs)
-        {
-            if (_needsSystem == null) _needsSystem = needs;
-        }
-
         private void Start()
         {
-            if (_needsSystem == null) GameLog.Warn(GameLog.Channel.Player, "UrineRelief: NeedsSystem이 주입되지 않았습니다.", this);
+            if (_needs == null) GameLog.Warn(GameLog.Channel.Player, "UrineRelief: 니즈가 주입되지 않아 배뇨를 해소할 수 없습니다.", this);
 
             if (_stream == null) _stream = GetComponentInChildren<ParticleSystem>(true);
             if (_splatter == null) _splatter = GetComponentInChildren<UrineSplatter>(true);
@@ -450,9 +457,9 @@ namespace CarDrive.Gameplay
             remaining = 0f;
 
             if (_holdAmount <= HoldEpsilon) return false;
-            if (_needsSystem == null) return false;
+            if (_needs == null) return false;
 
-            remaining = _needsSystem.GetValue(NeedType.Urine);
+            remaining = _needs.GetValue(NeedType.Urine);
             if (remaining > _emptyThreshold)
             {
                 _wasEmptyLastFrame = false;
@@ -506,31 +513,31 @@ namespace CarDrive.Gameplay
         private void ApplyDrain(float flow, float deltaTime)
         {
             float drain = _reliefPerSecond * flow * (1f + _pressure * _pressureDrainBonus);
-            _needsSystem.Satisfy(NeedType.Urine, drain * deltaTime);
+            _needs.Satisfy(NeedType.Urine, drain * deltaTime);
 
             float splash = Backsplash;
 
             if (_hygieneCostPerSecond > 0f)
             {
                 float dirtiness = _hygieneCostPerSecond * (1f + splash * _backsplashHygieneMultiplier);
-                _needsSystem.Add(NeedType.Hygiene, dirtiness * flow * deltaTime);
+                _needs.Add(NeedType.Hygiene, dirtiness * flow * deltaTime);
             }
 
             if (splash > 0f && _backsplashThirstReliefPerSecond > 0f)
             {
-                _needsSystem.Satisfy(
+                _needs.Satisfy(
                     NeedType.Thirst, _backsplashThirstReliefPerSecond * splash * flow * deltaTime);
             }
 
             if (_stressReliefPerSecond > 0f)
             {
-                _needsSystem.Satisfy(
+                _needs.Satisfy(
                     NeedType.Stress, _stressReliefPerSecond * (1f - splash) * flow * deltaTime);
             }
 
             if (splash > 0f && _backsplashStressPerSecond > 0f)
             {
-                _needsSystem.Add(
+                _needs.Add(
                     NeedType.Stress, _backsplashStressPerSecond * splash * flow * deltaTime);
             }
         }

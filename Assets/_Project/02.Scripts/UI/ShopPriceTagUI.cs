@@ -47,7 +47,7 @@ namespace CarDrive.UI
         // --- Private Member Variables ---
 
         /// <summary>값 표기 규칙을 가져올 지갑입니다. 없으면 숫자만 적습니다.</summary>
-        private Wallet wallet;
+        private ICurrencyBalance wallet;
 
         /// <summary>줄을 이어 붙일 때 쓰는 버퍼입니다. 매번 새로 만들지 않습니다.</summary>
         private readonly StringBuilder builder = new StringBuilder(128);
@@ -60,7 +60,7 @@ namespace CarDrive.UI
         /// <summary>값 표기에 쓸 지갑을 받습니다.</summary>
         /// <param name="playerWallet">플레이어의 지갑</param>
         [Inject]
-        public void Construct(Wallet playerWallet)
+        public void Construct(ICurrencyBalance playerWallet)
         {
             wallet = playerWallet;
         }

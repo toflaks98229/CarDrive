@@ -108,7 +108,7 @@ namespace CarDrive.Gameplay
         private readonly List<ShopShelfItem> selected = new List<ShopShelfItem>();
 
         /// <summary>값을 치를 지갑입니다. 주입되지 않으면 계산이 되지 않습니다.</summary>
-        private Wallet wallet;
+        private ICurrencyStore wallet;
 
         /// <summary>
         /// 이 계산대에 딸린 진열 칸들입니다. 진열 칸이 <c>Start</c> 에서 스스로 등록합니다.
@@ -126,7 +126,7 @@ namespace CarDrive.Gameplay
         /// <summary>값을 치를 지갑을 받습니다.</summary>
         /// <param name="playerWallet">플레이어의 지갑</param>
         [Inject]
-        public void Construct(Wallet playerWallet)
+        public void Construct(ICurrencyStore playerWallet)
         {
             wallet = playerWallet;
         }
