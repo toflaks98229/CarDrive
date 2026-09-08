@@ -323,8 +323,18 @@ def ramp(m, s, length, rng):
     inner = length - SOCKET["inset"] * 2.0
     run = inner - 14.0
     flights = 4
-    step = DECK_TOP / flights
     lane = 9.0
+
+    # <b>지면 아래에서 시작합니다.</b> 스파인은 선 위에서 가장 높은 지면에 맞춰
+    # 놓이므로, 낮은 곳에 선 경사로는 발밑이 뜹니다 - 실측에서 2.12 m 떠 있었고
+    # 그 단차로는 차가 못 올라갑니다. 다리와 같은 방법으로, 시작을 파묻어 두면
+    # 지면이 어디에 있든 그 자리에서 경사면이 땅을 뚫고 나옵니다.
+    #
+    # 덤으로 기울기가 완만해집니다. 32 m 를 네 번에 나누면 11.4% 인데, 42 m 를
+    # 같은 길이에 나누면 15% 이 아니라 - 층당 상승은 늘지만 길이도 그대로이므로
+    # 층당 15% 입니다. 파묻힌 첫 층이 그 몫을 대신 먹습니다.
+    low = -10.0
+    step = (DECK_TOP - low) / flights
 
     # <b>두 갈래 차선을 오르내립니다.</b> 처음에는 층을 전부 같은 y 에 두었더니
     # 옆에서 보면 판때기가 겹친 지그재그로만 보였습니다. 실제 되돌이 경사로가
@@ -334,25 +344,26 @@ def ramp(m, s, length, rng):
     for i in range(flights):
         turn = 1.0 if i % 2 == 0 else -1.0
         y = lanes[i % 2]
+        z = low + step * (i + 0.5)
 
-        m.slope((0.0, y, step * (i + 0.5)), (run, lane, 1.2), step * turn, CONCRETE)
+        m.slope((0.0, y, z), (run, lane, 1.2), step * turn, CONCRETE)
 
         for edge in (-1.0, 1.0):
             # 난간은 본 데크와 같이 콘크리트입니다. 어둡게 두었더니 밑에서 올려다볼 때
             # 두 줄의 검은 띠만 보이고 정작 경사판이 가려졌습니다.
-            m.slope((0.0, y + edge * lane * 0.5, step * (i + 0.5) + 1.0),
+            m.slope((0.0, y + edge * lane * 0.5, z + 1.0),
                     (run, 0.7, 0.9), step * turn, CONCRETE)
 
         # 받치는 다리 둘
         for k in (-1, 1):
-            z = step * (i + 0.5) + step * turn * k * 0.25
-            m.box((k * run * 0.25, y, (z - SOCKET["burial"]) * 0.5),
-                  (2.6, 2.6, z + SOCKET["burial"]), CONCRETE)
+            top = z + step * turn * k * 0.25
+            m.box((k * run * 0.25, y, (top - SOCKET["burial"]) * 0.5),
+                  (2.6, 2.6, top + SOCKET["burial"]), CONCRETE)
 
     # 갈아타는 참. 양 끝에서 두 차선을 잇습니다.
     for i in range(flights + 1):
         end = -1.0 if i % 2 == 0 else 1.0
-        m.box((end * (run * 0.5 + 3.5), (lanes[0] + lanes[1]) * 0.5, step * i - 0.6),
+        m.box((end * (run * 0.5 + 3.5), (lanes[0] + lanes[1]) * 0.5, low + step * i - 0.6),
               (7.0, lane * 2.2, 1.6), CONCRETE)
 
     # 데크로 이어지는 마지막 참
@@ -644,6 +655,9 @@ def run():
     with open(MANIFEST, "w", encoding="utf-8") as f:
         json.dump(dict(
             bay=SOCKET["bay"], width=SOCKET["width"], burial=SOCKET["burial"],
+            # 데크 노면의 높이입니다. 유니티가 "어느 면이 달릴 면인지" 알아야
+            # 위에서 쏜 광선이 지붕이 아니라 노면을 고를 수 있습니다.
+            deckTop=DECK_TOP, gate=SOCKET["gate"],
             seamPoints=points,
             presets=[dict(name=r["preset"], mesh=r["name"], bays=r["bays"],
                           length=r["length"], weight=r["weight"], top=r["top"])

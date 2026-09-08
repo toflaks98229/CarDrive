@@ -2,6 +2,8 @@
  "bay": 42.0,
  "width": 34.0,
  "burial": 14.0,
+ "deckTop": 32.0,
+ "gate": 22.0,
  "seamPoints": 40,
  "presets": [
   {
