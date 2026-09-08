@@ -5,6 +5,7 @@
   1.5,
   0.0
  ],
+ "meshPrefix": "SM_Strider_",
  "bodyLocal": {
   "pos": [
    -0.0,
@@ -33,7 +34,8 @@
    ],
    "node": "Chassis",
    "mesh": "SM_Strider_Chassis",
-   "active": true
+   "active": true,
+   "parent": "Body"
   },
   {
    "pos": [
@@ -49,13 +51,14 @@
    ],
    "node": "HullCore",
    "mesh": "SM_Strider_HullCore",
-   "active": true
+   "active": true,
+   "parent": "Body"
   },
   {
    "pos": [
     -0.05,
-    0.49117,
-    4.07707
+    0.19117,
+    0.32707
    ],
    "rot": [
     0.0,
@@ -65,13 +68,14 @@
    ],
    "node": "Neck",
    "mesh": "SM_Strider_Neck",
-   "active": true
+   "active": true,
+   "parent": "Head_Yaw"
   },
   {
    "pos": [
     0.0,
-    0.0252,
-    4.9
+    -0.1148,
+    0.4
    ],
    "rot": [
     -0.0,
@@ -81,13 +85,14 @@
    ],
    "node": "Head",
    "mesh": "SM_Strider_Head",
-   "active": true
+   "active": true,
+   "parent": "Head_Pitch"
   },
   {
    "pos": [
     0.0,
-    -1.53,
-    2.85
+    -0.56,
+    0.0
    ],
    "rot": [
     0.0,
@@ -97,13 +102,14 @@
    ],
    "node": "GunMount",
    "mesh": "SM_Strider_GunMount",
-   "active": true
+   "active": true,
+   "parent": "Gun_Yaw"
   },
   {
    "pos": [
     0.0,
-    -1.82,
-    2.85
+    0.0,
+    0.0
    ],
    "rot": [
     0.0,
@@ -113,13 +119,14 @@
    ],
    "node": "Gun",
    "mesh": "SM_Gun_HeavyCannon",
-   "active": true
+   "active": true,
+   "parent": "Gun_Pitch"
   },
   {
    "pos": [
     0.0,
-    -1.82,
-    2.85
+    0.0,
+    0.0
    ],
    "rot": [
     0.0,
@@ -129,7 +136,8 @@
    ],
    "node": "Gun_Alt",
    "mesh": "SM_Gun_Autocannon",
-   "active": false
+   "active": false,
+   "parent": "Gun_Pitch"
   }
  ],
  "legs": [
@@ -479,6 +487,105 @@
      "node": "TarsusMesh",
      "mesh": "SM_Strider_Foot_B"
     }
+   ]
+  }
+ ],
+ "aim": [
+  {
+   "node": "Gun_Yaw",
+   "parent": "Body",
+   "pos": [
+    0.0,
+    -0.97,
+    2.85
+   ],
+   "axis": [
+    0.0,
+    1.0,
+    0.0
+   ],
+   "range": [
+    -120.0,
+    120.0
+   ]
+  },
+  {
+   "node": "Gun_Pitch",
+   "parent": "Gun_Yaw",
+   "pos": [
+    0.0,
+    -0.85,
+    0.0
+   ],
+   "axis": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "range": [
+    -25.0,
+    60.0
+   ]
+  },
+  {
+   "node": "Head_Yaw",
+   "parent": "Body",
+   "pos": [
+    0.0,
+    0.3,
+    3.75
+   ],
+   "axis": [
+    0.0,
+    1.0,
+    0.0
+   ],
+   "range": [
+    -75.0,
+    75.0
+   ]
+  },
+  {
+   "node": "Head_Pitch",
+   "parent": "Head_Yaw",
+   "pos": [
+    0.0,
+    -0.16,
+    0.75
+   ],
+   "axis": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "range": [
+    -30.0,
+    35.0
+   ]
+  }
+ ],
+ "turrets": [
+  {
+   "name": "Gun",
+   "yaw": "Gun_Yaw",
+   "pitch": "Gun_Pitch",
+   "muzzle": "Muzzle"
+  },
+  {
+   "name": "Head",
+   "yaw": "Head_Yaw",
+   "pitch": "Head_Pitch",
+   "muzzle": ""
+  }
+ ],
+ "muzzles": [
+  {
+   "node": "Muzzle",
+   "parent": "Gun_Pitch",
+   "pos": [
+    0.0,
+    0.04,
+    4.22
    ]
   }
  ],

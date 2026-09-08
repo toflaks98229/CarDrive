@@ -442,6 +442,9 @@ namespace CarDrive.Gameplay
         /// <summary>지난 프레임에 걸음 중이었는지입니다. 발이 <b>닿는 순간</b>을 잡는 데 씁니다.</summary>
         private bool[] wasStepping;
 
+        /// <summary>몸통에 얹혀 몸통 뒤에 자세를 잡아야 하는 부품들입니다.</summary>
+        private IWalkerAttachment[] attachments = System.Array.Empty<IWalkerAttachment>();
+
         /// <summary>
         /// <b>다음에 어느 다리가 나갈지</b>를 정하는 규칙입니다.
         /// 이 클래스는 그 답을 받아 발을 뗄 뿐, 규칙 자체는 갖고 있지 않습니다.
@@ -631,6 +634,10 @@ namespace CarDrive.Gameplay
             stepNormals = new Vector3[count];
             gaitGroups = new int[count];
             wasStepping = new bool[count];
+
+            // 포탑·센서 캡처럼 몸통에 얹혀 순서를 지켜야 하는 부품입니다. 무엇인지는
+            // 알 필요가 없고, 몸통 뒤에 불러 주기만 하면 됩니다.
+            attachments = GetComponentsInChildren<IWalkerAttachment>(true);
             legStates = new WalkerLegState[count];
             stepPlanner.Resize(count);
             ringOrder = new int[count];
@@ -746,6 +753,10 @@ namespace CarDrive.Gameplay
             PoseBody(dt);
 
             for (int i = 0; i < legs.Length; i++) legs[i].Solve();
+
+            // 몸통이 자리를 잡은 <b>뒤에</b> 얹힌 것들을 세웁니다. 포탑이 자기 콜백에서 돌면
+            // 어떤 프레임에는 몸통보다 먼저 돌아 총구가 한 프레임씩 떱니다.
+            for (int i = 0; i < attachments.Length; i++) attachments[i].Pose(dt);
         }
 
         // --- Public Methods ---

@@ -34,7 +34,8 @@
    ],
    "node": "Chassis",
    "mesh": "SM_Dread_Hull",
-   "active": true
+   "active": true,
+   "parent": "Body"
   },
   {
    "pos": [
@@ -50,7 +51,8 @@
    ],
    "node": "Sarcophagus",
    "mesh": "SM_Dread_Sarcophagus",
-   "active": true
+   "active": true,
+   "parent": "Body"
   },
   {
    "pos": [
@@ -66,7 +68,8 @@
    ],
    "node": "Waist",
    "mesh": "SM_Dread_Waist",
-   "active": true
+   "active": true,
+   "parent": "Body"
   },
   {
    "pos": [
@@ -82,7 +85,8 @@
    ],
    "node": "Reactor",
    "mesh": "SM_Dread_Reactor",
-   "active": true
+   "active": true,
+   "parent": "Body"
   },
   {
    "pos": [
@@ -98,7 +102,8 @@
    ],
    "node": "Shoulder_L",
    "mesh": "SM_Dread_Shoulder_L",
-   "active": true
+   "active": true,
+   "parent": "Body"
   },
   {
    "pos": [
@@ -114,13 +119,14 @@
    ],
    "node": "Shoulder_R",
    "mesh": "SM_Dread_Shoulder_R",
-   "active": true
+   "active": true,
+   "parent": "Body"
   },
   {
    "pos": [
     0.0,
-    1.24,
-    0.555
+    0.0,
+    0.255
    ],
    "rot": [
     0.0,
@@ -130,13 +136,14 @@
    ],
    "node": "Head",
    "mesh": "SM_Dread_Head",
-   "active": true
+   "active": true,
+   "parent": "Head_Pitch"
   },
   {
    "pos": [
-    -1.18,
-    1.0,
-    -0.25
+    0.0,
+    0.0,
+    0.0
    ],
    "rot": [
     0.0,
@@ -146,13 +153,14 @@
    ],
    "node": "Arm_L",
    "mesh": "SM_Dread_Arm_Fist",
-   "active": true
+   "active": true,
+   "parent": "Arm_L_Pitch"
   },
   {
    "pos": [
-    1.18,
-    1.0,
-    -0.25
+    0.0,
+    0.0,
+    0.0
    ],
    "rot": [
     0.0,
@@ -162,7 +170,8 @@
    ],
    "node": "Arm_R",
    "mesh": "SM_Dread_Arm_Autocannon",
-   "active": true
+   "active": true,
+   "parent": "Arm_R_Pitch"
   }
  ],
  "legs": [
@@ -426,6 +435,156 @@
      "node": "TarsusMesh",
      "mesh": "SM_Dread_Foot_R"
     }
+   ]
+  }
+ ],
+ "aim": [
+  {
+   "node": "Arm_L_Yaw",
+   "parent": "Body",
+   "pos": [
+    -1.18,
+    1.0,
+    -0.25
+   ],
+   "axis": [
+    0.0,
+    1.0,
+    0.0
+   ],
+   "range": [
+    -35.0,
+    35.0
+   ]
+  },
+  {
+   "node": "Arm_L_Pitch",
+   "parent": "Arm_L_Yaw",
+   "pos": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "axis": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "range": [
+    -70.0,
+    35.0
+   ]
+  },
+  {
+   "node": "Arm_R_Yaw",
+   "parent": "Body",
+   "pos": [
+    1.18,
+    1.0,
+    -0.25
+   ],
+   "axis": [
+    0.0,
+    1.0,
+    0.0
+   ],
+   "range": [
+    -35.0,
+    35.0
+   ]
+  },
+  {
+   "node": "Arm_R_Pitch",
+   "parent": "Arm_R_Yaw",
+   "pos": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "axis": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "range": [
+    -70.0,
+    35.0
+   ]
+  },
+  {
+   "node": "Head_Yaw",
+   "parent": "Body",
+   "pos": [
+    0.0,
+    1.24,
+    0.3
+   ],
+   "axis": [
+    0.0,
+    1.0,
+    0.0
+   ],
+   "range": [
+    -80.0,
+    80.0
+   ]
+  },
+  {
+   "node": "Head_Pitch",
+   "parent": "Head_Yaw",
+   "pos": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "axis": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "range": [
+    -25.0,
+    30.0
+   ]
+  }
+ ],
+ "turrets": [
+  {
+   "name": "Arm_L",
+   "yaw": "Arm_L_Yaw",
+   "pitch": "Arm_L_Pitch",
+   "muzzle": "Muzzle_L"
+  },
+  {
+   "name": "Arm_R",
+   "yaw": "Arm_R_Yaw",
+   "pitch": "Arm_R_Pitch",
+   "muzzle": "Muzzle_R"
+  },
+  {
+   "name": "Head",
+   "yaw": "Head_Yaw",
+   "pitch": "Head_Pitch",
+   "muzzle": ""
+  }
+ ],
+ "muzzles": [
+  {
+   "node": "Muzzle_L",
+   "parent": "Arm_L_Pitch",
+   "pos": [
+    0.0,
+    -0.38,
+    1.35
+   ]
+  },
+  {
+   "node": "Muzzle_R",
+   "parent": "Arm_R_Pitch",
+   "pos": [
+    0.0,
+    0.0,
+    1.67
    ]
   }
  ],

@@ -619,6 +619,7 @@ UV_TILE = 1.0
 CM = Matrix(((-1, 0, 0, 0), (0, 0, 1, 0), (0, -1, 0, 0), (0, 0, 0, 1)))
 
 LEG_NODES = {"L": "Leg_Left", "R": "Leg_Right"}
+# node -> 그 파츠를 매다는 부모. 조준 노드 밑으로 가는 것들이 여기서 갈립니다.
 BODY_PARTS = [
     ("Chassis", "SM_Dread_Hull", True),
     ("Sarcophagus", "SM_Dread_Sarcophagus", True),
@@ -681,10 +682,52 @@ def emit_rig_json():
            "meshPrefix": "SM_Dread_",
            "bodyLocal": _trs(body_world), "bodyParts": [], "legs": []}
 
+    # ---- 조준 관절 -------------------------------------------------------
+    # 어깨는 부앙(로컬 X)만, 머리는 요(로컬 Y)와 부앙 둘 다. 모델에 본이 이미
+    # 있으므로 그 자리를 그대로 씁니다 - 눈대중으로 다시 잡지 않습니다.
+    aim = []
+    for key in ("L", "R"):
+        # 어깨에 선회를 조금 둡니다. 포탑 부품이 선회·부앙 두 마디를 전제하기도 하고,
+        # 실제로 팔이 좌우로 조금 트는 것이 맞습니다.
+        aim.append(dict(node="Arm_%s_Yaw" % key, parent="Body",
+                        pos=[round(v, 5) for v in
+                             (body_world.inverted() @ Matrix.Translation(P(ARM_PIVOT[key]))).translation],
+                        axis=[0.0, 1.0, 0.0], range=[-35.0, 35.0]))
+        aim.append(dict(node="Arm_%s_Pitch" % key, parent="Arm_%s_Yaw" % key,
+                        pos=[0.0, 0.0, 0.0],
+                        axis=[1.0, 0.0, 0.0], range=[-70.0, 35.0]))
+    head_pivot = Vector(bones["B_Head"].head_local)
+    aim.append(dict(node="Head_Yaw", parent="Body",
+                    pos=[round(v, 5) for v in
+                         (body_world.inverted() @ Matrix.Translation(P(head_pivot))).translation],
+                    axis=[0.0, 1.0, 0.0], range=[-80.0, 80.0]))
+    aim.append(dict(node="Head_Pitch", parent="Head_Yaw",
+                    pos=[0.0, 0.0, 0.0], axis=[1.0, 0.0, 0.0], range=[-25.0, 30.0]))
+    out["aim"] = aim
+    out["turrets"] = [
+        dict(name="Arm_L", yaw="Arm_L_Yaw", pitch="Arm_L_Pitch", muzzle="Muzzle_L"),
+        dict(name="Arm_R", yaw="Arm_R_Yaw", pitch="Arm_R_Pitch", muzzle="Muzzle_R"),
+        dict(name="Head", yaw="Head_Yaw", pitch="Head_Pitch", muzzle=""),
+    ]
+
+    # 총구는 팔이 돌면 따라가야 하므로 그 팔 밑에 답니다.
+    out["muzzles"] = [
+        dict(node="Muzzle_%s" % key, parent="Arm_%s_Pitch" % key,
+             pos=[round(v, 5) for v in
+                  (Matrix.Translation(P(ARM_PIVOT[key])).inverted() @ Matrix.Translation(P(MUZZLE[key]))).translation])
+        for key in ("L", "R")]
+
+    ATTACH = {"Arm_L": "Arm_L_Pitch", "Arm_R": "Arm_R_Pitch", "Head": "Head_Pitch"}
+    AIM_WORLD = {"Arm_L_Pitch": Matrix.Translation(P(ARM_PIVOT["L"])),
+                 "Arm_R_Pitch": Matrix.Translation(P(ARM_PIVOT["R"])),
+                 "Head_Pitch": Matrix.Translation(P(head_pivot))}
+
     for node, obj_name, active in BODY_PARTS:
-        m = body_world.inverted() @ M2U(bpy.data.objects[obj_name].matrix_world)
+        parent = ATTACH.get(node, "Body")
+        base = AIM_WORLD.get(parent, body_world)
+        m = base.inverted() @ M2U(bpy.data.objects[obj_name].matrix_world)
         d = _trs(m)
-        d.update(node=node, mesh=obj_name, active=active)
+        d.update(node=node, mesh=obj_name, active=active, parent=parent)
         out["bodyParts"].append(d)
 
     for key, node in LEG_NODES.items():

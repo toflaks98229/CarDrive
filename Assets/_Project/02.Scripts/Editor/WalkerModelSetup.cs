@@ -234,11 +234,19 @@ public static class WalkerModelSetup
             // 옛 상자 몸은 전부 걷어냅니다. 다리 뿌리와 마디 노드만 남깁니다.
             StripMeshes(root.transform);
 
+            // 조준 마디를 먼저 세웁니다. 몸통 파츠 일부가 이 밑으로 들어갑니다.
+            Dictionary<string, Transform> nodes = new Dictionary<string, Transform> { { "Body", body } };
+            BuildAim(rig, nodes);
+
             foreach (Part part in rig.bodyParts)
             {
-                GameObject go = Attach(body, part, source);
+                Transform parent = Resolve(nodes, part.parent, body);
+                GameObject go = Attach(parent, part, source);
                 go.SetActive(part.active);
             }
+
+            BuildMuzzles(rig, nodes);
+            BuildTurrets(root, rig, nodes);
 
             foreach (Leg leg in rig.legs)
             {
@@ -399,6 +407,105 @@ public static class WalkerModelSetup
         box.center = new Vector3(center.x, (ceiling + floor) * 0.5f, (front + rear) * 0.5f);
     }
 
+    /// <summary>
+    /// 조준 마디를 세웁니다. 리그 데이터가 부모를 자식보다 먼저 적어 두므로 한 번 훑으면 됩니다.
+    ///
+    /// 회전은 넣지 않습니다 — <see cref="RobotTurret"/> 이 매 프레임 자기 축으로 돌리므로,
+    /// 여기서 회전을 주면 그것이 조준각에 더해져 규약이 깨집니다.
+    /// </summary>
+    private static void BuildAim(Rig rig, Dictionary<string, Transform> nodes)
+    {
+        if (rig.aim == null) return;
+
+        foreach (Aim aim in rig.aim)
+        {
+            Transform parent = Resolve(nodes, aim.parent, nodes["Body"]);
+
+            GameObject go = new GameObject(aim.node);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = V(aim.pos);
+            go.transform.localRotation = Quaternion.identity;
+            go.layer = parent.gameObject.layer;
+
+            nodes[aim.node] = go.transform;
+        }
+    }
+
+    /// <summary>총구 자리를 빈 오브젝트로 둡니다. 발사·머즐 플래시가 여기 붙습니다.</summary>
+    private static void BuildMuzzles(Rig rig, Dictionary<string, Transform> nodes)
+    {
+        if (rig.muzzles == null) return;
+
+        foreach (Muzzle muzzle in rig.muzzles)
+        {
+            Transform parent = Resolve(nodes, muzzle.parent, nodes["Body"]);
+
+            GameObject go = new GameObject(muzzle.node);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = V(muzzle.pos);
+            go.transform.localRotation = Quaternion.identity;
+            go.layer = parent.gameObject.layer;
+
+            nodes[muzzle.node] = go.transform;
+        }
+    }
+
+    /// <summary>선회·부앙 쌍마다 포탑 부품을 하나씩 답니다. 축과 한계는 리그 데이터가 정합니다.</summary>
+    private static void BuildTurrets(GameObject root, Rig rig, Dictionary<string, Transform> nodes)
+    {
+        foreach (RobotTurret stale in root.GetComponentsInChildren<RobotTurret>(true))
+        {
+            UnityEngine.Object.DestroyImmediate(stale);
+        }
+
+        if (rig.turrets == null) return;
+
+        Dictionary<string, Aim> byNode = new Dictionary<string, Aim>();
+        if (rig.aim != null)
+        {
+            foreach (Aim aim in rig.aim) byNode[aim.node] = aim;
+        }
+
+        foreach (Turret turret in rig.turrets)
+        {
+            if (!nodes.TryGetValue(turret.yaw, out Transform yaw) ||
+                !nodes.TryGetValue(turret.pitch, out Transform pitch))
+            {
+                throw new Exception(turret.name + " 포탑의 마디를 찾지 못했습니다");
+            }
+
+            // 포탑 부품은 마디가 아니라 <b>선회 마디의 부모</b>에 답니다. 마디에 달면
+            // 자기가 돌리는 트랜스폼과 같은 자리에 있어 인스펙터에서 헷갈립니다.
+            GameObject host = new GameObject("Turret_" + turret.name);
+            host.transform.SetParent(yaw.parent, false);
+            host.layer = yaw.gameObject.layer;
+
+            RobotTurret component = host.AddComponent<RobotTurret>();
+            component.yawNode = yaw;
+            component.pitchNode = pitch;
+            component.muzzle = string.IsNullOrEmpty(turret.muzzle) ? null
+                : (nodes.TryGetValue(turret.muzzle, out Transform m) ? m : null);
+
+            if (byNode.TryGetValue(turret.yaw, out Aim yawAim))
+            {
+                component.yawAxis = V(yawAim.axis);
+                component.yawRange = new Vector2(yawAim.range[0], yawAim.range[1]);
+            }
+
+            if (byNode.TryGetValue(turret.pitch, out Aim pitchAim))
+            {
+                component.pitchAxis = V(pitchAim.axis);
+                component.pitchRange = new Vector2(pitchAim.range[0], pitchAim.range[1]);
+            }
+        }
+    }
+
+    private static Transform Resolve(Dictionary<string, Transform> nodes, string name, Transform fallback)
+    {
+        if (string.IsNullOrEmpty(name)) return fallback;
+        return nodes.TryGetValue(name, out Transform found) ? found : fallback;
+    }
+
     /// <summary>마디 캡슐을 길이에 맞춥니다. 캡슐은 로컬 +Z 로 눕습니다.</summary>
     private static void Segment(Transform node, float length, float radius)
     {
@@ -486,6 +593,39 @@ public static class WalkerModelSetup
         public string node;
         public string mesh;
         public bool active;
+
+        /// <summary>매달릴 노드입니다. 비어 있으면 몸통입니다.</summary>
+        public string parent;
+    }
+
+    /// <summary>조준 마디 하나입니다. 축과 한계까지 모델에서 유도해 옵니다.</summary>
+    [Serializable]
+    private class Aim
+    {
+        public string node;
+        public string parent;
+        public float[] pos;
+        public float[] axis;
+        public float[] range;
+    }
+
+    /// <summary>총구 자리입니다. 발사 원점이자 조준 기준점입니다.</summary>
+    [Serializable]
+    private class Muzzle
+    {
+        public string node;
+        public string parent;
+        public float[] pos;
+    }
+
+    /// <summary>선회·부앙 한 쌍을 묶어 포탑 하나로 만듭니다.</summary>
+    [Serializable]
+    private class Turret
+    {
+        public string name;
+        public string yaw;
+        public string pitch;
+        public string muzzle;
     }
 
     [Serializable]
@@ -518,6 +658,9 @@ public static class WalkerModelSetup
         public float standHeight;
         public Trs bodyLocal;
         public Part[] bodyParts;
+        public Aim[] aim;
+        public Muzzle[] muzzles;
+        public Turret[] turrets;
         public Leg[] legs;
         public Box bodyBox;
     }
