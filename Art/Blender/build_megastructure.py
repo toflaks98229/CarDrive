@@ -59,6 +59,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
+import hardsurface  # noqa: E402
 import uv_worldscale  # noqa: E402
 
 # --- Paths ------------------------------------------------------------------
@@ -96,120 +97,7 @@ MATS = [
 MAT_CONCRETE, MAT_STEEL, MAT_DARK = 0, 1, 2
 
 
-def ensure_materials():
-    for name, base, rough, metal in MATS:
-        mat = bpy.data.materials.get(name)
-        if mat is None:
-            mat = bpy.data.materials.new(name)
-        mat.use_nodes = True
-        bsdf = mat.node_tree.nodes.get("Principled BSDF")
-        if bsdf is not None:
-            bsdf.inputs["Base Color"].default_value = base
-            bsdf.inputs["Roughness"].default_value = rough
-            bsdf.inputs["Metallic"].default_value = metal
-
-
 # --- Geometry ---------------------------------------------------------------
-
-
-class Mass:
-    """상자만 모읍니다. 상자 하나가 면 여섯 개이고, 그것이 이 언어의 전부입니다."""
-
-    def __init__(self):
-        self.verts = []
-        self.faces = []
-        self.mats = []
-
-    def box(self, center, size, mat=MAT_CONCRETE, taper=0.0, taper_axis=2):
-        """
-        축 정렬 상자입니다. <c>taper</c> 는 <c>taper_axis</c> 의 양(+) 쪽 끝을 좁힙니다.
-
-        기둥 밑을 벌리는 데 씁니다 - 발이 벌어진 A 자 다리가 메가프레임의 기본
-        문법입니다(Sant'Elia 1914 -> Tange). 면 수는 상자와 똑같습니다.
-        """
-        c = list(center)
-        h = [size[0] * 0.5, size[1] * 0.5, size[2] * 0.5]
-
-        lo = [c[i] - h[i] for i in range(3)]
-        hi = [c[i] + h[i] for i in range(3)]
-
-        k = 1.0 - taper
-        other = [i for i in range(3) if i != taper_axis]
-
-        def corner(u, v, top):
-            p = [0.0, 0.0, 0.0]
-            p[taper_axis] = hi[taper_axis] if top else lo[taper_axis]
-            for axis, sign in zip(other, (u, v)):
-                half = h[axis] * (k if top else 1.0)
-                p[axis] = c[axis] + sign * half
-            return tuple(p)
-
-        i = len(self.verts)
-        self.verts += [corner(-1, -1, False), corner(1, -1, False),
-                       corner(1, 1, False), corner(-1, 1, False),
-                       corner(-1, -1, True), corner(1, -1, True),
-                       corner(1, 1, True), corner(-1, 1, True)]
-        self.faces += [
-            (i + 0, i + 3, i + 2, i + 1), (i + 4, i + 5, i + 6, i + 7),
-            (i + 0, i + 1, i + 5, i + 4), (i + 1, i + 2, i + 6, i + 5),
-            (i + 2, i + 3, i + 7, i + 6), (i + 3, i + 0, i + 4, i + 7),
-        ]
-        self.mats += [mat] * 6
-
-    def bay_box(self, center, size, half, mat=MAT_CONCRETE):
-        """
-        베이 경계에서 <b>잘라 낸</b> 상자입니다. x 로 ±<c>half</c> 밖은 버립니다.
-
-        <b>왜 잘라야 하는가.</b> 이음매를 지나는 부재를 안 자르면 베이가 제 길이보다
-        길어지고, 이어 붙일 때 이웃과 겹칩니다. 실측에서 42 m 베이가 47.88 m 로
-        나왔습니다 - 트러스의 끝 살과 슬롯 살이 각각 밖으로 나가 있었습니다.
-        잘린 반쪽은 <b>옆 베이의 반쪽과 만나 온전한 하나</b>가 됩니다.
-        """
-        lo = max(center[0] - size[0] * 0.5, -half)
-        hi = min(center[0] + size[0] * 0.5, half)
-
-        if hi - lo <= 1e-6:
-            return
-
-        self.box(((lo + hi) * 0.5, center[1], center[2]),
-                 (hi - lo, size[1], size[2]), mat)
-
-    def pierced(self, center, size, holes, hole_w, hole_h, mat=MAT_CONCRETE):
-        """
-        긴 보에 <b>경량화 구멍</b>을 냅니다. 구멍이 아니라 구멍 사이의 살을 세웁니다.
-
-        <b>왜 구멍이 필요한가.</b> 통짜 벽으로 두면 두께가 안 읽혀 그냥 벽이 됩니다.
-        구멍이 뚫려 있어야 <b>깊은 보</b>로, 즉 구조로 보입니다.
-
-        불리언을 쓰지 않는 이유는 결과가 매번 같아야 하기 때문입니다. 불리언은
-        접평면에 얇은 조각을 남기고, 그것이 상자 투영 UV 에서 늘어난 텍셀이 됩니다.
-        """
-        cx, cy, cz = center
-        w, d, h = size
-        pitch = w / holes
-        web = pitch - hole_w
-        rim = (h - hole_h) * 0.5
-
-        for i in range(holes + 1):
-            self.bay_box((cx - w * 0.5 + i * pitch, cy, cz), (web, d, h), w * 0.5, mat)
-
-        for sign in (-1.0, 1.0):
-            self.box((cx, cy, cz + sign * (h - rim) * 0.5), (w, d, rim), mat)
-
-    def to_object(self, name):
-        mesh = bpy.data.meshes.new(name)
-        mesh.from_pydata(self.verts, [], self.faces)
-        mesh.update()
-
-        for mat_name, _, _, _ in MATS:
-            mesh.materials.append(bpy.data.materials[mat_name])
-
-        for poly, index in zip(mesh.polygons, self.mats):
-            poly.material_index = index
-
-        obj = bpy.data.objects.new(name, mesh)
-        bpy.context.scene.collection.objects.link(obj)
-        return obj
 
 
 # --- Dimensions -------------------------------------------------------------
@@ -267,7 +155,7 @@ def build(s):
        54 ~ 56    상부 데크 - 두 번째 인공 지반.
        56 ~ 78    상부 포털 - 골조만. 하늘이 비쳐 "위로도 계속된다"가 됩니다.
     """
-    m = Mass()
+    m = hardsurface.Mass(MATS)
     rng = random.Random(s["seed"] * 104729 + 7)
 
     L, W = s["bay"], s["width"]
@@ -295,7 +183,8 @@ def build(s):
     # 스파인 방향으로 흐르는 깊은 보. 이음매를 지나므로 정확히 한 베이 길이입니다.
     for sign in (-1.0, 1.0):
         m.pierced((0.0, sign * (W * 0.5 - ly * 0.42), gate + truss * 0.5),
-                  (L, ly * 0.84, truss), 3, L / 3.0 * 0.56, truss * 0.5)
+                  (L, ly * 0.84, truss), 3, L / 3.0 * 0.56, truss * 0.5,
+                  MAT_CONCRETE, clip=L * 0.5)
 
     # ---- 설비 덕트 ---------------------------------------------------------
     # 데크 밑을 따라 끝없이 흐릅니다. 이음매에서 끊기면 안 됩니다.
@@ -327,9 +216,9 @@ def build(s):
 
         # 슬롯 기둥
         for i in range(cols + 1):
-            m.bay_box((-L * 0.5 + i * pitch, sign * (W * 0.5 + 0.4),
+            m.clipped((-L * 0.5 + i * pitch, sign * (W * 0.5 + 0.4),
                        deck_top + zone * 0.5),
-                      (1.6, cd * 0.55, zone), L * 0.5, MAT_CONCRETE)
+                      (1.6, cd * 0.55, zone), 0, L * 0.5, MAT_CONCRETE)
 
         # 층 바닥판. 이것이 없으면 기둥만 서 있어 캡슐이 떠 보입니다.
         for t in range(s["tiers"] + 1):
@@ -362,7 +251,8 @@ def build(s):
             m.box((i * L * 0.30, sign * (W * 0.5 - post * 0.8), (up_z + 2.0 + top) * 0.5),
                   (post, post, top - up_z - 2.0), MAT_CONCRETE)
 
-    m.pierced((0.0, 0.0, top + 1.6), (L, W - post * 0.8, 3.2), 3, L / 3.0 * 0.62, 1.8)
+    m.pierced((0.0, 0.0, top + 1.6), (L, W - post * 0.8, 3.2), 3, L / 3.0 * 0.62, 1.8,
+              MAT_CONCRETE, clip=L * 0.5)
 
     for sign in (-1.0, 1.0):
         m.box((0.0, sign * (W * 0.5 - post * 0.8), top - 1.4), (L, post * 0.7, 1.4),
@@ -388,44 +278,21 @@ def build(s):
 # --- Run --------------------------------------------------------------------
 
 
-def wipe():
-    for obj in list(bpy.data.objects):
-        bpy.data.objects.remove(obj, do_unlink=True)
-    for block in (bpy.data.meshes, bpy.data.cameras, bpy.data.lights):
-        for item in list(block):
-            if item.users == 0:
-                block.remove(item)
-
-
-def bounds(obj):
-    pts = [obj.matrix_world @ Vector(c) for c in obj.bound_box]
-    lo = [min(p[i] for p in pts) for i in range(3)]
-    hi = [max(p[i] for p in pts) for i in range(3)]
-    return lo, hi
-
-
 def run(seeds):
-    os.makedirs(OUT_DIR, exist_ok=True)
-
     report = []
 
     for seed in seeds:
-        wipe()
-        ensure_materials()
+        hardsurface.wipe()
+        hardsurface.ensure_materials(MATS)
 
         s = spec(seed)
         obj = build(s)
         uv_worldscale.box_uv(obj, UV_TILE)
 
         path = os.path.join(OUT_DIR, obj.name + ".fbx")
-        bpy.ops.export_scene.fbx(
-            filepath=path, use_selection=False, use_visible=False,
-            object_types={'MESH'}, use_mesh_modifiers=True, mesh_smooth_type='FACE',
-            bake_space_transform=True, add_leaf_bones=False, bake_anim=False,
-            apply_scale_options='FBX_SCALE_NONE', global_scale=1.0,
-            axis_forward='-Z', axis_up='Y', path_mode='AUTO')
+        written = hardsurface.export_fbx(path)
 
-        lo, hi = bounds(obj)
+        lo, hi = hardsurface.bounds(obj)
         report.append(dict(
             name=obj.name, seed=seed,
             tris=sum(len(p.vertices) - 2 for p in obj.data.polygons),
@@ -435,7 +302,7 @@ def run(seeds):
             tiles=abs((hi[0] - lo[0]) - s["bay"]) < 0.01,
             clearance=round(s["gate"], 2),
             uv=uv_worldscale.density_report([obj])[1],
-            fbx=os.path.getsize(path)))
+            fbx=written))
 
     return report
 
@@ -447,8 +314,8 @@ def lay_out(seeds, length=11):
     한 베이만 보면 이어지는지 알 수 없습니다. 늘어놓아야 이음매가 맞는지, 덕트가
     끊기지 않는지, 그리고 무엇보다 <b>끝이 안 보이는지</b>가 보입니다.
     """
-    wipe()
-    ensure_materials()
+    hardsurface.wipe()
+    hardsurface.ensure_materials(MATS)
 
     made = {}
     for seed in seeds:
