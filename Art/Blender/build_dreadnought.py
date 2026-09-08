@@ -24,6 +24,26 @@ RULES (same as Strider - see Strider_README.md)
   * Arms are SEPARATE objects bone-parented to the shoulder bones => swappable,
     exactly like the Strider's gun.
 
+⚠ THIS SCRIPT NO LONGER MATCHES THE SHIPPED MODEL - build() WOULD DESTROY IT.
+
+  The shipped Dreadnought.blend carries HAND EDITS on top of what build() makes:
+  ornament trimmed off every part, the reactor cut down, the head enlarged and
+  moved forward. 1940v/1458p became 1436v/1123p. None of that is in the code
+  below, so running build() again throws it away.
+
+  The model is now READ, not rebuilt - the same standing the Strider has. What
+  is still safe to run:
+
+    finalize()                  strip bevels, world-scale UVs, save blend,
+                                export FBX, emit rig json. Reads whatever is
+                                in the scene; does not rebuild it.
+    replace_dreadnought_meshes  push new hand-edited geometry into the rigged
+                                blend without touching the armature.
+
+  build() is kept because it is where the proportions, bone placement and aim
+  pivots came from, and because the rig it makes is still the rig in use. Treat
+  it as the record of how the skeleton was derived, not as the model source.
+
 Run:  blender -b --python build_dreadnought.py   (or exec() from the MCP addon)
 """
 import bpy, bmesh, math
@@ -823,5 +843,16 @@ def finalize():
 
 
 if __name__ == "__main__":
-    print(build())
-    print(finalize())
+    import sys
+
+    # build() 는 이제 출하 모델을 지웁니다(맨 위 경고 참조). 실수로 부르지 못하게 막습니다.
+    # 골격을 정말로 다시 뽑아야 할 때만 -- --rebuild 를 붙입니다.
+    if "--rebuild" in sys.argv:
+        print(build())
+        print(finalize())
+    else:
+        print("build() 는 손으로 다듬은 형상을 지웁니다. 형상은 그대로 두고 다시 내보내려면
+"
+              "  blender -b Dreadnought.blend --python-expr \"import build_dreadnought as b; b.finalize()\"
+"
+              "골격까지 처음부터 다시 만들려면 -- --rebuild 를 붙이십시오.")
