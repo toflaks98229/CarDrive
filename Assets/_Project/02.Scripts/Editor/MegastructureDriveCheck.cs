@@ -72,6 +72,7 @@ public static class MegastructureDriveCheck
         Debug.Log($"MegastructureDriveCheck: 데크 노면 {deck:F1} m · 스파인 바닥 {spine.position.y:F1} m");
 
         Deck(spine, deck, manifest);
+        Edges(spine, deck, manifest);
         Ramps(spine, deck);
 
         if (Application.isBatchMode) EditorApplication.Exit(0);
@@ -157,6 +158,71 @@ public static class MegastructureDriveCheck
                       $"끊긴 곳 {breaks} · 가장 긴 연속 {best * 3f:F0} m · " +
                       $"단차 {steps} 곳(최대 {worst:F2} m) · " +
                       $"높이 {(good.Count > 0 ? good.Min() : 0f):F1} ~ {(good.Count > 0 ? good.Max() : 0f):F1} m");
+        }
+    }
+
+    /// <summary>
+    /// 데크 가장자리가 <b>어디에서 열려 있는지</b> 봅니다.
+    ///
+    /// 난간이 이어져 있으면 데크에서 내려올 방법이 없고, 경사로에서 올라온 차도
+    /// 못 들어갑니다. 그래서 범퍼 높이에서 <b>옆으로</b> 쏴 막혔는지 봅니다 —
+    /// 위에서 쏘는 것으로는 난간이 있는지 없는지 알 수 없습니다.
+    /// </summary>
+    private static void Edges(Transform spine, float deck, Manifest manifest)
+    {
+        Vector3 along = spine.forward;
+        Vector3 side = spine.right;
+
+        float first = float.MaxValue;
+        float last = float.MinValue;
+
+        foreach (Transform child in spine)
+        {
+            float z = spine.InverseTransformPoint(child.position).z;
+            first = Mathf.Min(first, z);
+            last = Mathf.Max(last, z);
+        }
+
+        float length = last - first;
+        float middle = (first + last) * 0.5f;
+        int samples = Mathf.CeilToInt(length / 2f);
+        float reach = manifest.width * 0.5f + 6f;
+
+        foreach (float sign in new[] { -1f, 1f })
+        {
+            int open = 0;
+            int best = 0;
+            int run = 0;
+
+            for (int i = 0; i < samples; i++)
+            {
+                float t = middle + (i / (float)(samples - 1) - 0.5f) * length;
+
+                // 높이는 <b>더하는 것이 아니라 정하는 것</b>입니다. 처음에 스파인의
+                // 바닥 높이에 데크 높이를 더해 20 m 위 허공에서 쏘았고, 그래서
+                // 난간의 77% 가 "열려 있다" 고 나왔습니다.
+                Vector3 at = spine.position + along * t;
+                at.y = deck + 0.7f;
+
+                bool blocked = false;
+
+                foreach (RaycastHit hit in Physics.RaycastAll(at, side * sign, reach))
+                {
+                    if (hit.collider.GetComponentInParent<Terrain>() != null) continue;
+                    if (!hit.collider.transform.IsChildOf(spine)) continue;
+
+                    blocked = true;
+                    break;
+                }
+
+                run = blocked ? 0 : run + 1;
+                if (!blocked) open++;
+                best = Mathf.Max(best, run);
+            }
+
+            Debug.Log($"  가장자리 {(sign < 0 ? "왼" : "오른")}쪽 : 열린 표본 {open}/{samples} " +
+                      $"({open * 2f:F0} m) · 가장 긴 열린 구간 {best * 2f:F0} m " +
+                      $"{(open > 0 ? "" : "◀ 전부 막힘 — 뛰어내릴 수 없음")}");
         }
     }
 

@@ -93,7 +93,10 @@ PRESETS = {
     "Viaduct": dict(bays=1, tiers=0, upper=0.0, weight=5),
 
     # 사람이 사는 칸. 골조 슬롯에 캡슐이 꽂히고 몇 자리는 비어 있습니다.
-    "Habitat": dict(bays=1, tiers=4, upper=22.0, fill=0.62, weight=6),
+    # 한쪽 난간을 끊어 <b>데크에서 뛰어내릴 수 있게</b> 합니다. 거주 구간마다 있으면
+    # 흔해지므로 폭을 좁게 둡니다 - 노려서 맞춰야 하는 자리입니다.
+    "Habitat": dict(bays=1, tiers=4, upper=22.0, fill=0.62, weight=6,
+                    gaps=((-1.0, 0.0, 9.0),)),
 
     # 설비. 탱크와 굴뚝, 데크 위를 건너는 컨베이어 갠트리.
     "Industry": dict(bays=1, tiers=2, upper=15.0, fill=0.35, tanks=True, weight=3),
@@ -106,7 +109,10 @@ PRESETS = {
 
     # 지상과 데크를 잇는 되돌이 경사로. <b>인공 지반을 실제로 쓸 수 있게 하는</b>
     # 조각이고, 운전 게임에서는 이것이 있어야 데크가 배경이 아니라 갈 수 있는 길입니다.
-    "Ramp": dict(bays=2, tiers=0, upper=0.0, ramp=True, weight=2),
+    # 경사로가 데크로 들어오는 자리. <b>여기가 안 뚫리면 경사로가 아무 소용이 없습니다</b> -
+    # 실측에서 경사로는 데크 높이까지 올라왔는데 난간이 가로막고 있었습니다.
+    "Ramp": dict(bays=2, tiers=0, upper=0.0, ramp=True, weight=2,
+                 gaps=((1.0, -37.3, 15.0),)),
 
     # 크레인길. Archigram 의 Plug-In City 가 캡슐을 꽂고 빼던 그 장치입니다.
     # 캡슐이 <b>어떻게</b> 꽂히는지를 보여 주므로 3번 항목을 가장 직접 말합니다.
@@ -114,27 +120,36 @@ PRESETS = {
 
     # 무너진 구간. 캡슐은 뜯겨 나갔는데 <b>골조는 서 있습니다</b> — 4번 항목
     # (골조가 담는 것보다 오래 산다)을 그림 하나로 말하는 자리입니다.
-    "Breach": dict(bays=1, tiers=4, upper=8.0, fill=0.16, breach=True, weight=2),
+    # 무너진 구간이므로 난간도 뜯겨 나갔습니다. 두 군데가 크게 비어 있습니다.
+    "Breach": dict(bays=1, tiers=4, upper=8.0, fill=0.16, breach=True, weight=2,
+                   gaps=((1.0, -9.0, 13.0), (-1.0, 8.0, 11.0))),
 
     # 위를 직각으로 건너가는 두 번째 스파인. 한 줄이면 다리이고, 교차가 있어야 <b>망</b>입니다.
     "Overpass": dict(bays=2, tiers=0, upper=0.0, over=True, weight=2),
 
     # 뻗다 만 가지. 허공에서 끊겨 트러스 단면이 드러납니다. "연장 가능"을
     # 가장 크게 말하는 방법은 <b>연장하다 만 것</b>을 보여 주는 것입니다.
-    "Spur": dict(bays=1, tiers=0, upper=12.0, spur=True, weight=2),
+    # 가지가 갈라져 나가는 자리는 난간이 있을 수 없습니다.
+    "Spur": dict(bays=1, tiers=0, upper=12.0, spur=True, weight=2,
+                 gaps=((-1.0, 0.0, 19.0),)),
 }
 
 
 # --- Shared core ------------------------------------------------------------
 
 
-def core(m, length, bays):
+def core(m, length, bays, gaps=()):
     """
     모든 프리셋이 똑같이 세우는 뼈대입니다. <b>이음매를 지나는 것은 전부 여기 있습니다.</b>
 
     다리는 베이마다 한 쌍씩 한가운데에 섭니다. 트러스·데크·노면·난간·덕트는 프리셋
     전체 길이를 지나 양 끝에서 정확히 끊깁니다. 그래서 어떤 프리셋 뒤에 어떤 프리셋을
     붙여도 이 단면끼리 맞닿습니다.
+
+    <c>gaps</c> 는 <b>난간을 끊는 자리</b>입니다 - (부호, 중심 x, 폭). 난간이 이어져
+    있으면 데크에서 내려올 방법이 없고, 경사로에서 올라온 차도 못 들어갑니다.
+    구멍은 <b>양 끝에서 물러나 있어야</b> 합니다. 이음매에 걸치면 옆 프리셋의 난간과
+    반쪽씩 만나 어긋납니다.
     """
     W = SOCKET["width"]
     lx, ly = SOCKET["leg"]
@@ -177,8 +192,49 @@ def core(m, length, bays):
     m.box((0.0, 0.0, DECK_TOP + 0.08), (length, W - 4.0, 0.16), DARK)
 
     for sign in (-1.0, 1.0):
-        m.box((0.0, sign * (W * 0.5 - 0.6), DECK_TOP + SOCKET["parapet"] * 0.5),
-              (length, 1.2, SOCKET["parapet"]), CONCRETE)
+        mine = sorted((g[1], g[2]) for g in gaps if g[0] == sign)
+        parapet(m, length, sign * (W * 0.5 - 0.6), mine)
+
+
+def parapet(m, length, y, gaps):
+    """
+    난간을 <b>토막으로</b> 세웁니다. <c>gaps</c> 의 구간은 비웁니다.
+
+    구멍의 <b>끝을 두껍게</b> 막습니다. 그냥 끊으면 판이 허공에서 잘린 것으로
+    보이는데, 마구리가 있으면 <b>거기까지가 난간</b>이라고 읽힙니다.
+    """
+    # <b>구멍은 이음매에서 물러납니다.</b> 끝까지 뚫으면 옆 프리셋의 난간과 반쪽씩
+    # 만나 단면이 어긋나고, 이음매 검사가 그 자리에서 멈춥니다 - 실제로 경사로의
+    # 구멍이 프리셋 끝을 2.8 m 넘어가 걸렸습니다. 그래서 안으로 잘라 둡니다.
+    limit = length * 0.5 - SOCKET["inset"]
+
+    edge = -length * 0.5
+    parts = []
+
+    for center, width in gaps:
+        lo = max(center - width * 0.5, -limit)
+        hi = min(center + width * 0.5, limit)
+
+        if hi - lo <= 0.2:
+            continue
+
+        parts.append((edge, lo))
+        edge = hi
+
+    parts.append((edge, length * 0.5))
+
+    for lo, hi in parts:
+        if hi - lo <= 0.2:
+            continue
+
+        m.box(((lo + hi) * 0.5, y, DECK_TOP + SOCKET["parapet"] * 0.5),
+              (hi - lo, 1.2, SOCKET["parapet"]), CONCRETE)
+
+    for center, width in gaps:
+        for side in (-1.0, 1.0):
+            x = min(max(center + side * width * 0.5, -limit), limit)
+            m.box((x, y, DECK_TOP + SOCKET["parapet"] * 0.5),
+                  (0.6, 1.6, SOCKET["parapet"] + 0.3), DARK)
 
 
 # --- Preset parts -----------------------------------------------------------
@@ -366,9 +422,16 @@ def ramp(m, s, length, rng):
         m.box((end * (run * 0.5 + 3.5), (lanes[0] + lanes[1]) * 0.5, low + step * i - 0.6),
               (7.0, lane * 2.2, 1.6), CONCRETE)
 
-    # 데크로 이어지는 마지막 참
-    m.box((run * 0.5 * (1 if flights % 2 == 0 else -1), W * 0.5 + lane * 0.3,
-           DECK_TOP - 0.6), (10.0, lane * 1.8, 1.6), CONCRETE)
+    # <b>데크로 건너가는 다리.</b> 마지막 참과 데크 가장자리 사이의 0.9 m 를 메웁니다.
+    # 처음에는 이것을 반대쪽 끝에 두어 아무 데도 닿지 않았습니다.
+    # <b>물러나야 합니다. 자르면 안 됩니다.</b> 처음에는 이 다리를 이음매에서 잘랐는데,
+    # 그러면 잘린 면이 <b>이음매 평면 위에</b> 놓여 양 끝 단면이 서로 달라집니다.
+    # 규약은 "끝을 넘지 않는다" 가 아니라 "끝에서 물러나 있다" 입니다.
+    top_x = -(run * 0.5 + 3.5) if flights % 2 == 0 else (run * 0.5 + 3.5)
+    span = (length * 0.5 - SOCKET["inset"] - abs(top_x)) * 2.0
+
+    m.box((top_x, (W * 0.5 + lanes[0] - lane * 0.5) * 0.5, DECK_TOP - 0.6),
+          (span, lanes[0] - lane * 0.5 - W * 0.5 + 2.0, 1.6), CONCRETE)
 
 
 def crane(m, s, length, rng):
@@ -561,7 +624,7 @@ def build(name):
     m = hardsurface.Mass(MATS)
     rng = random.Random(abs(hash(name)) % 100000)
 
-    core(m, length, bays)
+    core(m, length, bays, s.get("gaps", ()))
     capsules(m, s, length, rng)
     portal(m, s, length, rng)
     industry(m, s, length, rng)
