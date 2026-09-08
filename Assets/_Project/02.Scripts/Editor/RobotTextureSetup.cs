@@ -10,9 +10,9 @@ using UnityEngine;
 /// 타일링을 건드리면 그 규약이 깨집니다. 결의 크기를 바꾸고 싶으면 <c>UV_TILE</c> 을 고쳐
 /// 모델을 다시 내보내십시오. 그래야 <b>부품마다 결이 달라지는 일</b>이 생기지 않습니다.
 ///
-/// 맵은 <c>Art/Textures/make_concrete.py</c> 가 <b>이 게임의 값에서</b> 만들어 냅니다.
-/// 받아온 사진이 아니라, 처음부터 이 용도로 지은 거푸집 널 자국 콘크리트입니다 —
-/// 고유색 8개, 이 프로젝트의 4x4 Bayer 로 디더, 1 m 로 이어붙습니다.
+/// 맵은 <c>Art/Textures/make_surfaces.py</c> 가 <b>이 게임의 값에서</b> 만들어 냅니다.
+/// 받아온 사진이 아니라 처음부터 이 용도로 지은 것입니다 — 고유색 5개,
+/// 이 프로젝트의 4x4 Bayer 로 디더, 1 m 로 이어붙고 방향성이 없습니다.
 ///
 /// <c>_BaseMapGain</c> 은 맵의 채널별 평균을 1 로 맞춰 곱셈을 상쇄하고,
 /// <c>_BaseMapStrength</c> 가 결의 세기를 정합니다. 이득은 이 스크립트가 텍스처를
@@ -33,8 +33,11 @@ public static class RobotTextureSetup
     private const string TextureDir = "Assets/_Project/04.Art/02.Models/Robot";
     private const string MaterialDir = "Assets/_Project/04.Art/00.Materials";
 
-    /// <summary>텍스처 파일 이름입니다. 셋이 같은 결을 쓰고 값만 다릅니다.</summary>
-    private const string Texture = "Concrete_Brutalist.png";
+    /// <summary>콘크리트 결입니다. 넓은 얼룩과 거친 골재, 기공.</summary>
+    private const string ConcreteMap = "Concrete_Brutalist.png";
+
+    /// <summary>강철 결입니다. 거의 평평하고 고운 결에 드문 부식 자국.</summary>
+    private const string SteelMap = "Steel_Plate.png";
 
     /// <summary>
     /// 결의 세기입니다. 1 이면 사진의 계조를 그대로 씁니다.
@@ -44,12 +47,17 @@ public static class RobotTextureSetup
     /// </summary>
     private const float Strength = 0.45f;
 
-    /// <summary>머티리얼 이름 → <b>설계한 최종 명도</b>입니다. 이 대비가 이 기계들의 디자인 언어입니다.</summary>
-    private static readonly (string material, Color value)[] Wiring =
+    /// <summary>
+    /// 머티리얼 이름 → <b>설계한 최종 명도</b>와 그 재질의 결입니다.
+    ///
+    /// 명도만 다르고 결이 같으면 세 재질이 <b>같은 물질의 밝기 차이</b>로 읽힙니다.
+    /// 콘크리트는 부어 만든 것이고 강철은 압연한 판이라, 결이 갈려야 재질이 갈립니다.
+    /// </summary>
+    private static readonly (string material, Color value, string texture)[] Wiring =
     {
-        ("RobotConcrete", new Color(0.60f, 0.59f, 0.55f)),
-        ("RobotSteel", new Color(0.26f, 0.28f, 0.31f)),
-        ("RobotDark", new Color(0.11f, 0.12f, 0.13f)),
+        ("RobotConcrete", new Color(0.60f, 0.59f, 0.55f), ConcreteMap),
+        ("RobotSteel", new Color(0.26f, 0.28f, 0.31f), SteelMap),
+        ("RobotDark", new Color(0.11f, 0.12f, 0.13f), SteelMap),
     };
 
     // --- Public Methods ---
@@ -59,9 +67,9 @@ public static class RobotTextureSetup
         int errors = 0;
         int wired = 0;
 
-        foreach ((string material, Color value) in Wiring)
+        foreach ((string material, Color value, string texture) in Wiring)
         {
-            string texturePath = TextureDir + "/" + Texture;
+            string texturePath = TextureDir + "/" + texture;
             string materialPath = MaterialDir + "/" + material + ".mat";
 
             Texture2D map = AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath);
@@ -102,7 +110,7 @@ public static class RobotTextureSetup
             EditorUtility.SetDirty(target);
             wired++;
 
-            Debug.Log($"RobotTextureSetup: {material} ← {Texture} · 이득 {gain.r:F2},{gain.g:F2},{gain.b:F2} · 세기 {Strength:F2}");
+            Debug.Log($"RobotTextureSetup: {material} ← {texture} · 이득 {gain.r:F2},{gain.g:F2},{gain.b:F2} · 세기 {Strength:F2}");
         }
 
         AssetDatabase.SaveAssets();
