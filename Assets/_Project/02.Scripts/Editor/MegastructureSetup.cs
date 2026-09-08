@@ -420,6 +420,12 @@ public static class MegastructureSetup
         List<Preset> pool = manifest.presets.Where(p => p.bays < 3).ToList();
         Preset huge = manifest.presets.OrderByDescending(p => p.bays).First();
 
+        // <b>경사로도 자리를 정해 줍니다.</b> 데크로 올라가는 <b>유일한 길</b>인데,
+        // 무작위로 뽑았더니 세계 밖으로 나가는 끝자락에 떨어져 올라갈 방법이 하나도
+        // 없는 배치가 나왔습니다. 한 번뿐인 지표와 같은 이유입니다.
+        Preset way = pool.FirstOrDefault(p => p.name == "Ramp");
+        if (way != null) pool.Remove(way);
+
         // <b>모든 프리셋이 적어도 한 번은 나옵니다.</b> 무게만으로 뽑았더니 열 종을
         // 만들어 두고 일곱 종만 나온 적이 있습니다. 어휘를 만들어 놓고 보여 주지
         // 않는 것은 그냥 손해라, 한 벌을 먼저 깔고 나머지를 무게로 채웁니다.
@@ -469,6 +475,10 @@ public static class MegastructureSetup
         // 어느 방향에서 와도 보이고, 양옆에 맨 골조를 붙여 홀로 서게 합니다.
         int middle = order.Count / 2;
         order.InsertRange(middle, new[] { link, huge, link });
+
+        // 경사로는 세계 안쪽, 초거대와 반대편 사분점에 둡니다. 어디서 출발하든
+        // 올라갈 자리가 하나는 손에 닿습니다.
+        if (way != null) order.InsertRange(order.Count / 4, new[] { link, way, link });
 
         return order;
     }

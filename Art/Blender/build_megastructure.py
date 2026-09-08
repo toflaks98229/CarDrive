@@ -132,6 +132,20 @@ PRESETS = {
     # 가지가 갈라져 나가는 자리는 난간이 있을 수 없습니다.
     "Spur": dict(bays=1, tiers=0, upper=12.0, spur=True, weight=2,
                  gaps=((-1.0, 0.0, 19.0),)),
+
+    # <b>수직 하나 — 서비스 샤프트 다발.</b> Tange 의 야마나시(1966)가 원형입니다:
+    # 원통 코어 열여섯이 승강기·계단·설비를 전부 나르고 바닥판이 그 사이를 건너며,
+    # <b>일부러 비워 둔 바닥판</b>이 나중에 자랄 자리입니다. 빈 캡슐 슬롯이 수평에서
+    # 하는 말을 수직에서 하는 것이 이 빈 층입니다.
+    "Shaft": dict(bays=2, tiers=0, upper=0.0, shaft=True, weight=1,
+                  gaps=((1.0, 0.0, 11.0),)),
+
+    # <b>수직 둘 — 캡슐 탑.</b> Kurokawa 의 나카긴(1972)이 원형입니다: 코어 둘에
+    # 캡슐이 하나씩 볼트로 붙고 갈아 끼울 수 있게 되어 있습니다. 여기서는 스파인
+    # 옆구리에 꽂히는 것과 <b>같은 캡슐</b>을 씁니다 - 같은 공장에서 나온 물건이
+    # 수평에도 수직에도 간다는 것이 이 세계의 규칙입니다.
+    "CapsuleTower": dict(bays=2, tiers=0, upper=0.0, tower=True, weight=1,
+                         gaps=((-1.0, 0.0, 11.0),)),
 }
 
 
@@ -266,6 +280,15 @@ def capsules(m, s, length, rng, y_half=None, base=None, fade=False):
     pitch = inner / cols
     tier = 5.6
 
+    # <b>갤러리 — 하늘의 거리.</b> 캡슐이 꽂혀 있어도 들어갈 길이 없으면 창고입니다.
+    # Park Hill(1961)의 데크 접근 복도가 그 답이었습니다: 층마다 바깥으로 통로를
+    # 내고 문이 거기로 열립니다. 우유 트럭이 다닐 폭이었다는 그 통로입니다.
+    #
+    # 그래서 골조에서 밖으로 <b>기둥 → 통로 → 캡슐</b> 순서가 됩니다. 캡슐을 통로
+    # 바깥으로 밀어 두지 않으면 문 앞이 허공입니다.
+    walk = 2.6
+    reach = W + walk
+
     for sign in (-1.0, 1.0):
         for i in range(cols + 1):
             m.box((-inner * 0.5 + i * pitch, sign * (W + 0.4),
@@ -274,6 +297,15 @@ def capsules(m, s, length, rng, y_half=None, base=None, fade=False):
 
         for t in range(s["tiers"] + 1):
             m.box((0.0, sign * (W + 0.2), z0 + t * tier), (inner, cd * 0.75, 0.7), CONCRETE)
+
+        # 통로 바닥과 난간. 난간은 무릎이 아니라 <b>가슴</b> 높이입니다 - 30 m 위입니다.
+        for t in range(s["tiers"]):
+            m.box((0.0, sign * (W + walk * 0.5 + 0.6), z0 + t * tier + 0.35),
+                  (inner, walk, 0.3), CONCRETE)
+            m.box((0.0, sign * (W + walk + 0.5), z0 + t * tier + 1.1),
+                  (inner, 0.25, 1.1), CONCRETE)
+            m.box((0.0, sign * (W + walk + 0.5), z0 + t * tier + 1.72),
+                  (inner, 0.45, 0.14), DARK)
 
         for t in range(s["tiers"]):
             # 위로 갈수록 덜 찹니다. 아직 못 올라간 것이지 지어진 적 없는 것이 아닙니다.
@@ -286,10 +318,61 @@ def capsules(m, s, length, rng, y_half=None, base=None, fade=False):
                     continue
 
                 x = -inner * 0.5 + (col + 0.5) * pitch
-                m.box((x, sign * (W + cd * 0.5), z0 + (t + 0.5) * tier),
-                      (cw, cd * 1.5, ch), DARK)
-                m.box((x, sign * (W + cd), z0 + (t + 0.62) * tier),
+
+                # 캡슐은 통로 <b>바깥</b>에 꽂힙니다.
+                m.box((x, sign * (reach + cd * 0.6), z0 + (t + 0.5) * tier),
+                      (cw, cd * 1.4, ch), DARK)
+
+                # 통로로 열리는 문. 어두운 캡슐에 밝은 문틀이라 <b>들어갈 수 있는 것</b>으로
+                # 읽힙니다 - 이것이 없으면 그냥 매달린 상자입니다.
+                m.box((x, sign * (reach - 0.05), z0 + (t + 0.5) * tier - 0.35),
+                      (1.5, 0.4, 2.3), CONCRETE)
+                m.box((x, sign * (reach + 0.12), z0 + (t + 0.5) * tier - 0.35),
+                      (1.0, 0.2, 2.0), DARK)
+
+                m.box((x, sign * (reach + cd * 1.3), z0 + (t + 0.62) * tier),
                       (cw * 0.5, 0.4, ch * 0.28), STEEL)
+
+
+def access(m, s, length, rng):
+    """
+    데크에서 갤러리로 올라가는 <b>계단 코어</b>입니다.
+
+    통로를 층마다 냈어도 데크에서 거기까지 올라갈 길이 없으면 소용이 없습니다.
+    Yamanashi 가 그랬듯 <b>코어가 먼저 있고 층은 거기 붙습니다</b> - 코어는 한 자리에
+    서서 모든 층을 꿰고, 층마다 짧은 다리로 통로에 닿습니다.
+    """
+    if s["tiers"] <= 0:
+        return
+
+    W = SOCKET["width"]
+    inner = length - SOCKET["inset"] * 2.0
+    tier = 5.6
+    walk = 2.6
+    reach = W + walk
+
+    side = 1.0
+    x = inner * 0.5 - 3.6
+    top = DECK_TOP + s["tiers"] * tier
+
+    # 코어. 데크에서 맨 위 통로까지.
+    m.box((x, side * (reach + 2.2), (DECK_TOP + top) * 0.5),
+          (5.2, 5.2, top - DECK_TOP), CONCRETE)
+    m.box((x, side * (reach + 2.2), top + 0.5), (6.0, 6.0, 1.0), DARK)
+
+    # 계단실 창. 층마다 하나씩 나면 <b>안에 계단이 있다</b>는 것이 밖에서 읽힙니다.
+    for t in range(s["tiers"]):
+        m.box((x, side * (reach + 4.7), DECK_TOP + (t + 0.5) * tier),
+              (1.2, 0.4, 2.0), DARK)
+
+    # 데크에서 코어로 건너가는 다리.
+    m.box((x, side * (W * 0.5 + (reach + 2.2 - W * 0.5) * 0.5), DECK_TOP - 0.15),
+          (3.4, reach + 2.2 - W * 0.5, 0.3), CONCRETE)
+
+    # 층마다 코어에서 통로로.
+    for t in range(s["tiers"]):
+        m.box((x, side * (reach + 0.9), DECK_TOP + t * tier + 0.35),
+              (3.0, 2.8, 0.3), CONCRETE)
 
 
 def portal(m, s, length, rng):
@@ -569,6 +652,111 @@ def spur(m, s, length, rng):
           (18.0, 0.8, 1.8), DARK)
 
 
+def shaft(m, s, length, rng):
+    """
+    서비스 샤프트 다발과 그 사이를 건너는 바닥판입니다.
+
+    <b>비어 있는 층이 요점입니다.</b> 야마나시는 바닥판 몇 장을 처음부터 넣지 않고
+    비워 두었습니다 - 나중에 자랄 자리를 <b>지어 두지 않은 채로 보여 주는</b> 것이고,
+    수평에서 빈 캡슐 슬롯이 하는 말과 똑같습니다. 다 채우면 그냥 탑입니다.
+    """
+    if not s.get("shaft"):
+        return
+
+    W = SOCKET["width"]
+    inner = length - SOCKET["inset"] * 2.0
+    side = 1.0
+
+    floors = 18
+    step = 5.0
+    base = DECK_TOP
+    core_r = 3.4
+
+    # 코어. 여덟 개를 두 줄로 세우고 하나는 훨씬 높입니다.
+    cores = []
+    for i in range(4):
+        for j in (-1, 1):
+            x = (i - 1.5) * (inner * 0.22)
+            y = side * (W * 0.5 + 9.0 + j * 7.5)
+            tall = base + step * (floors + (6 if i == 1 and j == 1 else 0))
+            cores.append((x, y, tall))
+
+            m.box((x, y, (base - SOCKET["burial"] + tall) * 0.5),
+                  (core_r * 2.0, core_r * 2.0, tall - base + SOCKET["burial"]), CONCRETE)
+            m.box((x, y, tall + 0.6), (core_r * 2.4, core_r * 2.4, 1.2), DARK)
+
+    # 바닥판. rng 가 정한 층은 <b>넣지 않습니다</b>.
+    span_y = side * (W * 0.5 + 9.0)
+
+    for f in range(1, floors + 1):
+        if rng.random() < 0.28:
+            continue
+
+        z = base + f * step
+
+        m.box((0.0, span_y, z + 0.25), (inner * 0.82, 19.0, 0.5), CONCRETE)
+        m.box((0.0, span_y, z + 1.05), (inner * 0.82 + 0.5, 19.6, 0.16), DARK)
+
+        # 난간 대신 가장자리 보. 층이 <b>판</b>으로 읽히게 합니다.
+        for edge in (-1, 1):
+            m.box((0.0, span_y + edge * 9.6, z + 0.9), (inner * 0.82, 0.4, 0.9), CONCRETE)
+
+    # 데크에서 다발로 건너가는 다리.
+    m.box((inner * 0.3, side * (W * 0.5 + 4.5), DECK_TOP - 0.15),
+          (4.0, 9.0, 0.3), CONCRETE)
+
+
+def tower(m, s, length, rng):
+    """
+    코어 둘에 캡슐을 꽂은 탑입니다.
+
+    스파인 옆구리와 <b>같은 캡슐</b>을 씁니다. 크기를 달리하면 두 물건이 다른 공장에서
+    나온 것으로 보이고, 그러면 "다른 데서 만들어 와 꽂는다" 는 말이 약해집니다.
+    """
+    if not s.get("tower"):
+        return
+
+    W = SOCKET["width"]
+    inner = length - SOCKET["inset"] * 2.0
+    side = -1.0
+
+    cw, cd, ch = 6.4, 5.0, 4.4
+    step = 5.2
+    floors = 13
+    base = DECK_TOP
+    top = base + step * floors
+
+    lanes = (-inner * 0.16, inner * 0.16)
+
+    for x in lanes:
+        y = side * (W * 0.5 + 8.0)
+
+        m.box((x, y, (base - SOCKET["burial"] + top) * 0.5),
+              (5.0, 5.0, top - base + SOCKET["burial"]), CONCRETE)
+        m.box((x, y, top + 0.7), (5.8, 5.8, 1.4), DARK)
+
+        # 계단실 창
+        for f in range(floors):
+            m.box((x, y + side * 2.7, base + (f + 0.5) * step), (1.1, 0.4, 1.8), DARK)
+
+    # 캡슐. 코어마다 층마다 한 면씩, 빈 자리를 남깁니다.
+    for x in lanes:
+        y = side * (W * 0.5 + 8.0)
+
+        for f in range(floors):
+            for face in (-1, 1):
+                if rng.random() < 0.34:
+                    continue
+
+                m.box((x + face * (2.5 + cd * 0.5), y, base + (f + 0.5) * step),
+                      (cd, cw * 0.86, ch), DARK)
+                m.box((x + face * (2.5 + cd), y + side * cw * 0.3,
+                       base + (f + 0.62) * step),
+                      (0.4, cw * 0.3, ch * 0.3), STEEL)
+
+    m.box((0.0, side * (W * 0.5 + 4.0), DECK_TOP - 0.15), (4.0, 8.0, 0.3), CONCRETE)
+
+
 def citadel(m, s, length, rng):
     """
     <b>초거대 덩어리.</b> 스파인이 뚫고 지나갑니다.
@@ -665,6 +853,7 @@ def build(name):
         parapet(m, length, sign * (W * 0.5 - 0.6), mine)
 
     capsules(m, s, length, rng)
+    access(m, s, length, rng)
     portal(m, s, length, rng)
     industry(m, s, length, rng)
     branch(m, s, length, rng)
@@ -674,6 +863,8 @@ def build(name):
     breach(m, s, length, rng)
     overpass(m, s, length, rng)
     spur(m, s, length, rng)
+    shaft(m, s, length, rng)
+    tower(m, s, length, rng)
 
     return m.to_object("SM_Mega_" + name)
 
@@ -816,9 +1007,9 @@ def lay_out():
         obj.location.y = 6000.0
         made[name] = obj
 
-    order = ["Viaduct", "Ramp", "Habitat", "Crane", "Viaduct", "Breach",
-             "Viaduct", "Citadel", "Viaduct", "Spur", "Habitat", "Overpass",
-             "Habitat", "Junction", "Industry", "Viaduct"]
+    order = ["Viaduct", "Habitat", "Viaduct", "Shaft", "Viaduct",
+             "Habitat", "Viaduct", "CapsuleTower", "Viaduct", "Ramp",
+             "Crane", "Viaduct", "Citadel", "Viaduct"]
 
     x = 0.0
     for name in order:

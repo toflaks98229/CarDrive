@@ -24,7 +24,7 @@
    "length": 42.0,
    "weight": 6,
    "top": 57.2,
-   "tris": 1116
+   "tris": 1944
   },
   {
    "name": "Industry",
@@ -33,7 +33,7 @@
    "length": 42.0,
    "weight": 3,
    "top": 58.6,
-   "tris": 588
+   "tris": 1128
   },
   {
    "name": "Junction",
@@ -42,7 +42,7 @@
    "length": 84.0,
    "weight": 2,
    "top": 65.2,
-   "tris": 1440
+   "tris": 2412
   },
   {
    "name": "Citadel",
@@ -51,7 +51,7 @@
    "length": 126.0,
    "weight": 1,
    "top": 173.0,
-   "tris": 15756
+   "tris": 32784
   },
   {
    "name": "Ramp",
@@ -69,7 +69,7 @@
    "length": 42.0,
    "weight": 3,
    "top": 60.8,
-   "tris": 468
+   "tris": 624
   },
   {
    "name": "Breach",
@@ -77,8 +77,8 @@
    "bays": 1,
    "length": 42.0,
    "weight": 2,
-   "top": 54.8,
-   "tris": 888
+   "top": 55.4,
+   "tris": 1368
   },
   {
    "name": "Overpass",
@@ -97,6 +97,24 @@
    "weight": 2,
    "top": 47.2,
    "tris": 432
+  },
+  {
+   "name": "Shaft",
+   "mesh": "SM_Mega_Shaft",
+   "bays": 2,
+   "length": 84.0,
+   "weight": 1,
+   "top": 153.2,
+   "tris": 792
+  },
+  {
+   "name": "CapsuleTower",
+   "mesh": "SM_Mega_CapsuleTower",
+   "bays": 2,
+   "length": 84.0,
+   "weight": 1,
+   "top": 101.0,
+   "tris": 1176
   }
  ]
 }
