@@ -92,6 +92,14 @@ public static class StriderMotionCheck
     private static readonly List<float> Heights = new List<float>();
     private static readonly List<float> Pitches = new List<float>();
     private static readonly List<float> Rolls = new List<float>();
+
+    /// <summary>턱에서 멀리 떨어진 <b>평지 직진</b>에서만 모은 기울기입니다.</summary>
+    private static readonly List<float> FlatPitches = new List<float>();
+    private static readonly List<float> FlatRolls = new List<float>();
+
+    /// <summary>롤이 크게 기운 프레임 수입니다. 최댓값 한 점만으로는 잠깐 튄 것인지 알 수 없습니다.</summary>
+    private static int _rollOver15;
+    private static int _rollOver25;
     private static readonly List<float> KneeOverBody = new List<float>();
     private static readonly List<float> TurnRates = new List<float>();
     private static readonly List<float> Supports = new List<float>();
@@ -393,8 +401,21 @@ public static class StriderMotionCheck
         }
 
         Vector3 euler = body.rotation.eulerAngles;
-        Pitches.Add(Mathf.DeltaAngle(0f, euler.x));
-        Rolls.Add(Mathf.DeltaAngle(0f, euler.z));
+        float pitch = Mathf.DeltaAngle(0f, euler.x);
+        float roll = Mathf.DeltaAngle(0f, euler.z);
+        Pitches.Add(pitch);
+        Rolls.Add(roll);
+
+        // 턱을 넘을 때는 발 높이가 갈려 몸이 크게 기웁니다 — 그것이 정상이지만, 평지에서
+        // 걸음이 만드는 흔들림과 섞이면 어느 쪽 숫자인지 알 수 없습니다. 갈라서 모읍니다.
+        if (walking && Mathf.Abs(root.z - LedgeZ) > 7f)
+        {
+            FlatPitches.Add(pitch);
+            FlatRolls.Add(roll);
+        }
+
+        if (Mathf.Abs(roll) > 15f) _rollOver15++;
+        if (Mathf.Abs(roll) > 25f) _rollOver25++;
 
         float highestKnee = float.MinValue;
 
@@ -520,8 +541,12 @@ public static class StriderMotionCheck
         Line($"지지면 위 높이               : 평균 {Mean(Heights):F2} · {Min(Heights):F2} ~ {Max(Heights):F2} m (진폭 {Max(Heights) - Min(Heights):F2})");
         Line($"높이가 방향을 바꾼 횟수      : {_heightReversals}회 ({_heightReversals / Mathf.Max(_frames / 60f, 0.001f):F1} 회/초) — 울림의 세기");
         Line($"쓰러진 프레임                : {_fallenFrames} ({(float)_fallenFrames / Mathf.Max(_frames, 1):P1})");
-        Line($"피치                         : {Min(Pitches):F1} ~ {Max(Pitches):F1}°");
-        Line($"롤                           : {Min(Rolls):F1} ~ {Max(Rolls):F1}°");
+        Line($"피치 (평지 직진)             : {Min(FlatPitches):F1} ~ {Max(FlatPitches):F1}° (폭 {Max(FlatPitches) - Min(FlatPitches):F1})");
+        Line($"롤   (평지 직진)             : {Min(FlatRolls):F1} ~ {Max(FlatRolls):F1}° (폭 {Max(FlatRolls) - Min(FlatRolls):F1})");
+        Line($"피치 (턱·선회 포함 전체)     : {Min(Pitches):F1} ~ {Max(Pitches):F1}°");
+        Line($"롤   (턱·선회 포함 전체)     : {Min(Rolls):F1} ~ {Max(Rolls):F1}°");
+        Line($"롤이 크게 기운 시간          : 15° 초과 {_rollOver15} 프레임 ({_rollOver15 / 60f:F2} s) · " +
+             $"25° 초과 {_rollOver25} 프레임 ({_rollOver25 / 60f:F2} s)");
         Line($"가장 높은 무릎 − 몸통        : 평균 {Mean(KneeOverBody):F2} · {Min(KneeOverBody):F2} ~ {Max(KneeOverBody):F2} m");
         Line("");
 

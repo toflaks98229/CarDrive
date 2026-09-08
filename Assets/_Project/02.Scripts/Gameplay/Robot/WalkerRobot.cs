@@ -296,6 +296,11 @@ namespace CarDrive.Gameplay
         ///
         /// 1에 가까울수록 뜬 발 쪽 모서리가 들려 법선이 <b>남은 지지 쪽으로</b> 기울고,
         /// 몸통이 그쪽으로 실립니다. 한 발을 들면 남은 발 위로 체중을 옮기는 그 동작입니다.
+        ///
+        /// <b>이족은 같은 값이 훨씬 크게 나옵니다.</b> 기울기는 들린 높이를 <b>지지 폭</b>으로
+        /// 나눈 값이고, 다리가 둘이면 그 폭이 두 발 사이뿐입니다. 스트라이더는 지지 폭이
+        /// 11 m 라 1 이 몸통 6° 를 내지만, 드레드노트는 1.4 m 라 0.45 로 이미 7° 입니다.
+        /// 로봇마다 다시 재야 하는 값입니다.
         /// </summary>
         [Tooltip("들린 발이 지지 평면을 기울이는 정도. 0=평지에서 몸통이 안 기움, 1=발 높이를 그대로 씀")]
         [Range(0f, 1f)]
@@ -1401,6 +1406,40 @@ namespace CarDrive.Gameplay
                 }
 
                 if (accumulated.sqrMagnitude > Epsilon) normal = accumulated.normalized;
+            }
+            else if (legs.Length == 2)
+            {
+                // <b>다리가 둘이면 지지 다각형이 없습니다.</b> 두 발은 넓이가 0 인 선분이라
+                // 위의 다각형 법선이 0 이 나오고, 법선은 언제나 정확히 위쪽으로 남습니다.
+                // 이족이 <see cref="swingTilt"/> 를 켜도 아무 일이 없었던 이유입니다.
+                //
+                // 대신 <b>선분과 몸이 보는 방향</b>이 평면 하나를 정합니다. 두 발의 높이가
+                // 갈리면 그 평면이 좌우로 기울고, 법선이 <b>딛고 있는 발 쪽으로</b> 넘어갑니다.
+                // 한 발을 들면 남은 발 위로 체중을 옮기는 그 동작입니다. 앞뒤(피치)는
+                // 두 발만으로 알 수 없으므로 건드리지 않습니다 — 그쪽은 가속·피격의 몫입니다.
+                int left = ringOrder[0];
+                int right = ringOrder[1];
+
+                // 바닥이 무엇인지는 <b>두 발의 지면 법선</b>이 말해 줍니다. 비탈에서는 이것이 답이고,
+                // 아무것도 들리지 않았으면 아래 계산이 정확히 이 값으로 돌아옵니다.
+                Vector3 ground = legs[left].FootNormal + legs[right].FootNormal;
+                Vector3 basis = ground.sqrMagnitude > Epsilon ? ground.normalized : Vector3.up;
+
+                // 발 간격을 <b>지면을 따라</b>서만 잽니다. 높이차를 빼는 이유가 있습니다 —
+                // 한 발은 턱 위, 한 발은 아래인 채로 선분을 그대로 쓰면 1.2 m 턱에서 몸통이
+                // 40° 눕습니다(실측: 25° 넘게 0.52 초). 실제 이족은 그러지 않습니다.
+                // 걸터앉은 높이차는 <b>무릎이 먹습니다.</b> 몸통은 바닥을 따릅니다.
+                Vector3 across = FootGround(right) - FootGround(left);
+                across -= basis * Vector3.Dot(across, basis);
+
+                // 대신 <b>들린 발만큼</b>을 더합니다. 이것이 걸음이 만드는 체중 이동이고,
+                // <see cref="swingTilt"/> 가 정하는 몫입니다.
+                across += (StanceCorner(right) - FootGround(right)) - (StanceCorner(left) - FootGround(left));
+
+                Vector3 ahead = transform.forward - basis * Vector3.Dot(transform.forward, basis);
+                Vector3 spanned = Vector3.Cross(across, ahead);
+
+                normal = spanned.sqrMagnitude > Epsilon ? spanned.normalized : basis;
             }
 
             // 둘레를 도는 방향에 따라 법선이 뒤집힐 수 있습니다. 위쪽으로 맞춥니다.

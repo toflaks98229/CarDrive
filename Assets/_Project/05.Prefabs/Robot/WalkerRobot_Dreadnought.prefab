@@ -2567,9 +2567,9 @@ MonoBehaviour:
   stepDuration: 0.6
   minStepDuration: 0.25
   stepHeight: 0.5
-  footfallImpact: 0
-  swingTilt: 0
-  balanceFeedback: 0
+  footfallImpact: 0.8
+  swingTilt: 0.45
+  balanceFeedback: 0.6
   limpHangLength: 0.85
   limpGravity: -14
   limpDamping: 0.05
