@@ -18,6 +18,9 @@ Shader "CarDrive/Toon Lit"
         [Header(Base)]
         _BaseMap ("바탕 텍스처", 2D) = "white" {}
         _BaseColor ("바탕색", Color) = (1, 1, 1, 1)
+        [Toggle(_GRAIN_ON)] _UseGrain ("바탕 텍스처를 결로 쓰기", Float) = 0
+        [HDR] _BaseMapGain ("결 이득 (맵 평균을 1로 맞춤)", Color) = (1, 1, 1, 1)
+        _BaseMapStrength ("결 세기 (0이면 바탕색만)", Range(0, 1)) = 1
 
         // <b>얼룩은 켠 머티리얼만 받습니다.</b> 이 셰이더는 35개 머티리얼이 함께 쓰는데,
         // 하늘·차 내부·UI 처럼 오줌이 닿을 수 없는 것까지 전부 얼룩 코드를 컴파일하면
@@ -57,6 +60,12 @@ Shader "CarDrive/Toon Lit"
         _RimColor ("외곽 빛 색", Color) = (1, 1, 1, 1)
 
 
+        // 차의 램프처럼 <b>스스로 빛나는 면</b>을 위한 값입니다. 검정이면 아무 일도 하지 않습니다.
+        //
+        // <b>키워드를 두지 않았습니다.</b> 더하기 한 번뿐이라 끄고 켜서 아낄 것이 없고,
+        // 키워드를 두면 이 셰이더를 함께 쓰는 35개 머티리얼의 배리언트가 통째로 두 배가 됩니다.
+        [HDR] _EmissionColor ("스스로 내는 빛 (검정이면 끔)", Color) = (0, 0, 0, 1)
+
         [Header(Ramp Shading)]
         [Toggle(_TOON_RAMP)] _UseRamp ("램프 텍스처 쓰기", Float) = 0
         [NoScaleOffset] _ToonRampMap ("램프 (가로축 = 밝기)", 2D) = "white" {}
@@ -73,6 +82,13 @@ Shader "CarDrive/Toon Lit"
 
         [Header(Hand Drawn)]
         [Toggle(_HATCHING)] _UseHatching ("빗금으로 음영 그리기", Float) = 0
+
+        // <b>움직이는 것에는 이것도 켜야 합니다.</b> 빗금은 기본이 월드 좌표라
+        // 건물·바위처럼 붙박이인 것에 맞춰져 있습니다. 차처럼 달리는 물체에 그대로 켜면
+        // 획이 차체 위를 미끄러져, 그린 것이 아니라 <b>비춘 것</b>으로 보입니다.
+        //
+        // ⚠ 물체의 스케일이 1 이어야 합니다. 이유는 CarDriveToonLighting.hlsl 에 적어 두었습니다.
+        [Toggle(_HATCH_LOCAL)] _HatchLocal ("빗금을 물체에 붙이기 (움직이는 것)", Float) = 0
 
         [Header(Cutout)]
         [Toggle(_ALPHATEST_ON)] _AlphaClip ("알파 컷아웃 쓰기 (잎처럼 뚫린 것)", Float) = 0
@@ -108,6 +124,8 @@ Shader "CarDrive/Toon Lit"
         CBUFFER_START(UnityPerMaterial)
             float4 _BaseMap_ST;
             half4  _BaseColor;
+            half4  _BaseMapGain;
+            half   _BaseMapStrength;
             half4  _SplatColor;
             half   _SplatDarken;
             half   _SplatGloss;
@@ -129,6 +147,7 @@ Shader "CarDrive/Toon Lit"
             half   _RimStrength;
             half   _RimWidth;
             half4  _RimColor;
+            half4  _EmissionColor;
             half4  _HeightColor;
             half   _HeightBottom;
             half   _HeightTop;
@@ -297,9 +316,11 @@ Shader "CarDrive/Toon Lit"
             #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
             #pragma shader_feature_local_fragment _TOON_RAMP
             #pragma shader_feature_local_fragment _HATCHING
+            #pragma shader_feature_local_fragment _HATCH_LOCAL
             #pragma shader_feature_local_fragment _ALPHATEST_ON
             #pragma shader_feature_local_fragment _DITHER_FADE
             #pragma shader_feature_local_fragment _SPLAT_ON
+            #pragma shader_feature_local_fragment _GRAIN_ON
             #pragma multi_compile_fragment _ LOD_FADE_CROSSFADE
 
             struct Attributes
@@ -342,7 +363,22 @@ Shader "CarDrive/Toon Lit"
                 CARDRIVE_LOD_CROSSFADE(input.positionCS);
 
                 float3 nrm = normalize(input.normalWS);
-                half3 albedo = baseSample.rgb * _BaseColor.rgb;
+                #ifdef _GRAIN_ON
+                    // <b>맵은 결만, 값은 바탕색이 냅니다.</b> 사진 텍스처는 대개 색조가 있고
+                    // 어두워서 그대로 곱하면 팔레트가 물들고 명도가 통째로 내려앉습니다.
+                    // _BaseMapGain 이 맵의 채널별 평균을 1 로 끌어올려 그 둘을 상쇄하고,
+                    // _BaseMapStrength 가 결의 세기를 정합니다. 툰 램프는 명암을 계단으로
+                    // 끊으므로, 사진의 계조를 100% 쓰면 밝은 절반이 하얗게 타 버립니다.
+                    //
+                    // <b>왜 별도 셰이더가 아닌가.</b> 이 프로젝트는 이미 얼룩(_SPLAT_ON)을
+                    // 같은 방식으로 옵트인시킵니다 — 켠 머티리얼만 그 배리언트를 컴파일합니다.
+                    // 패스 네 개를 복제하면 600 줄이 갈라져 따로 늙습니다.
+                    half3 grain = lerp(half3(1.0h, 1.0h, 1.0h),
+                                       baseSample.rgb * _BaseMapGain.rgb, _BaseMapStrength);
+                    half3 albedo = grain * _BaseColor.rgb;
+                #else
+                    half3 albedo = baseSample.rgb * _BaseColor.rgb;
+                #endif
 
                 #ifdef _SPLAT_ON
                 // ── 오줌 얼룩 ──
@@ -379,6 +415,15 @@ Shader "CarDrive/Toon Lit"
 
                 float4 shadowCoord = TransformWorldToShadowCoord(input.positionWS);
                 half3 color = ToonShade(s, tp, shadowCoord);
+
+                // ── 스스로 내는 빛 ──
+                //
+                // <b>툰 음영이 끝난 뒤에 더합니다.</b> 등불은 해를 등졌다고 어두워지지 않고,
+                // 빗금도 그 위에 그으면 안 됩니다 — 잉크는 물체의 그늘을 그리는 것이지
+                // 켜진 등을 덮는 것이 아닙니다. <c>ToonShade</c> 가 빗금까지 마친 자리가 여기입니다.
+                //
+                // <b>안개보다는 앞입니다.</b> 멀어지는 미등은 안개에 묻혀야 거리가 읽힙니다.
+                color += _EmissionColor.rgb;
 
                 color = MixFog(color, input.fogFactor);
                 return half4(color, baseSample.a * _BaseColor.a);

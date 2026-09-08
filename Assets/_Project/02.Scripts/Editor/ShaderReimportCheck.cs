@@ -20,6 +20,7 @@ public static class ShaderReimportCheck
     private static readonly string[] Targets =
     {
         "Assets/_Project/04.Art/03.Shaders/Toon/CarDriveToonLit.shader",
+        "Assets/_Project/04.Art/03.Shaders/Toon/CarDriveToonGlass.shader",
         "Assets/_Project/04.Art/03.Shaders/LowPoly/LowPolyGrass.shader",
         "Assets/_Project/04.Art/03.Shaders/Toon/CarDriveToonTerrain.shader",
         "Assets/_Project/04.Art/03.Shaders/Toon/CarDriveNeedGauge.shader",

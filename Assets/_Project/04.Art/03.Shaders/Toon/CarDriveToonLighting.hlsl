@@ -437,7 +437,39 @@ half3 ToonShade(ToonSurface s, ToonParams p, float4 shadowCoord)
         // 방향성이 남아 있지 않아, 해를 등진 면과 마주한 면이 같은 값이 됩니다.
         // 그래서 위에서 따로 모아 둔 <c>received</c> 를 씁니다.
         half hatchTone = saturate(received + Luminance(ambient));
-        color = CarDriveApplyHatch(color, hatchTone, s.positionWS, s.normalWS);
+
+        // ── 획을 어디에 붙일 것인가 ──
+        //
+        // 기본은 <b>월드</b>입니다. 땅·풀·건물이 같은 크기의 획을 받아야 하는데
+        // 터레인은 100m 타일에 0~1 UV 라 획이 100m 로 늘어나고 풀은 잎마다 쓸 UV 가 없습니다.
+        // (그 사연은 <c>HatchingRig.scale</c> 주석에 적혀 있습니다) 그것들은 움직이지 않으므로
+        // 획이 세계에 박혀 있어도 아무 문제가 없습니다.
+        //
+        // <b>움직이는 것은 그럴 수 없습니다.</b> 획이 세계에 박혀 있으면 차가 달릴 때
+        // 획이 차체 위를 <b>미끄러집니다</b> — 종이는 가만있고 그림만 흘러가는 꼴이라
+        // 손으로 그린 것이 아니라 무늬를 투사한 것으로 보입니다.
+        //
+        // 그래서 움직이는 재질은 좌표를 <b>물체 자신의 공간</b>으로 접습니다.
+        // 그러면 획이 차체에 그려진 잉크처럼 함께 돌고 함께 달립니다.
+        //
+        // ⚠ <b>물체의 스케일이 1 이어야 합니다.</b> 물체 공간의 1 이 곧 1m 여야
+        // 세계에 박힌 획과 같은 굵기가 나옵니다. 스케일을 준 물체에 켜면
+        // 그 물체만 획이 굵거나 잘아져 다시 튑니다.
+        float3 hatchPosition = s.positionWS;
+        float3 hatchNormal = s.normalWS;
+
+        #ifdef _HATCH_LOCAL
+            hatchPosition = mul(unity_WorldToObject, float4(s.positionWS, 1.0)).xyz;
+
+            // <b>법선은 위치와 다른 행렬을 씁니다.</b> 물체→월드로 옮길 때 법선은
+            // 역전치를 쓰므로(<c>mul(normalOS, (float3x3)unity_WorldToObject)</c>),
+            // 되돌리는 것은 그 반대인 <c>unity_ObjectToWorld</c> 를 오른쪽에서 곱하는 것입니다.
+            // 위치의 행렬을 그대로 쓰면 스케일이 고르지 않은 물체에서 삼중평면 창이 어긋나
+            // 옆면에 윗면의 획이 섞입니다.
+            hatchNormal = normalize(mul(s.normalWS, (float3x3)unity_ObjectToWorld));
+        #endif
+
+        color = CarDriveApplyHatch(color, hatchTone, hatchPosition, hatchNormal);
     #endif
 
     return color;
