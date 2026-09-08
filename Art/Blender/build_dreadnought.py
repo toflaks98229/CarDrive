@@ -212,7 +212,10 @@ TORSO_C = V(0.0, 0.05, 2.78)                    # armoured torso centre
 SARC_C = V(0.0, -0.70, 2.62)                    # sarcophagus front plate
 # The sensor head sits on the FRONT of the torso, resting on the sarcophagus
 # rim and overhanging it like a brow - not perched on the roof.
-HEAD_C = V(0.0, -0.84, 3.34)
+# 머리 피벗의 z 는 <b>손으로 다듬은 머리의 수직 중심</b>입니다(2.839~3.29 의 가운데).
+# 예전 값 3.34 는 그 머리의 꼭대기보다 위라, 부앙이 머리를 끄덕이는 것이 아니라
+# 진자처럼 통째로 흔들었습니다.
+HEAD_C = V(0.0, -0.84, 3.0645)
 REACTOR_C = V(0.0, 0.86, 2.80)                  # thermic reactor, rear
 SHOULDER = {"L": V(0.98, 0.05, 3.10), "R": V(-0.98, 0.05, 3.10)}
 ARM_PIVOT = {"L": V(1.18, 0.05, 3.10), "R": V(-1.18, 0.05, 3.10)}
@@ -851,8 +854,8 @@ if __name__ == "__main__":
         print(build())
         print(finalize())
     else:
-        print("build() 는 손으로 다듬은 형상을 지웁니다. 형상은 그대로 두고 다시 내보내려면
-"
-              "  blender -b Dreadnought.blend --python-expr \"import build_dreadnought as b; b.finalize()\"
-"
-              "골격까지 처음부터 다시 만들려면 -- --rebuild 를 붙이십시오.")
+        print("build() 는 손으로 다듬은 형상을 지웁니다.")
+        print("형상은 그대로 두고 다시 내보내려면 finalize() 만 부르십시오:")
+        print('  blender -b Dreadnought.blend --python-expr '
+              '"import build_dreadnought as b; b.finalize()"')
+        print("골격까지 처음부터 다시 만들려면 -- --rebuild 를 붙이십시오.")

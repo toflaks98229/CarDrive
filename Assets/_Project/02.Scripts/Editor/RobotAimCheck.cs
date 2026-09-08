@@ -171,7 +171,8 @@ public static class RobotAimCheck
         foreach (RobotTurret t in _turrets)
         {
             Line($"  {t.name}: 선회 {t.yawRange.x:F0}~{t.yawRange.y:F0}° · " +
-                 $"부앙 {t.pitchRange.x:F0}~{t.pitchRange.y:F0}° · 총구 {(t.muzzle != null ? t.muzzle.name : "없음")}");
+                 $"부앙 {t.pitchRange.x:F0}~{t.pitchRange.y:F0}° · 총구 {(t.muzzle != null ? t.muzzle.name : "없음")} · " +
+                 $"피벗↔부품중심 {PivotOffset(t):F3} m (부앙 전 구간에서 {Swing(t):F3} m 옮겨 감)");
         }
         Line("");
 
@@ -179,6 +180,40 @@ public static class RobotAimCheck
         _startTime = Time.time;
 
         EditorApplication.update += Sample;
+    }
+
+    /// <summary>
+    /// 부앙 축에서 <b>부품의 무게중심까지의 거리</b>입니다. 0 이면 그 자리에서 끄덕이고,
+    /// 멀수록 부품이 통째로 호를 그리며 옮겨 갑니다 — 머리가 목 위에서 끄덕이는 것과
+    /// 목이 없이 통째로 흔들리는 것의 차이입니다.
+    /// </summary>
+    private static float PivotOffset(RobotTurret turret)
+    {
+        if (turret.pitchNode == null) return 0f;
+
+        Renderer[] renderers = turret.pitchNode.GetComponentsInChildren<Renderer>(true);
+        if (renderers.Length == 0) return 0f;
+
+        Bounds bounds = renderers[0].bounds;
+        for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+
+        // 부앙 축 방향의 성분은 회전해도 움직이지 않으므로 뺍니다.
+        Vector3 offset = bounds.center - turret.pitchNode.position;
+        Vector3 axis = turret.pitchNode.TransformDirection(turret.pitchAxis.normalized);
+
+        return (offset - axis * Vector3.Dot(offset, axis)).magnitude;
+    }
+
+    /// <summary>
+    /// 부앙을 <b>끝에서 끝까지</b> 돌렸을 때 부품 중심이 옮겨 가는 거리입니다. 2·r·sin(θ/2).
+    ///
+    /// 지금 자세가 아니라 <b>구간 전체</b>로 잽니다. 재는 순간의 자세에 따라 값이 달라지면
+    /// 실행마다 다른 숫자가 나와 비교할 수 없습니다.
+    /// </summary>
+    private static float Swing(RobotTurret turret)
+    {
+        float sweep = Mathf.Abs(turret.pitchRange.y - turret.pitchRange.x) * Mathf.Deg2Rad;
+        return 2f * PivotOffset(turret) * Mathf.Sin(Mathf.Min(sweep, Mathf.PI) * 0.5f);
     }
 
     private static void Sample()
