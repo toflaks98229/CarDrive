@@ -43,6 +43,46 @@
    "length": 126.0,
    "weight": 1,
    "top": 173.0
+  },
+  {
+   "name": "Ramp",
+   "mesh": "SM_Mega_Ramp",
+   "bays": 2,
+   "length": 84.0,
+   "weight": 2,
+   "top": 33.5
+  },
+  {
+   "name": "Crane",
+   "mesh": "SM_Mega_Crane",
+   "bays": 1,
+   "length": 42.0,
+   "weight": 3,
+   "top": 60.8
+  },
+  {
+   "name": "Breach",
+   "mesh": "SM_Mega_Breach",
+   "bays": 1,
+   "length": 42.0,
+   "weight": 2,
+   "top": 54.8
+  },
+  {
+   "name": "Overpass",
+   "mesh": "SM_Mega_Overpass",
+   "bays": 2,
+   "length": 84.0,
+   "weight": 2,
+   "top": 59.6
+  },
+  {
+   "name": "Spur",
+   "mesh": "SM_Mega_Spur",
+   "bays": 1,
+   "length": 42.0,
+   "weight": 2,
+   "top": 47.2
   }
  ]
 }

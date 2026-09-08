@@ -103,6 +103,25 @@ PRESETS = {
 
     # <b>초거대.</b> 스파인이 뚫고 지나가는 덩어리. 세 베이에 걸치고 170 m 를 올라갑니다.
     "Citadel": dict(bays=3, tiers=22, upper=118.0, fill=0.62, block=True, weight=1),
+
+    # 지상과 데크를 잇는 되돌이 경사로. <b>인공 지반을 실제로 쓸 수 있게 하는</b>
+    # 조각이고, 운전 게임에서는 이것이 있어야 데크가 배경이 아니라 갈 수 있는 길입니다.
+    "Ramp": dict(bays=2, tiers=0, upper=0.0, ramp=True, weight=2),
+
+    # 크레인길. Archigram 의 Plug-In City 가 캡슐을 꽂고 빼던 그 장치입니다.
+    # 캡슐이 <b>어떻게</b> 꽂히는지를 보여 주므로 3번 항목을 가장 직접 말합니다.
+    "Crane": dict(bays=1, tiers=1, upper=0.0, fill=0.3, crane=True, weight=3),
+
+    # 무너진 구간. 캡슐은 뜯겨 나갔는데 <b>골조는 서 있습니다</b> — 4번 항목
+    # (골조가 담는 것보다 오래 산다)을 그림 하나로 말하는 자리입니다.
+    "Breach": dict(bays=1, tiers=4, upper=8.0, fill=0.16, breach=True, weight=2),
+
+    # 위를 직각으로 건너가는 두 번째 스파인. 한 줄이면 다리이고, 교차가 있어야 <b>망</b>입니다.
+    "Overpass": dict(bays=2, tiers=0, upper=0.0, over=True, weight=2),
+
+    # 뻗다 만 가지. 허공에서 끊겨 트러스 단면이 드러납니다. "연장 가능"을
+    # 가장 크게 말하는 방법은 <b>연장하다 만 것</b>을 보여 주는 것입니다.
+    "Spur": dict(bays=1, tiers=0, upper=12.0, spur=True, weight=2),
 }
 
 
@@ -289,6 +308,185 @@ def branch(m, s, length, rng):
           (14.0, reach, 0.2), DARK)
 
 
+def ramp(m, s, length, rng):
+    """
+    지상에서 데크로 올라가는 <b>되돌이 경사로</b>입니다.
+
+    데크가 32 m 이므로 10% 로 곧게 올리려면 320 m 가 필요합니다 - 여덟 베이입니다.
+    그래서 실제 주차 구조물이 하는 대로 <b>접습니다</b>: 네 번 되돌아 오르면 두
+    베이 안에 듭니다. 경사는 약 20% 로 가파르지만 차가 올라갈 수 있습니다.
+    """
+    if not s.get("ramp"):
+        return
+
+    W = SOCKET["width"]
+    inner = length - SOCKET["inset"] * 2.0
+    run = inner - 14.0
+    flights = 4
+    step = DECK_TOP / flights
+    lane = 9.0
+
+    # <b>두 갈래 차선을 오르내립니다.</b> 처음에는 층을 전부 같은 y 에 두었더니
+    # 옆에서 보면 판때기가 겹친 지그재그로만 보였습니다. 실제 되돌이 경사로가
+    # 그렇듯 두 줄을 나란히 놓고 양 끝에서 갈아타야 구조가 읽힙니다.
+    lanes = (W * 0.5 + lane * 0.6, W * 0.5 + lane * 1.7)
+
+    for i in range(flights):
+        turn = 1.0 if i % 2 == 0 else -1.0
+        y = lanes[i % 2]
+
+        m.slope((0.0, y, step * (i + 0.5)), (run, lane, 1.2), step * turn, CONCRETE)
+
+        for edge in (-1.0, 1.0):
+            # 난간은 본 데크와 같이 콘크리트입니다. 어둡게 두었더니 밑에서 올려다볼 때
+            # 두 줄의 검은 띠만 보이고 정작 경사판이 가려졌습니다.
+            m.slope((0.0, y + edge * lane * 0.5, step * (i + 0.5) + 1.0),
+                    (run, 0.7, 0.9), step * turn, CONCRETE)
+
+        # 받치는 다리 둘
+        for k in (-1, 1):
+            z = step * (i + 0.5) + step * turn * k * 0.25
+            m.box((k * run * 0.25, y, (z - SOCKET["burial"]) * 0.5),
+                  (2.6, 2.6, z + SOCKET["burial"]), CONCRETE)
+
+    # 갈아타는 참. 양 끝에서 두 차선을 잇습니다.
+    for i in range(flights + 1):
+        end = -1.0 if i % 2 == 0 else 1.0
+        m.box((end * (run * 0.5 + 3.5), (lanes[0] + lanes[1]) * 0.5, step * i - 0.6),
+              (7.0, lane * 2.2, 1.6), CONCRETE)
+
+    # 데크로 이어지는 마지막 참
+    m.box((run * 0.5 * (1 if flights % 2 == 0 else -1), W * 0.5 + lane * 0.3,
+           DECK_TOP - 0.6), (10.0, lane * 1.8, 1.6), CONCRETE)
+
+
+def crane(m, s, length, rng):
+    """
+    데크를 걸터앉은 갠트리 크레인과 쌓아 둔 캡슐입니다.
+
+    캡슐이 <b>어떻게</b> 꽂히는지를 보여 줍니다. 크레인이 있으면 빈 슬롯이 "아직
+    못 채운 것"으로 읽히고, 없으면 그냥 "구멍"입니다. Archigram 의 Plug-In City 가
+    craneway 를 그림 한가운데 둔 이유가 그것입니다.
+    """
+    if not s.get("crane"):
+        return
+
+    W = SOCKET["width"]
+    inner = length - SOCKET["inset"] * 2.0
+    rail = DECK_TOP + 26.0
+
+    for sign in (-1.0, 1.0):
+        m.box((0.0, sign * (W * 0.5 + 5.0), DECK_TOP + 0.6), (inner, 1.6, 1.2), STEEL)
+
+        for i in (-1, 1):
+            m.box((i * inner * 0.3, sign * (W * 0.5 + 5.0), (DECK_TOP + rail) * 0.5),
+                  (2.2, 2.2, rail - DECK_TOP), STEEL)
+
+    # 가로보와 트롤리
+    m.box((0.0, 0.0, rail + 1.4), (4.4, W + 14.0, 2.8), STEEL)
+    m.box((inner * 0.14, W * 0.22, rail - 1.6), (5.0, 5.0, 2.4), DARK)
+
+    # 매달린 캡슐
+    m.box((inner * 0.14, W * 0.22, rail - 5.4), (1.0, 1.0, 5.2), STEEL)
+    m.box((inner * 0.14, W * 0.22, rail - 10.0), (6.4, 5.0, 4.4), DARK)
+
+    # 데크에 쌓아 둔 캡슐
+    for i in range(3):
+        m.box((-inner * 0.28 + i * 7.2, -W * 0.2, DECK_TOP + 2.3), (6.4, 5.0, 4.4), DARK)
+    for i in range(2):
+        m.box((-inner * 0.28 + i * 7.2, -W * 0.2, DECK_TOP + 6.8), (6.4, 5.0, 4.4), DARK)
+
+
+def breach(m, s, length, rng):
+    """
+    무너진 구간입니다. <b>캡슐은 뜯겨 나갔는데 골조는 서 있습니다.</b>
+
+    Wilcoxon 의 4번(골조가 담는 것보다 오래 산다)을 그림 하나로 말하는 자리입니다.
+    골조를 부수면 그 말이 사라지므로 <b>뼈대는 손대지 않습니다</b> - 사라진 것은
+    꽂혀 있던 것뿐이고, 남은 것은 슬롯과 잘린 철근입니다.
+    """
+    if not s.get("breach"):
+        return
+
+    W = SOCKET["width"]
+    inner = length - SOCKET["inset"] * 2.0
+
+    # 잘린 철근. 캡슐이 있던 자리에서 삐져나옵니다.
+    for i in range(9):
+        x = -inner * 0.42 + i * (inner * 0.84 / 8.0)
+        for sign in (-1.0, 1.0):
+            if rng.random() < 0.45:
+                continue
+            m.box((x, sign * (W * 0.5 + 1.6), DECK_TOP + 3.0 + rng.random() * 12.0),
+                  (0.3, 2.4, 0.3), STEEL)
+
+    # 떨어진 판. 지면에 비스듬히 박혀 있습니다.
+    m.slope((-inner * 0.2, W * 0.5 + 12.0, 3.4), (14.0, 9.0, 1.6), 5.0, CONCRETE)
+    m.slope((-inner * 0.2, W * 0.5 + 12.0, 4.4), (14.0, 9.0, 0.4), 5.0, DARK)
+
+    # 임시 가림막. 사람이 아직 쓰고 있다는 표시입니다.
+    m.box((inner * 0.3, -(W * 0.5 + 2.2), DECK_TOP + 6.0), (7.0, 0.4, 9.0), STEEL)
+
+
+def overpass(m, s, length, rng):
+    """
+    위를 <b>직각으로</b> 건너가는 두 번째 스파인입니다.
+
+    한 줄만 있으면 다리이고, 교차하는 곳이 있어야 이것이 <b>망</b>의 일부라는 것이
+    읽힙니다. 자기 다리로 서므로 아래 스파인에 기대지 않습니다 - 두 번에 걸쳐 지어진
+    두 구조물이 만난 자리로 보입니다.
+    """
+    if not s.get("over"):
+        return
+
+    W = SOCKET["width"]
+    reach = 78.0
+    z = DECK_TOP + 24.0
+    deep = 5.0
+
+    m.box((0.0, 0.0, z + 1.0), (24.0, reach * 2.0, 2.0), CONCRETE)
+    m.pierced((0.0, 0.0, z - deep * 0.5), (10.0, reach * 2.0, deep), 7,
+              reach * 2.0 / 7.0 * 0.6, deep * 0.5, CONCRETE, axis=1)
+
+    for sign in (-1.0, 1.0):
+        m.box((sign * 11.0, 0.0, z + 2.8), (2.0, reach * 2.0, 1.6), CONCRETE)
+
+        # 다리는 스파인 폭 <b>밖에</b> 섭니다. 아래 구조물에 기대지 않습니다.
+        m.box((0.0, sign * (W * 0.5 + 16.0), (z - deep - SOCKET["burial"]) * 0.5),
+              (10.0, 12.0, z - deep + SOCKET["burial"]), CONCRETE, taper=0.26)
+
+
+def spur(m, s, length, rng):
+    """
+    뻗다 만 가지입니다. 허공에서 끊겨 <b>트러스 단면</b>이 드러납니다.
+
+    "무한히 연장 가능"을 가장 크게 말하는 방법은 완성된 것을 보여 주는 것이 아니라
+    <b>연장하다 만 것</b>을 보여 주는 것입니다. 끝이 잘려 있으면 눈이 그 다음을
+    스스로 그립니다.
+    """
+    if not s.get("spur"):
+        return
+
+    W = SOCKET["width"]
+    reach = 34.0
+    side = -1.0
+    y = side * (W * 0.5 + reach * 0.5)
+
+    m.box((0.0, y, DECK_Z + SOCKET["deck"] * 0.5), (18.0, reach, SOCKET["deck"]), CONCRETE)
+
+    for sign in (-1.0, 1.0):
+        m.pierced((sign * 8.0, y, DECK_Z - 2.4), (4.0, reach, 5.6), 3,
+                  reach / 3.0 * 0.55, 2.8, CONCRETE, axis=1)
+
+    # 잘린 끝. 철근이 삐져나옵니다.
+    for i in range(5):
+        m.box((-7.0 + i * 3.5, side * (W * 0.5 + reach + 0.8),
+               DECK_Z + SOCKET["deck"] + 0.3), (0.3, 1.8, 0.3), STEEL)
+
+    m.box((0.0, side * (W * 0.5 + reach - 0.4), DECK_Z + SOCKET["deck"] + 0.9),
+          (18.0, 0.8, 1.8), DARK)
+
+
 def citadel(m, s, length, rng):
     """
     <b>초거대 덩어리.</b> 스파인이 뚫고 지나갑니다.
@@ -358,6 +556,11 @@ def build(name):
     industry(m, s, length, rng)
     branch(m, s, length, rng)
     citadel(m, s, length, rng)
+    ramp(m, s, length, rng)
+    crane(m, s, length, rng)
+    breach(m, s, length, rng)
+    overpass(m, s, length, rng)
+    spur(m, s, length, rng)
 
     return m.to_object("SM_Mega_" + name)
 
@@ -461,9 +664,9 @@ def lay_out():
         obj.location.y = 6000.0
         made[name] = obj
 
-    order = ["Viaduct", "Viaduct", "Habitat", "Habitat", "Industry", "Viaduct",
-             "Citadel", "Viaduct", "Habitat", "Junction", "Habitat", "Viaduct",
-             "Industry", "Viaduct", "Viaduct"]
+    order = ["Viaduct", "Ramp", "Habitat", "Crane", "Viaduct", "Breach",
+             "Viaduct", "Citadel", "Viaduct", "Spur", "Habitat", "Overpass",
+             "Habitat", "Junction", "Industry", "Viaduct"]
 
     x = 0.0
     for name in order:

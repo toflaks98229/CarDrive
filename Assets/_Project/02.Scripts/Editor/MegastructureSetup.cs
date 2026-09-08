@@ -395,12 +395,16 @@ public static class MegastructureSetup
         List<Preset> pool = manifest.presets.Where(p => p.bays < 3).ToList();
         Preset huge = manifest.presets.OrderByDescending(p => p.bays).First();
 
-        List<Preset> order = new List<Preset> { link, link };
+        // <b>모든 프리셋이 적어도 한 번은 나옵니다.</b> 무게만으로 뽑았더니 열 종을
+        // 만들어 두고 일곱 종만 나온 적이 있습니다. 어휘를 만들어 놓고 보여 주지
+        // 않는 것은 그냥 손해라, 한 벌을 먼저 깔고 나머지를 무게로 채웁니다.
+        List<Preset> picks = pool.Where(p => p.name != "Viaduct").ToList();
 
         System.Random rng = new System.Random(20260908);
-        float length = order.Sum(p => p.length) + huge.length + link.length * 4f;
+        float budget = SpineLength - huge.length - link.length * 6f;
+        float used = picks.Sum(p => p.length);
 
-        while (length < SpineLength)
+        while (used < budget)
         {
             int total = pool.Sum(p => Mathf.Max(1, p.weight));
             int roll = rng.Next(total);
@@ -412,16 +416,25 @@ public static class MegastructureSetup
                 if (roll < 0) { pick = candidate; break; }
             }
 
+            picks.Add(pick);
+            used += pick.length;
+        }
+
+        for (int i = picks.Count - 1; i > 0; i--)
+        {
+            int j = rng.Next(i + 1);
+            (picks[i], picks[j]) = (picks[j], picks[i]);
+        }
+
+        List<Preset> order = new List<Preset> { link, link };
+
+        foreach (Preset pick in picks)
+        {
             // 큰 조각끼리는 붙이지 않습니다. 사이에 맨 골조가 들어가야 각각이
             // <b>사건</b>으로 읽힙니다.
-            if (pick.bays >= 2 && order[order.Count - 1].bays >= 2)
-            {
-                order.Add(link);
-                length += link.length;
-            }
+            if (pick.bays >= 2 && order[order.Count - 1].bays >= 2) order.Add(link);
 
             order.Add(pick);
-            length += pick.length;
         }
 
         order.Add(link);

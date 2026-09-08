@@ -96,6 +96,37 @@ class Mass:
         ]
         self.slots += [mat] * 6
 
+    def slope(self, center, size, rise, mat=0, axis=0):
+        """
+        한쪽 끝이 들린 상자입니다. <c>rise</c> 만큼 <c>axis</c> 방향으로 올라갑니다.
+
+        <b>이 언어에서 경사가 허용되는 유일한 자리입니다.</b> 나머지는 전부 축 정렬인데,
+        그것들이 붓거나 용접한 것이기 때문입니다. 경사로도 부어 만들지만 <b>경사인
+        것이 그 물건의 정의</b>라 계단으로 흉내 내면 차가 올라갈 수 없습니다.
+
+        면은 여섯 개 그대로입니다. 윗면·아랫면이 함께 기울 뿐입니다.
+        """
+        c = list(center)
+        h = [size[0] * 0.5, size[1] * 0.5, size[2] * 0.5]
+
+        def corner(u, v, top):
+            p = [c[0] + u * h[0], c[1] + v * h[1], 0.0]
+            along = (u, v)[axis]
+            p[2] = c[2] + (h[2] if top else -h[2]) + rise * along * 0.5
+            return tuple(p)
+
+        i = len(self.verts)
+        self.verts += [corner(-1, -1, False), corner(1, -1, False),
+                       corner(1, 1, False), corner(-1, 1, False),
+                       corner(-1, -1, True), corner(1, -1, True),
+                       corner(1, 1, True), corner(-1, 1, True)]
+        self.faces += [
+            (i + 0, i + 3, i + 2, i + 1), (i + 4, i + 5, i + 6, i + 7),
+            (i + 0, i + 1, i + 5, i + 4), (i + 1, i + 2, i + 6, i + 5),
+            (i + 2, i + 3, i + 7, i + 6), (i + 3, i + 0, i + 4, i + 7),
+        ]
+        self.slots += [mat] * 6
+
     def clipped(self, center, size, axis, half, mat=0):
         """
         경계에서 <b>잘라 낸</b> 상자입니다. <c>axis</c> 로 ±<c>half</c> 밖은 버립니다.
