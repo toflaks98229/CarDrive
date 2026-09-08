@@ -174,9 +174,12 @@ def core(m, length, bays, gaps=()):
               (lx + 1.2, W - ly * 2.0 + 2.4, truss * 0.68), CONCRETE)
 
     # ---- 이송 트러스 -------------------------------------------------------
+    # <b>트러스는 다리보다 안으로 들어갑니다.</b> 폭을 다리와 같게 두었더니 바깥면이
+    # 같은 평면에서 같은 쪽을 봐 깜빡였습니다. 보가 교각보다 좁은 것은 실제 구조에서도
+    # 맞고, 그림자 선이 하나 더 생겨 두께가 읽힙니다.
     for sign in (-1.0, 1.0):
-        m.pierced((0.0, sign * (W * 0.5 - ly * 0.42), gate + truss * 0.5),
-                  (length, ly * 0.84, truss), bays * 3,
+        m.pierced((0.0, sign * (W * 0.5 - ly * 0.44), gate + truss * 0.5),
+                  (length, ly * 0.78, truss), bays * 3,
                   SOCKET["bay"] / 3.0 * 0.56, truss * 0.5,
                   CONCRETE, clip=length * 0.5)
 
@@ -188,8 +191,15 @@ def core(m, length, bays, gaps=()):
     m.box((0.0, 0.0, gate - duct * 0.45), (length, duct * 1.8, duct * 0.9), STEEL)
 
     # ---- 데크 --------------------------------------------------------------
-    m.box((0.0, 0.0, DECK_Z + SOCKET["deck"] * 0.5), (length, W, SOCKET["deck"]), CONCRETE)
-    m.box((0.0, 0.0, DECK_TOP + 0.08), (length, W - 4.0, 0.16), DARK)
+    # <b>데크가 다리보다 조금 넓습니다.</b> 폭을 같게 두었더니 다리의 바깥면과
+    # 데크의 바깥면이 같은 평면에서 같은 쪽을 봐 깜빡였습니다(프리셋마다 18 m2).
+    # 상판이 교각보다 살짝 내미는 것은 실제 고가도로가 하는 일이기도 합니다.
+    m.box((0.0, 0.0, DECK_Z + SOCKET["deck"] * 0.5),
+          (length, W + 0.5, SOCKET["deck"]), CONCRETE)
+    # 노면 띠를 데크 <b>속으로</b> 조금 묻습니다. 밑면을 데크 윗면과 같은 높이에
+    # 두면 데크 위에 서는 다른 부재들의 밑면과도 같은 평면이 되어, 안 보이는
+    # 자리에서 깊이 버퍼가 계속 다툽니다.
+    m.box((0.0, 0.0, DECK_TOP + 0.03), (length, W - 4.0, 0.26), DARK)
 
     for sign in (-1.0, 1.0):
         mine = sorted((g[1], g[2]) for g in gaps if g[0] == sign)
@@ -410,10 +420,12 @@ def ramp(m, s, length, rng):
             m.slope((0.0, y + edge * lane * 0.5, z + 1.0),
                     (run, 0.7, 0.9), step * turn, CONCRETE)
 
-        # 받치는 다리 둘
+        # 받치는 다리 둘. <b>층마다 x 를 어긋냅니다</b> - 같은 차선의 위아래 층이
+        # 같은 자리에 서면 옆면이 같은 평면에서 겹쳐 깜빡입니다.
         for k in (-1, 1):
+            offset = run * (0.22 + 0.07 * i)
             top = z + step * turn * k * 0.25
-            m.box((k * run * 0.25, y, (top - SOCKET["burial"]) * 0.5),
+            m.box((k * offset, y, (top - SOCKET["burial"]) * 0.5),
                   (2.6, 2.6, top + SOCKET["burial"]), CONCRETE)
 
     # 갈아타는 참. 양 끝에서 두 차선을 잇습니다.
@@ -587,7 +599,14 @@ def citadel(m, s, length, rng):
         m.box((0.0, y, (top - SOCKET["burial"]) * 0.5),
               (inner, flank, top + SOCKET["burial"]), CONCRETE)
 
+    if True:
+        y = W * 0.5 + 3.0 + flank * 0.5
+
         # 옆구리에 꽂힌 캡슐. <b>덩어리도 골조라는 것</b>을 말합니다.
+        #
+        # <b>한 번만 부릅니다.</b> capsules() 자체가 좌우 양쪽을 세우는데 이것을 좌우
+        # 반복 안에서 불렀더니 <b>같은 자리에 두 벌</b>이 겹쳐 그려졌습니다. 삼각형만
+        # 배로 늘고 면이 전부 깜빡였습니다.
         #
         # 슬롯은 꼭대기까지 올라가고 위로 갈수록 덜 찹니다. 처음에는 열 층만 세웠더니
         # 위쪽 77 m 가 민짜 콘크리트로 남아 그 부분만 마천루로 보였습니다. 빈 슬롯이
@@ -598,7 +617,9 @@ def citadel(m, s, length, rng):
     # 통로 위의 인방. 여기부터 위가 덩어리로 이어집니다.
     lid = DECK_TOP + SOCKET["parapet"] + 12.0
     m.box((0.0, 0.0, (lid + top) * 0.5), (inner, W + 6.0, top - lid), CONCRETE)
-    m.box((0.0, 0.0, lid + 0.9), (inner, W + 7.4, 1.8), DARK)
+    # 띠를 인방보다 <b>조금 내려</b> 답니다. 같은 높이에서 시작하면 덩어리의 밑면과
+    # 띠의 밑면이 같은 평면에서 같은 쪽을 봐 4,944 m2 가 깜빡였습니다.
+    m.box((0.0, 0.0, lid + 0.5), (inner, W + 7.4, 1.8), DARK)
 
     # 설비 띠. 층수를 끊어 세게 만들고, 민짜 벽이 남지 않게 합니다.
     for i in range(1, 5):
@@ -606,7 +627,7 @@ def citadel(m, s, length, rng):
 
     # 꼭대기의 코어와 테두리
     for i in (-1, 1):
-        m.box((i * inner * 0.3, i * depth * 0.24, top + 11.0), (12.0, 12.0, 22.0), CONCRETE)
+        m.box((i * inner * 0.3, i * depth * 0.24, top + 11.4), (12.0, 12.0, 22.8), CONCRETE)
         m.box((i * inner * 0.3, i * depth * 0.24, top + 22.4), (13.6, 13.6, 1.2), STEEL)
 
     m.box((0.0, 0.0, top + 0.9), (inner + 2.0, depth + 2.0, 1.8), DARK)

@@ -184,20 +184,25 @@ def build(s):
               (bw + eave * 2.0, bd + eave * 2.0, roof), CONCRETE)
 
     # 처마 밑의 어두운 선. 그림자를 그림자로 못 믿을 때를 위한 보험입니다.
-    m.box((cx, 0.0, body_top - 0.09), (bw + eave * 1.6, bd + eave * 1.6, 0.18), DARK)
+    # 선을 지붕 <b>밑으로</b> 내립니다. 윗면을 지붕 밑면과 같은 높이에 두면 서로
+    # 반대를 보아 괜찮지만, 경사 지붕에서는 계단마다 높이가 달라 한쪽이 같은 쪽을
+    # 보게 됩니다. 조금 내려 두면 어느 경우에도 겹치지 않습니다.
+    m.box((cx, 0.0, body_top - 0.22), (bw + eave * 1.6, bd + eave * 1.6, 0.18), DARK)
 
     # ---- 서비스 덩어리 -----------------------------------------------------
     edge = cx + side * (bw * 0.5 + take * 0.5)
 
     if s["service"] == "stair":
         m.box((edge, bd * 0.12, h * 0.5), (take, bd * 0.52, h), CONCRETE)
-        m.box((edge, bd * 0.12, h - 0.16), (take + 0.4, bd * 0.52 + 0.4, 0.32), DARK)
+        # 뚜껑은 덩어리 <b>위에</b> 얹습니다. 같은 높이에서 끝나게 두었더니 두 윗면이
+        # 같은 평면에서 같은 쪽을 봐 깜빡였습니다.
+        m.box((edge, bd * 0.12, h + 0.16), (take + 0.4, bd * 0.52 + 0.4, 0.32), DARK)
         m.reveal((edge, bd * 0.12 - bd * 0.26, h * 0.55),
                  (take * 0.36, h * 0.5), 1, -1.0, CONCRETE, DARK)
 
     elif s["service"] == "stack":
         m.box((edge, -bd * 0.18, h * 0.5), (take * 0.62, take * 0.62, h), CONCRETE)
-        m.box((edge, -bd * 0.18, h - 0.2), (take * 0.82, take * 0.82, 0.4), STEEL)
+        m.box((edge, -bd * 0.18, h + 0.2), (take * 0.82, take * 0.82, 0.4), STEEL)
 
     else:  # lean
         top = plinth + (body_top - plinth) * rng.uniform(0.45, 0.62)

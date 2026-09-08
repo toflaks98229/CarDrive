@@ -4,7 +4,7 @@
  "burial": 14.0,
  "deckTop": 32.0,
  "gate": 22.0,
- "seamPoints": 40,
+ "seamPoints": 44,
  "presets": [
   {
    "name": "Viaduct",
