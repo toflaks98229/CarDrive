@@ -86,3 +86,7 @@ crashlytics-build.properties
 
 # 진단용 개발 빌드 (배포물 아님)
 /BUILD_DEV/
+
+# 블렌더 백업본과 파이썬 캐시 — 소스는 .blend 와 .py 뿐입니다
+*.blend1
+__pycache__/
