@@ -19,6 +19,11 @@ ModelImporter:
       assembly: UnityEngine.CoreModule
       name: M_Mega_Steel
     second: {fileID: 2100000, guid: 7e9e54d7a97698648ba8052d2b4acc41, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Rock
+    second: {fileID: 2100000, guid: 28d07dc6e94ad1b418d74eb8041bea79, type: 2}
   materials:
     materialImportMode: 1
     materialName: 0
