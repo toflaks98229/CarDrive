@@ -96,13 +96,27 @@ DECK_TOP = DECK_Z + SOCKET["deck"]
 DECKS = [DECK_TOP + i * SOCKET["storey"] for i in range(LEVELS)]
 TOP_DECK = DECKS[-1]
 
+# <b>값을 끝까지 벌립니다.</b> 셋 다 중간 값대(0.465~0.048)에 몰려 있어, 폭을
+# 96 m 로 넓히고 438 m 를 올려도 화면에서는 한 덩어리로 눌려 보였습니다. 텍스처도
+# 색도 없는 NaissanceE 가 거대하게 읽히는 이유가 이것뿐이었습니다 — 밝은 면은
+# 거의 하얗고 어두운 면은 거의 검습니다. 그늘은 재질이 아니라 빛이 만듭니다.
+#
+# 마지막 하나가 <b>이 세계에서 유일하게 채도가 있는 것</b>입니다. 아무 데나 칠하면
+# 그 순간 특별하지 않게 되므로, 칠할 자리를 규칙으로 못 박습니다:
+# <b>갈 수 있는 곳과 기계</b> — 등, 경사로 입구, 난간이 끊긴 자리, 방 문틀, 크레인.
 MATS = [
-    ("M_Mega_Concrete", (0.465, 0.452, 0.430, 1.0), 0.95, 0.00),
-    ("M_Mega_Steel", (0.185, 0.192, 0.205, 1.0), 0.45, 1.00),
-    ("M_Mega_Dark", (0.048, 0.050, 0.054, 1.0), 0.65, 1.00),
+    ("M_Mega_Concrete", (0.610, 0.596, 0.566, 1.0), 0.95, 0.00),
+    ("M_Mega_Steel", (0.155, 0.163, 0.178, 1.0), 0.45, 1.00),
+    ("M_Mega_Dark", (0.030, 0.031, 0.034, 1.0), 0.65, 1.00),
+    ("M_Mega_Signal", (0.760, 0.290, 0.055, 1.0), 0.70, 0.00),
+    ("M_Mega_Road", (0.088, 0.090, 0.096, 1.0), 0.88, 0.00),
 ]
 
-CONCRETE, STEEL, DARK = 0, 1, 2
+# <b>노면은 캡슐이 아닙니다.</b> 처음에는 둘 다 DARK 로 칠했는데, 캡슐을 검게
+# 떨어뜨리려고 DARK 를 0.030 까지 내리자 노면이 같이 내려가 <b>운전 화면의 아래
+# 삼분의 이가 순검정</b>이 되었습니다. 값이 하나인데 쓰임이 둘이면 한쪽은 반드시
+# 틀립니다. 실제 아스팔트도 반사율 0.10 안팎이지 0.03 이 아닙니다.
+CONCRETE, STEEL, DARK, SIGNAL, ROAD = 0, 1, 2, 3, 4
 
 # --- Presets ----------------------------------------------------------------
 # 각각이 <b>한 가지 용도</b>입니다. 값을 조금씩 흔든 같은 물건이 아닙니다.
@@ -245,14 +259,13 @@ def core(m, length, bays):
               (length, W + 0.5, SOCKET["deck"]), CONCRETE)
 
         if level == 0:
-            # 노면. 차가 다니는 층에만 있습니다.
-            m.box((0.0, 0.0, top - 0.03), (length, W - 8.0, 0.26), DARK)
+            road(m, length, W, top)
         else:
             # 위층은 광장입니다. 어두운 띠가 가장자리를 그어 <b>지반</b>으로 읽히게 합니다.
             for edge in (-1.0, 1.0):
-                m.box((0.0, edge * (W * 0.5 - 3.0), top - 0.03), (length, 2.0, 0.26), DARK)
+                m.box((0.0, edge * (W * 0.5 - 3.0), top - 0.03), (length, 2.0, 0.26), ROAD)
 
-            m.box((0.0, 0.0, top + 0.55), (length, W * 0.6, 0.3), DARK)
+            m.box((0.0, 0.0, top + 0.55), (length, W * 0.6, 0.3), ROAD)
 
         # ---- 층 사이의 기둥 ------------------------------------------------
         if level + 1 >= LEVELS:
@@ -266,6 +279,47 @@ def core(m, length, bays):
             for y in rows:
                 m.box((x, y, (top + nxt) * 0.5), (post, post, nxt - top), CONCRETE)
                 m.box((x, y, nxt - 1.0), (post + 1.6, post + 1.6, 2.0), CONCRETE)
+
+
+def road(m, length, W, top):
+    """
+    차가 다니는 층의 노면입니다. <b>단색 판이면 안 됩니다.</b>
+
+    폭 88 m 짜리 어두운 판 하나로 두었더니 시속 120 이나 40 이나 화면이 똑같았습니다.
+    주행 게임에서 속도는 <b>흘러가는 무늬</b>로 느껴지는 것이지 숫자로 느껴지는 것이
+    아닙니다. 그래서 파선을 깝니다 - 한 칸이 곧 자이고, 흐르는 속도가 곧 속도계입니다.
+
+    등주는 <b>21 m 마다 좌우 번갈아</b> 섭니다. 베이가 42 m 이므로 한 베이에 둘이고,
+    이것이 이 구조물에서 사람이 셀 수 있는 <b>유일한 반복</b>입니다 - 나머지 반복은
+    베이 42 m 와 층 54 m 라 한눈에 세어지지 않습니다.
+    """
+    half = length * 0.5
+    edge = W * 0.5 - 4.0          # 노면의 가장자리
+
+    m.box((0.0, 0.0, top - 0.03), (length, edge * 2.0, 0.26), ROAD)
+
+    # 연석. 노면과 갓길을 가르고, 밤에 헤드라이트를 받아 길의 폭을 보여 줍니다.
+    for side in (-1.0, 1.0):
+        m.box((0.0, side * (edge + 0.3), top + 0.12), (length, 0.6, 0.44), CONCRETE)
+
+    # 가장자리 실선. 4 cm 만 두껍게 - 그 이상이면 차가 넘을 때 걸립니다.
+    for side in (-1.0, 1.0):
+        m.box((0.0, side * (edge - 2.0), top + 0.12), (length, 0.5, 0.04), CONCRETE)
+
+    # 가운데와 그 사이의 파선. 4 m 칠하고 3 m 비웁니다.
+    for lane in (0.0, -21.0, 21.0):
+        for i in range(6):
+            m.box((-half + 3.5 + i * 7.0, lane, top + 0.12),
+                  (4.0, 0.45, 0.04), CONCRETE)
+
+    # 등주. 좌우 번갈아 세워 21 m 간격을 만듭니다.
+    for i, side in enumerate((1.0, -1.0)):
+        x = -half * 0.5 + i * half
+        y = side * (W * 0.5 - 2.6)
+
+        m.box((x, y, top + 3.6), (0.36, 0.36, 7.2), STEEL)
+        m.box((x, y - side * 1.2, top + 7.05), (0.34, 2.4, 0.34), STEEL)
+        m.box((x, y - side * 2.2, top + 6.86), (0.5, 1.5, 0.22), SIGNAL)
 
 
 def parapet(m, length, y, gaps):
@@ -307,6 +361,11 @@ def parapet(m, length, y, gaps):
             x = min(max(center + side * width * 0.5, -limit), limit)
             m.box((x, y, DECK_TOP + SOCKET["parapet"] * 0.5),
                   (0.6, 1.6, SOCKET["parapet"] + 0.3), DARK)
+
+            # 마구리 <b>꼭대기만</b> 액센트입니다. 여기가 뛰어내릴 수 있는 자리라는
+            # 표시이고, 이 세계에서 채도가 있는 것은 갈 수 있는 곳뿐입니다.
+            m.box((x, y, DECK_TOP + SOCKET["parapet"] + 0.24),
+                  (0.72, 1.72, 0.28), SIGNAL)
 
 
 # --- Preset parts -----------------------------------------------------------
@@ -606,6 +665,11 @@ def ramp(m, s, length, rng):
             m.slope((0.0, y + edge * lane * 0.5, z + 1.0),
                     (run, 0.7, 0.9), step * turn, CONCRETE)
 
+            # 난간 꼭대기의 액센트 띠. 밑에서 올려다볼 때 <b>어디로 오르는 길인지</b>가
+            # 이 두 줄로 읽힙니다. 지금까지 경사로는 회색 판이라 지형에 묻혔습니다.
+            m.slope((0.0, y + edge * lane * 0.5, z + 1.52),
+                    (run, 0.78, 0.16), step * turn, SIGNAL)
+
         # 받치는 다리 둘. <b>층마다 x 를 어긋냅니다</b> - 같은 차선의 위아래 층이
         # 같은 자리에 서면 옆면이 같은 평면에서 겹쳐 깜빡입니다.
         for k in (-1, 1):
@@ -631,6 +695,10 @@ def ramp(m, s, length, rng):
     m.box((top_x, (W * 0.5 + lanes[0] - lane * 0.5) * 0.5, DECK_TOP - 0.6),
           (span, lanes[0] - lane * 0.5 - W * 0.5 + 2.0, 1.6), CONCRETE)
 
+    # 데크로 들어서는 문턱. 데크 위에서 <b>여기가 내려가는 길</b>임을 보여 줍니다.
+    m.box((top_x, W * 0.5 - 1.0, DECK_TOP + 0.22),
+          (span * 0.9, 1.2, 0.12), SIGNAL)
+
 
 def crane(m, s, length, rng):
     """
@@ -654,9 +722,15 @@ def crane(m, s, length, rng):
             m.box((i * inner * 0.3, sign * (W * 0.5 + 5.0), (DECKS[s.get('levels', (0,))[-1]] + rail) * 0.5),
                   (2.2, 2.2, rail - DECKS[s.get('levels', (0,))[-1]]), STEEL)
 
-    # 가로보와 트롤리
-    m.box((0.0, 0.0, rail + 1.4), (4.4, W + 14.0, 2.8), STEEL)
-    m.box((inner * 0.14, W * 0.22, rail - 1.6), (5.0, 5.0, 2.4), DARK)
+            # 다리 밑동의 경고 띠. 갠트리가 <b>움직이는 것</b>임을 말합니다.
+            m.box((i * inner * 0.3, sign * (W * 0.5 + 5.0),
+                   DECKS[s.get('levels', (0,))[-1]] + 3.0), (2.4, 2.4, 1.2), SIGNAL)
+
+    # 가로보와 트롤리. <b>기계는 칠해져 있습니다.</b> 골조와 같은 회색으로 두면
+    # 크레인이 구조물의 일부로 읽혀, "이것이 캡슐을 꽂는 장치" 라는 문장이 사라집니다.
+    m.box((0.0, 0.0, rail + 1.4), (4.4, W + 14.0, 2.8), SIGNAL)
+    m.box((0.0, 0.0, rail + 2.9), (4.6, W + 14.4, 0.4), STEEL)
+    m.box((inner * 0.14, W * 0.22, rail - 1.6), (5.0, 5.0, 2.4), SIGNAL)
 
     # 매달린 캡슐
     m.box((inner * 0.14, W * 0.22, rail - 5.4), (1.0, 1.0, 5.2), STEEL)
@@ -989,6 +1063,26 @@ def rooms(m, s, length, prefix):
 
             m.box((x, mid, z + h_out + skin * 0.5),
                   (w_out + skin * 2.0, depth, skin), DARK)
+
+            # 문틀. 어두운 캡슐 벽에서 <b>들어갈 수 있는 자리</b>만 채도를 갖습니다.
+            # 갤러리를 걸을 때 어느 캡슐이 열려 있는지가 이것으로 갈립니다.
+            #
+            # <b>틀이지 판이 아닙니다.</b> 처음에 문 앞에 2.2 x 2.3 짜리 상자 하나를
+            # 세웠더니 문이 통째로 막혀, 들어갈 수 있는 방이 8/8 에서 <b>0/8</b> 이
+            # 되었습니다. 문 폭은 방마다 다르므로 저쪽이 적어 둔 값을 읽습니다.
+            door = next((o for o in spec_room["openings"]
+                         if o[0] == "-z" and o[3] <= 0.001), None)
+
+            if door is not None:
+                wide, tall = door[2], door[4]
+                face = sign * (front + off - 0.07)
+
+                for jamb in (-1.0, 1.0):
+                    m.box((x + door[1] + jamb * (wide * 0.5 + 0.13), face, z + tall * 0.5),
+                          (0.26, 0.14, tall + 0.24), SIGNAL)
+
+                m.box((x + door[1], face, z + tall + 0.12),
+                      (wide + 0.52, 0.14, 0.24), SIGNAL)
 
             # 막힌 끝에만 답니다. 통로는 양쪽이 문이라 막으면 통로가 아닙니다.
             if not any(o[0] == "+z" for o in spec_room["openings"]):

@@ -35,8 +35,9 @@ Material:
     - _UseGrain: 1
     - _UseHatching: 0
     m_Colors:
-    - _BaseColor: {r: 0.58, g: 0.57, b: 0.53, a: 1}
+    - _BaseColor: {r: 0.66, g: 0.65, b: 0.61, a: 1}
     - _BaseMapGain: {r: 1.9647397, g: 1.9647397, b: 1.9647397, a: 1}
-    - _Color: {r: 0.58, g: 0.57, b: 0.53, a: 1}
+    - _Color: {r: 0.66, g: 0.65, b: 0.61, a: 1}
+    - _EmissionColor: {r: 0, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

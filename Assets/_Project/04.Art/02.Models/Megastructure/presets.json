@@ -5,7 +5,7 @@
  "deckTop": 35.2,
  "gate": 24.0,
  "core": "SM_Mega_Core",
- "coreTris": 1344,
+ "coreTris": 1680,
  "seamPoints": 8,
  "presets": [
   {
@@ -25,7 +25,7 @@
    "length": 42.0,
    "weight": 6,
    "top": 168.4,
-   "tris": 5964,
+   "tris": 6132,
    "parts": 9
   },
   {
@@ -64,8 +64,8 @@
    "bays": 2,
    "length": 84.0,
    "weight": 2,
-   "top": 36.8,
-   "tris": 372,
+   "top": 37.0,
+   "tris": 504,
    "parts": 1
   },
   {
@@ -74,8 +74,8 @@
    "bays": 1,
    "length": 42.0,
    "weight": 3,
-   "top": 172.0,
-   "tris": 816,
+   "top": 172.3,
+   "tris": 876,
    "parts": 1
   },
   {
@@ -85,7 +85,7 @@
    "length": 42.0,
    "weight": 2,
    "top": 166.6,
-   "tris": 2448,
+   "tris": 2496,
    "parts": 1
   },
   {
@@ -105,7 +105,7 @@
    "length": 42.0,
    "weight": 2,
    "top": 50.4,
-   "tris": 432,
+   "tris": 456,
    "parts": 1
   },
   {
@@ -115,7 +115,7 @@
    "length": 84.0,
    "weight": 1,
    "top": 264.4,
-   "tris": 888,
+   "tris": 912,
    "parts": 1
   },
   {
@@ -125,7 +125,7 @@
    "length": 84.0,
    "weight": 1,
    "top": 212.2,
-   "tris": 1200,
+   "tris": 1224,
    "parts": 1
   }
  ]

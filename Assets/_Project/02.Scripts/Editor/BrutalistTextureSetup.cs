@@ -65,9 +65,14 @@ public static class BrutalistTextureSetup
 
         // 메가스트럭처. 로봇과 <b>같은 지도</b>를 씁니다. 콘크리트가 로봇의 엉덩이일 때와
         // 100 m 벽일 때 달라 보이면 두 물건이 같은 세계에 있는 것으로 보이지 않습니다.
-        ("MegaConcrete", new Color(0.58f, 0.57f, 0.53f), ConcreteMap),
-        ("MegaSteel", new Color(0.26f, 0.28f, 0.31f), SteelMap),
-        ("MegaDark", new Color(0.09f, 0.10f, 0.11f), SteelMap),
+        // ⚠ 이 값은 <see cref="MegastructureSetup"/> 의 표와 <b>같아야 합니다.</b>
+        // 둘 다 색을 쓰므로 나중에 도는 쪽이 이깁니다. 값을 벌릴 때 한쪽만 고치면
+        // 어느 스크립트를 마지막에 돌렸는지에 따라 화면이 달라집니다.
+        ("MegaConcrete", new Color(0.66f, 0.65f, 0.61f), ConcreteMap),
+        ("MegaSteel", new Color(0.22f, 0.235f, 0.26f), SteelMap),
+        ("MegaDark", new Color(0.052f, 0.058f, 0.064f), SteelMap),
+        ("MegaSignal", new Color(0.86f, 0.36f, 0.09f), SteelMap),
+        ("MegaRoad", new Color(0.135f, 0.140f, 0.150f), ConcreteMap),
     };
 
     // --- Public Methods ---

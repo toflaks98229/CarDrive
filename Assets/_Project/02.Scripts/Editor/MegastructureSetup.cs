@@ -55,6 +55,8 @@ public static class MegastructureSetup
     {
         public float bay;
         public float width;
+        public float burial;
+        public float deckTop;
         public int seamPoints;
 
         /// <summary>베이마다 놓이는 <b>공용 뼈대</b>의 메시 이름입니다.</summary>
@@ -83,11 +85,14 @@ public static class MegastructureSetup
     /// 결(텍스처)은 여기서 물리지 않습니다. <see cref="BrutalistTextureSetup"/> 이
     /// 로봇과 같은 표에서 물립니다 — 같은 콘크리트여야 같은 세계로 보입니다.
     /// </summary>
-    private static readonly (string fbx, string asset, Color value)[] Materials =
+    private static readonly (string fbx, string asset, Color value, Color glow)[] Materials =
     {
-        ("M_Mega_Concrete", "MegaConcrete", new Color(0.58f, 0.57f, 0.53f)),
-        ("M_Mega_Steel", "MegaSteel", new Color(0.26f, 0.28f, 0.31f)),
-        ("M_Mega_Dark", "MegaDark", new Color(0.09f, 0.10f, 0.11f)),
+        ("M_Mega_Concrete", "MegaConcrete", new Color(0.66f, 0.65f, 0.61f), default),
+        ("M_Mega_Steel", "MegaSteel", new Color(0.22f, 0.235f, 0.26f), default),
+        ("M_Mega_Dark", "MegaDark", new Color(0.052f, 0.058f, 0.064f), default),
+        ("M_Mega_Signal", "MegaSignal", new Color(0.86f, 0.36f, 0.09f),
+            new Color(0.52f, 0.19f, 0.035f)),
+        ("M_Mega_Road", "MegaRoad", new Color(0.135f, 0.140f, 0.150f), default),
     };
 
     // --- Public Methods ---
@@ -174,6 +179,9 @@ public static class MegastructureSetup
             AssetDatabase.LoadAssetAtPath<GameObject>(SpinePath));
         Bounds all = Measure(spine);
 
+        Manifest manifest = JsonUtility.FromJson<Manifest>(
+            System.IO.File.ReadAllText(ManifestPath));
+
         // 차 몇 대. 이것이 없으면 100 m 인지 10 m 인지 그림만 봐서는 알 수 없습니다.
         // <b>한 대로는 부족합니다</b> — 높이가 400 m 를 넘으면 멀리 있는 차 한 대는
         // 점이 되어 사라지고, 그러면 크기를 재 줄 것이 화면에 아무것도 없습니다.
@@ -188,12 +196,14 @@ public static class MegastructureSetup
         GameObject sun = new GameObject("Sun");
         Light light = sun.AddComponent<Light>();
         light.type = LightType.Directional;
-        light.intensity = 1.4f;
+        // 알베도를 0.58 → 0.66 으로 올린 뒤 이 빛(1.4)에서 콘크리트가 하얗게
+        // 날아가 그늘이 안 보였습니다. 재는 도구가 클리핑하면 아무것도 못 잽니다.
+        light.intensity = 1.05f;
         light.shadows = LightShadows.Soft;
         sun.transform.rotation = Quaternion.Euler(38f, -34f, 0f);
 
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-        RenderSettings.ambientSkyColor = new Color(0.55f, 0.62f, 0.72f);
+        RenderSettings.ambientSkyColor = new Color(0.44f, 0.50f, 0.59f);
         RenderSettings.ambientEquatorColor = new Color(0.38f, 0.40f, 0.42f);
         RenderSettings.ambientGroundColor = new Color(0.22f, 0.20f, 0.18f);
         RenderSettings.fog = false;
@@ -238,6 +248,16 @@ public static class MegastructureSetup
                   room.center + back * 4f, "rooms");
         }
 
+        // <b>운전 눈높이의 노면.</b> 이 게임에서 가장 오래 보게 될 화면이고,
+        // 차선·연석·등주가 <b>속도를 느끼게 하는지</b>는 여기서만 판단됩니다.
+        // 옆에서 본 그림에서는 노면이 검은 띠 하나로만 보여 아무것도 알 수 없습니다.
+        // 바운드의 최저점은 <b>파묻힌 다리 끝</b>(-16 m)이지 지면이 아닙니다. 여기에
+        // 데크 높이만 더했더니 카메라가 데크 밑 다리 사이에 섰습니다.
+        float road = all.min.y + manifest.burial + manifest.deckTop;
+
+        Shoot(cam, new Vector3(-11f, road + 1.4f, all.center.z - all.extents.z * 0.86f),
+              new Vector3(-4f, road + 1.1f, all.center.z + all.extents.z * 0.4f), "road");
+
         // <b>올려다보는 그림.</b> 넓이는 옆에서 보면 알지만 높이는 밑에서 봐야 압니다.
         // 사람이 서는 자리에서 찍어야 층이 몇 겹인지가 화면에 나옵니다.
         Shoot(cam, new Vector3(span * 0.22f, 1.7f, all.center.z + all.extents.z * 0.34f),
@@ -267,7 +287,7 @@ public static class MegastructureSetup
 
         Dictionary<string, Material> map = new Dictionary<string, Material>();
 
-        foreach ((string fbx, string asset, Color value) in Materials)
+        foreach ((string fbx, string asset, Color value, Color glow) in Materials)
         {
             string path = MaterialDir + "/" + asset + ".mat";
             Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
@@ -282,6 +302,17 @@ public static class MegastructureSetup
             material.SetColor("_BaseColor", value);
             material.SetColor("_Color", value);
             material.enableInstancing = true;
+
+            // <b>발광은 키워드가 켜져야 합니다.</b> 색만 넣으면 조용히 무시됩니다 -
+            // URP/Lit 은 _EMISSION 이 꺼져 있으면 셰이더 변형 자체가 발광을 안 씁니다.
+            // 빌드에서 셰이더가 걷히던 것과 같은 종류의 함정입니다.
+            bool lit = glow.maxColorComponent > 0.001f;
+
+            material.SetColor("_EmissionColor", glow);
+            material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.EmissiveIsBlack;
+
+            if (lit) material.EnableKeyword("_EMISSION");
+            else material.DisableKeyword("_EMISSION");
 
             EditorUtility.SetDirty(material);
             map[fbx] = material;
