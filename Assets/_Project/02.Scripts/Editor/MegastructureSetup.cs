@@ -44,6 +44,9 @@ public static class MegastructureSetup
 
     private const string LodSuffix = "_LOD1";
 
+    /// <summary>레이어 12. <c>TagManager</c> 의 "Landmark" 입니다.</summary>
+    private const int LandmarkLayer = 12;
+
     /// <summary>
     /// 거친 판본으로 갈아타는 <b>판단 기준 크기</b>(m)입니다. 실제 크기가 아닙니다.
     ///
@@ -499,7 +502,16 @@ public static class MegastructureSetup
 
             foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
             {
-                t.gameObject.layer = 0;
+                // <b>랜드마크 레이어입니다.</b> 시타델이 710 m 라 파클립(약 482 m)
+                // 밖으로 나가는데, 파클립은 구가 아니라 평면이라 잘리는 자리가
+                // <b>시선의 상하 각도에 따라 움직입니다</b> — 고개를 들면 꼭대기가
+                // 잘려 나갑니다. ViewRangeScaler.ReachLandmarks 가 이 레이어만
+                // 2000 m 까지 그립니다. 대기권을 뚫는 기둥과 같은 처리입니다.
+                //
+                // 충돌 행렬에서 Landmark 는 Car·Prop·Ground 와 전부 부딪히고,
+                // 이 프로젝트의 지면 판정 마스크는 전부 ~0 이라 차와 사람이
+                // 데크 위를 그대로 다닙니다.
+                t.gameObject.layer = LandmarkLayer;
 
                 // 굽지 않으므로 ContributeGI 는 빼고, 배칭·오클루전만 켭니다.
                 GameObjectUtility.SetStaticEditorFlags(t.gameObject,

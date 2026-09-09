@@ -152,12 +152,21 @@ public static class BrutalistTextureSetup
     }
 
     /// <summary>
-    /// <b>메가스트럭처가 안개를 먹는 정도.</b> 실측: 안개는 257 m 에서 완전히 닫히고
+    /// <b>메가스트럭처가 안개를 먹는 정도.</b>
+    ///
+    /// <b>0.55 에서 0.35 로 내렸습니다.</b> 하늘을 스카이맵으로 갈아 끼우면서
+    /// 기준이 바뀌었습니다 — 저 위의 천장과 기둥들은 km 밖에서도 어두운 실루엣인데
+    /// (파노라마의 연무가 600 m~40 km 에 걸쳐 아주 천천히 낍니다), 발밑의 구조물만
+    /// 300 m 에서 크림색으로 뭉개지면 <b>다른 세계의 물건</b>으로 보입니다.
+    /// 기둥을 0.25 로 맞춘 것과 같은 이유이고, 메가스트럭처는 더 가까이서 보므로
+    /// 그 사이에 둡니다.
+    ///
+    /// 실측: 안개는 257 m 에서 완전히 닫히고
     /// 파클립은 482 m 라, 그 사이는 그리는데 안 보이는 구간입니다. 438 m 짜리 지표는
     /// 거기서 사라지면 안 됩니다. 안개를 전역으로 늘리면 안개가 감추던 것(231 m 의
     /// 나무 팝, 252 m 의 지형 경계)이 드러나므로, 이 구조물에만 덜 먹입니다.
     /// </summary>
-    private const float MegaFog = 0.55f;
+    private const float MegaFog = 0.35f;
 
     /// <summary>
     /// <b>대기권을 뚫는 기둥이 안개를 먹는 정도.</b> 메가스트럭처보다도 덜 먹입니다.
@@ -191,7 +200,7 @@ public static class BrutalistTextureSetup
         // 쓰므로(FBX 가 같은 머티리얼 이름을 냅니다) 한 번에 맞춰집니다.
         // 콘크리트 사진은 실제로 폭 2 m 남짓한 벽입니다. 0.5 로 깔면 그 크기로
         // 앉아, 거푸집 자국 하나가 곧 <b>사람 키의 절반</b>이 됩니다.
-        new Surface("M_Mega_Concrete", "MegaConcrete", new Color(0.66f, 0.65f, 0.61f),
+        new Surface("M_Mega_Concrete", "MegaConcrete", new Color(0.42f, 0.415f, 0.395f),
                     PhotoConcrete, default, MegaFog, 0.5f,
                     new Color(0.30f, 0.33f, 0.27f), 46f),
         new Surface("M_Mega_Steel", "MegaSteel", new Color(0.22f, 0.235f, 0.26f),

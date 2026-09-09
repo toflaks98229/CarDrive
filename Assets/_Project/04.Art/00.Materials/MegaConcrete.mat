@@ -32,7 +32,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _BaseMapStrength: 0.45
-    - _FogScale: 0.55
+    - _FogScale: 0.35
     - _HeightBottom: 66.639465
     - _HeightStrength: 0.5
     - _HeightTop: 17.639465
@@ -40,9 +40,9 @@ Material:
     - _UseGrain: 1
     - _UseHatching: 0
     m_Colors:
-    - _BaseColor: {r: 0.66, g: 0.65, b: 0.61, a: 1}
+    - _BaseColor: {r: 0.42, g: 0.415, b: 0.395, a: 1}
     - _BaseMapGain: {r: 2.3808413, g: 2.3808413, b: 2.3808413, a: 1}
-    - _Color: {r: 0.66, g: 0.65, b: 0.61, a: 1}
+    - _Color: {r: 0.42, g: 0.415, b: 0.395, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 0}
     - _HeightColor: {r: 0.3, g: 0.33, b: 0.27, a: 1}
   m_BuildTextureStacks: []

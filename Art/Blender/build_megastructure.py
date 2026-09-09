@@ -68,7 +68,7 @@ UV_TILE = 1.0
 
 SOCKET = dict(
     bay=42.0,        # 한 베이의 길이
-    width=96.0,      # 스파인의 폭
+    width=128.0,     # 스파인의 폭
     gate=24.0,       # 지면에서 첫 트러스 밑까지. 이 밑으로 차가 지나갑니다
     leg=(11.0, 13.0),
     truss=9.0,
@@ -78,8 +78,8 @@ SOCKET = dict(
     burial=16.0,     # 다리가 원점 아래로 내려가는 깊이. 지형 기복을 파묻습니다
     inset=1.4,       # 프리셋 부재가 이음매에서 물러나는 거리
     # 층 사이의 기둥 굵기와 층 높이.
-    post=5.0,
-    storey=54.0,
+    post=7.0,
+    storey=72.0,
 )
 
 # 인공 지반이 <b>몇 겹</b>인가. 이것이 이 구조물을 다리가 아니라 생태계로 만듭니다.
@@ -87,7 +87,12 @@ SOCKET = dict(
 # Maki 의 정의가 "도시의 모든 기능을 담는 커다란 틀" 인데, 기능이 여럿이려면 지반도
 # 여럿이어야 합니다. 한 겹이면 아무리 길어도 고가도로입니다. 아래는 차가 지나가는
 # 도로, 위로 갈수록 사람이 사는 곳 - 층마다 쓰임이 달라야 겹친 보람이 있습니다.
-LEVELS = 3
+# 하늘을 스카이맵으로 갈아 끼우면서 <b>기준이 바뀌었습니다.</b> 저 위의 천장은
+# 2.4 km 이고 그것을 받치는 기둥은 780 m 인데, 그 아래에 143 m 짜리가 서 있으면
+# 같은 세계의 물건으로 안 보입니다 - 크기는 절대값이 아니라 <b>이웃과의 비</b>로
+# 읽힙니다. 층을 하나 더하고 층높이를 54 → 72 m 로 올려 top deck 을 251 m 로,
+# 그 위의 시타델까지 700 m 대로 끌어올립니다. 기둥과 같은 체급입니다.
+LEVELS = 4
 
 DECK_Z = SOCKET["gate"] + SOCKET["truss"]
 DECK_TOP = DECK_Z + SOCKET["deck"]
@@ -152,7 +157,7 @@ PRESETS = {
     # <b>초거대.</b> 스파인이 뚫고 지나가는 덩어리. 세 베이에 걸치고 170 m 를 올라갑니다.
     # <b>지표는 나머지보다 확실히 커야 합니다.</b> 층이 셋으로 늘고 수직 프리셋이
     # 260 m 를 넘은 뒤로 176 m 짜리 덩어리는 더 이상 지표가 아니었습니다.
-    "Citadel": dict(bays=3, tiers=48, upper=380.0, fill=0.6, block=True, weight=1, lod=True,
+    "Citadel": dict(bays=3, tiers=48, upper=650.0, fill=0.6, block=True, weight=1, lod=True,
                     levels=(0,)),
 
     # 지상과 데크를 잇는 되돌이 경사로. <b>인공 지반을 실제로 쓸 수 있게 하는</b>
@@ -280,16 +285,14 @@ def core(m, length, bays):
                 m.box((x, 0.0, base - duct * 1.15), (1.6, W * 0.6, 0.5), STEEL)
                 m.box((x, 0.0, base - duct * 1.36), (1.15, W * 0.58, 0.22), SIGNAL)
 
-            # <b>가로보.</b> 차로 지나갈 때 가장 오래 보는 면인데 가장 비어 있었습니다 -
-            # 덕트 두 줄 말고는 매끈한 판이라 <b>얼마나 두꺼운지</b>가 안 읽혔습니다.
-            # 7 m 마다 리브를 걸면 그 간격이 곧 자가 되고, 밑면에 그림자가 생깁니다.
-            for i in range(6):
-                m.box((-length * 0.5 + (i + 0.5) * (length / 6.0), 0.0, base - 0.55),
-                      (1.1, W - 2.0, 1.1), CONCRETE)
+            # 가로보는 이제 <c>soffit</c> 이 격자로 깝니다. 여기 있던 6 개짜리
+            # 가로 리브는 <b>같은 자리에 두 번</b> 놓여 겹쳤습니다.
 
             # 배관 두 줄. 리브를 가로질러 흐르며 <b>이 밑이 설비 공간</b>임을 말합니다.
             for y in (-W * 0.30, W * 0.30):
                 m.box((0.0, y, base - 1.5), (length, 0.55, 0.55), STEEL)
+
+        soffit(m, length, W, base, level)
 
         m.box((0.0, 0.0, top - SOCKET["deck"] * 0.5),
               (length, W + 0.5, SOCKET["deck"]), CONCRETE)
@@ -314,7 +317,91 @@ def core(m, length, bays):
 
             for y in rows:
                 m.box((x, y, (top + nxt) * 0.5), (post, post, nxt - top), CONCRETE)
-                m.box((x, y, nxt - 1.0), (post + 1.6, post + 1.6, 2.0), CONCRETE)
+
+                # ⚠ 주두의 <b>윗면이 기둥 윗면과 같은 평면에 오면 안 됩니다.</b>
+                # 둘 다 <c>nxt</c> 에 떨어져 같은 쪽을 보고 있었고, 기둥을 5 → 7 m 로
+                # 굵히고 층을 하나 더하자 한 코어에 633 m2 가 됐습니다.
+                # 0.12 m 내려 기둥 머리만 그 평면에 남깁니다.
+                m.box((x, y, nxt - 1.06), (post + 1.6, post + 1.6, 1.88), CONCRETE)
+
+
+def soffit(m, length, W, base, level):
+    """
+    데크 밑면의 <b>격자 천장</b>입니다. 하늘과 같은 말을 쓰게 하는 것이 목적입니다.
+
+    이 세계의 하늘은 스카이맵으로 구운 <b>위층의 밑면</b>이고, 그것은 깊은 보가
+    짜인 격자에 <b>따뜻한 빛우물</b>이 박힌 천장입니다. 그런데 정작 발밑의
+    구조물은 매끈한 판에 리브 몇 개뿐이라, 올려다본 하늘과 데크 밑이 서로 다른
+    세계의 물건으로 보였습니다.
+
+    같은 격자를 여기에도 깝니다. 다른 것은 <b>간격뿐</b>입니다 — 하늘의 천장은
+    2.4 km 위라 340 m 로 짜야 시야각 8 도가 되는데, 데크는 수십 미터 위라
+    7 m 면 같은 각이 됩니다. 크기가 다른 같은 물건으로 읽히는 것이 목표입니다.
+
+    <b>빛우물은 규칙적입니다.</b> 하늘의 것은 흩뿌려 두었지만(수 km 밖이라 무리로만
+    보입니다) 여기서는 바로 위라 하나하나가 보이므로, 어긋나면 <b>고장난 것</b>으로
+    읽힙니다. 건축은 규칙적이고, 규칙이 곧 자입니다.
+    """
+    pitch = 7.0
+    rib = 0.9
+
+    across = int(W / pitch)
+    along = int(length / pitch)
+
+    # ⚠ <b>두 방향을 같은 깊이에 걸면 안 됩니다.</b> 처음에 둘 다 밑면을 <c>base</c>
+    # 에 맞췄더니, 교차점마다 두 리브의 윗면과 아랫면이 <b>같은 평면에서 같은 쪽을
+    # 봤습니다</b> — 한 층에 324 개씩, 코어 하나에 2,308 m2 가 깜빡였습니다.
+    #
+    # 2 차 보를 <b>1 차 보 안으로</b> 넣습니다. 깊이가 1.2 와 0.7 이고 0.3 m 물려
+    # 있어, 교차점에서 2 차 보의 여섯 면이 전부 1 차 보 속에 들어갑니다 - 같은
+    # 평면에 놓이는 면이 아예 없습니다. 실제 보도 이렇게 걸립니다.
+    deep, shallow = 1.2, 0.7
+
+    # ⚠ <b>정확히 <c>base</c> 에 걸치지 않게 6 cm 내려 답니다.</b> 그 평면에는 이미
+    # 층 사이 기둥의 <b>주두</b> 윗면이 와 있어서, 리브의 윗면과 같은 평면에서 같은
+    # 쪽을 봤습니다 - 코어 하나에 1,092 m2 였습니다. 6 cm 는 눈에 안 보이지만
+    # 깊이 버퍼에는 충분합니다.
+    base -= 0.06
+
+    for j in range(across + 1):
+        y = (j - across * 0.5) * pitch
+
+        if abs(y) > W * 0.5 - 1.0:
+            continue
+
+        m.box((0.0, y, base - deep * 0.5), (length, rib, deep), CONCRETE)
+
+    for i in range(along + 1):
+        x = (i - along * 0.5) * pitch
+
+        if abs(x) > length * 0.5 - 1.0:
+            continue
+
+        m.box((x, 0.0, base - 0.3 - shallow * 0.5), (rib, W - 2.0, shallow), CONCRETE)
+
+    # 빛우물. 격자 한 칸 걸러 하나씩, 층마다 어긋나게 둡니다.
+    for i in range(along):
+        if (i + level) % 3 != 0:
+            continue
+
+        x = (i - along * 0.5 + 0.5) * pitch
+
+        if abs(x) > length * 0.5 - pitch:
+            continue
+
+        for j in range(across):
+            if (j + level) % 2 != 0:
+                continue
+
+            y = (j - across * 0.5 + 0.5) * pitch
+
+            if abs(y) > W * 0.5 - pitch:
+                continue
+
+            # 우물의 테두리를 먼저 내리고 그 안에 발광면을 답니다. 판만 붙이면
+            # <b>스티커</b>로 보입니다 - 깊이가 있어야 등으로 읽힙니다.
+            m.box((x, y, base - 0.45), (pitch * 0.62, pitch * 0.62, 0.9), CONCRETE)
+            m.box((x, y, base - 0.95), (pitch * 0.46, pitch * 0.46, 0.16), SIGNAL)
 
 
 def road(m, length, W, top):
@@ -1240,7 +1327,16 @@ def citadel(m, s, length, rng, coarse=False):
               (inner, flank, lid + SOCKET["burial"]), CONCRETE)
 
     # ---- 물려 올라가는 단 --------------------------------------------------
-    stages = 3
+    #
+    # ⚠ <b>단의 개수를 높이에서 뽑습니다.</b> 3 으로 박아 두었더니, 하늘에 맞춰
+    # 시타델을 380 m 에서 650 m 로 올리는 순간 한 단이 122 m 에서 212 m 가 되어
+    # <b>48,753 m2</b> 가 깜빡였습니다 - 단 안의 것들(끝벽 격자, 캡슐 갤러리)이
+    # 122 m 짜리 단에 맞춰 짜여 있었기 때문입니다. 특히 캡슐 층수는 이 아래에서
+    # <c>step</c> 으로 다시 계산되므로, 단이 커지면 조용히 딴 물건이 됩니다.
+    #
+    # 단 높이를 그대로 두고 <b>개수를 늘리면</b> 안쪽 치수가 전부 검증된 자리에
+    # 머무릅니다. 물러남이 늘어 오히려 더 기념비적으로 보이기도 합니다.
+    stages = max(3, int(round((top - lid) / 122.0)))
     step = (top - lid) / stages
 
     for k in range(stages):
