@@ -230,6 +230,23 @@ public static class MegastructureLookCapture
                 Debug.Log($"  하늘 {sky?.name} · 노출 " +
                           $"{(sky != null && sky.HasProperty("_Exposure") ? sky.GetFloat("_Exposure") : -1f):F3}");
 
+                // <b>기둥 밑동.</b> 다가갈 수 있는 유일한 거대 구조라, 가까이서
+                // 형태가 살아 있는지가 이 물건의 값어치를 정합니다. 멀리서는
+                // 안개에 지워지는 것이 의도이지만 <b>가까이서도 지워지면</b>
+                // 그냥 흰 판을 하나 세운 것입니다.
+                Transform column = GameObject.Find("SkyColumns")?.transform.childCount > 0
+                    ? GameObject.Find("SkyColumns").transform.GetChild(0)
+                    : null;
+
+                if (column != null)
+                {
+                    Vector3 foot = column.position;
+                    Vector3 eye = foot + new Vector3(88f, 14f, 62f);
+
+                    Shoot(camera, target, eye,
+                          (foot + Vector3.up * 150f - eye).normalized, "column");
+                }
+
                 // <b>지반의 가장자리.</b> 대지가 자연 지형이 아니라 건축물의 한 조각
                 // 이라면, 끝까지 가면 땅이 아니라 <b>바닥이 안 보이는 구름</b>이
                 // 나와야 합니다. 지형의 모서리에 서서 밖을 봅니다.
