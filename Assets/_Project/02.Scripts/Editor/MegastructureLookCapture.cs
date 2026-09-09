@@ -162,6 +162,55 @@ public static class MegastructureLookCapture
                       middle + Vector3.up * (spine.position.y + 26f) + side * 250f,
                       (-side + along * 0.5f).normalized, "far");
 
+                // <b>같은 자리에서 고개만 돌린 두 장.</b>
+                //
+                // URP 안개는 카메라 <b>정면 방향의 깊이</b>로 재므로, 같은 건물이
+                // 화면 가운데 있을 때와 가장자리에 있을 때 안개를 다르게 먹습니다.
+                // 그래서 <b>고개를 돌리는 것만으로</b> 건물이 나타났다 사라집니다.
+                //
+                // 두 장의 <b>평균밝기가 크게 다르면</b> 그 문제가 남아 있는 것입니다.
+                // 카메라는 한 자리에 고정하고 방향만 40° 틀어, 대상이 화면 가운데에
+                // 왔다가 가장자리로 갑니다.
+                //
+                // 대상은 <b>마을 집</b>입니다 - 메가스트럭처는 안개를 덜 먹게 해
+                // 두었으므로(_FogScale 0.55) 차이가 가려집니다.
+                // <b>이름순으로 고릅니다.</b> FirstOrDefault 로 집었더니 실행마다
+                // 다른 집이 걸려 카메라 자리가 달라졌고, 그러면 두 실행을 비교할 수
+                // 없습니다. 카메라를 거울로 집던 것과 같은 함정입니다.
+                Renderer house = UnityEngine.Object
+                    .FindObjectsByType<Renderer>(FindObjectsInactive.Exclude)
+                    .Where(r => r.name.Contains("House"))
+                    .OrderBy(r => r.name)
+                    .ThenBy(r => r.transform.position.x)
+                    .FirstOrDefault();
+
+                if (house != null)
+                {
+                    Vector3 mark = house.bounds.center;
+                    Vector3 away = new Vector3(1f, 0f, 0.35f).normalized;
+                    // <b>거리를 고르는 것이 곧 실험 설계입니다.</b> 330 m 로 잡았더니 두 자
+                    // 모두 안개에 완전히 먹혀 차이가 0 이었습니다. 방사로는 먹히고
+                    // 깊이로는 안 먹히는 구간, 곧 <b>버그가 실제로 무는 자리</b>에 둡니다.
+                    Vector3 eye = mark + away * 290f + Vector3.up * 26f;
+
+                    Vector3 straight = (mark - eye).normalized;
+                    Vector3 turned = Quaternion.Euler(0f, 40f, 0f) * straight;
+
+                    // <b>숫자로도 남깁니다.</b> 그림은 "달라 보인다" 까지만 말합니다.
+                    float radial = Vector3.Distance(eye, mark);
+                    float planar = Vector3.Dot(mark - eye, turned);
+                    float start = RenderSettings.fogStartDistance;
+                    float end = RenderSettings.fogEndDistance;
+
+                    Debug.Log($"  안개 대상 {house.name} · 거리 {radial:F0} m · " +
+                              $"40° 틀었을 때 깊이 {planar:F0} m · 안개 {start:F0}~{end:F0} m · " +
+                              $"맑기 방사 {Mathf.Clamp01((end - radial) / (end - start)):F3} · " +
+                              $"깊이 {Mathf.Clamp01((end - planar) / (end - start)):F3}");
+
+                    Shoot(camera, target, eye, straight, "angle_center");
+                    Shoot(camera, target, eye, turned, "angle_edge");
+                }
+
                 // <b>안개가 완전히 닫힌 뒤</b>. 안개는 257 m 에서 100% 인데 파클립은
                 // 482 m 라, 이 자리는 <b>그리는데 안 보이는</b> 구간입니다. 438 m 짜리
                 // 지표가 여기서 읽히지 않으면 그것은 지표가 아닙니다.

@@ -192,7 +192,39 @@ Shader "CarDrive/Toon Terrain"
             p.specularSize = max(p.specularSize, 48.0h);
             return p;
         }
-        ENDHLSL
+        
+        /// <summary>
+        /// 안개를 <b>카메라에서의 실제 거리</b>로 잽니다.
+        ///
+        /// URP 기본은 <c>positionCS.z</c>, 곧 <b>카메라가 보는 방향으로의 깊이</b>를
+        /// 씁니다. 그러면 같은 자리에 있는 건물이 <b>고개를 돌리는 것만으로</b>
+        /// 나타났다 사라집니다 - 330 m 앞의 건물을 40° 옆에 두면 깊이가 253 m 라
+        /// 안개가 닫히는 257 m 안쪽이어서 보이고, 정면으로 돌리면 330 m 가 되어
+        /// 통째로 먹힙니다. 각도만 바뀌었는데 건물이 사라집니다.
+        ///
+        /// 디더 페이드는 이미 방사 거리를 씁니다. 둘이 다른 자를 쓰고 있었습니다.
+        ///
+        /// URP 의 <c>ComputeFogFactorZ0ToFar</c> 와 같은 식이고 넣는 값만 바꿉니다.
+        /// 방사 거리는 늘 깊이보다 크거나 같으므로 <b>안개는 더 짙어질 뿐</b>입니다 -
+        /// 안개가 감추던 것(나무 팝·지형 경계)이 드러날 걱정은 없습니다.
+        ///
+        /// <b>이 블록의 맨 끝에 있어야 합니다.</b> 인클루드 사이에 끼워 넣었더니
+        /// 조건부 블록 안에 들어가 어떤 변형에서는 정의되지 않았습니다.
+        /// </summary>
+        half CarDriveFogFactor(float3 positionWS)
+        {
+            float d = length(GetCameraPositionWS() - positionWS);
+
+            #if defined(FOG_LINEAR)
+                return half(saturate(d * unity_FogParams.z + unity_FogParams.w));
+            #elif defined(FOG_EXP) || defined(FOG_EXP2)
+                return half(unity_FogParams.x * d);
+            #else
+                return half(0.0);
+            #endif
+        }
+
+ENDHLSL
 
         Pass
         {
@@ -247,7 +279,7 @@ Shader "CarDrive/Toon Terrain"
                 output.positionWS = pos.positionWS;
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 output.uv = input.texcoord;
-                output.fogFactor = ComputeFogFactor(pos.positionCS.z);
+                output.fogFactor = CarDriveFogFactor(pos.positionWS);
 
                 return output;
             }
