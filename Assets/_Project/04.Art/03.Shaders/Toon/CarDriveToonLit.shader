@@ -17,6 +17,16 @@ Shader "CarDrive/Toon Lit"
     {
         [Header(Base)]
         _BaseMap ("바탕 텍스처", 2D) = "white" {}
+        // <b>이 물체가 안개를 얼마나 먹는가.</b> 1 이면 남들과 똑같이 먹습니다.
+        //
+        // 안개는 이 게임에서 <b>그리는 거리를 감추는 장치</b>입니다 - 지형 타일 경계와
+        // 나무가 사라지는 자리를 덮으려고 257 m 에서 완전히 닫힙니다. 그런데 파클립은
+        // 482 m 라, 그 사이 225 m 구간은 <b>그리는데 안 보이는</b> 구간입니다.
+        // 나무 한 그루는 거기서 사라져도 되지만 438 m 짜리 지표는 안 됩니다.
+        //
+        // 그래서 안개를 전역으로 늘리는 대신(늘리면 감추려던 것이 드러납니다) 이
+        // 물체만 덜 먹게 합니다.
+        _FogScale ("안개 먹는 정도 (1이 보통)", Range(0, 1)) = 1
         _BaseColor ("바탕색", Color) = (1, 1, 1, 1)
         [Toggle(_GRAIN_ON)] _UseGrain ("바탕 텍스처를 결로 쓰기", Float) = 0
         [HDR] _BaseMapGain ("결 이득 (맵 평균을 1로 맞춤)", Color) = (1, 1, 1, 1)
@@ -123,6 +133,7 @@ Shader "CarDrive/Toon Lit"
 
         CBUFFER_START(UnityPerMaterial)
             float4 _BaseMap_ST;
+            half   _FogScale;
             half4  _BaseColor;
             half4  _BaseMapGain;
             half   _BaseMapStrength;
@@ -349,7 +360,8 @@ Shader "CarDrive/Toon Lit"
                 output.positionWS = pos.positionWS;
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
-                output.fogFactor = ComputeFogFactor(pos.positionCS.z);
+                // fogFactor 는 <b>1 이 맑음</b>입니다. 1 쪽으로 당기면 덜 먹습니다.
+                output.fogFactor = lerp(1.0, ComputeFogFactor(pos.positionCS.z), _FogScale);
 
                 return output;
             }
@@ -486,7 +498,8 @@ Shader "CarDrive/Toon Lit"
 
                 output.positionCS = TransformWorldToHClip(positionWS);
                 output.positionWS = positionWS;
-                output.fogFactor = ComputeFogFactor(output.positionCS.z);
+                // 외곽선도 같이 당깁니다. 본체만 당기면 멀리서 <b>윤곽만 뿌옇게</b> 남습니다.
+                output.fogFactor = lerp(1.0, ComputeFogFactor(output.positionCS.z), _FogScale);
 
                 return output;
             }

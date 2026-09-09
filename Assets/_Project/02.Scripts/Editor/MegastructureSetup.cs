@@ -85,6 +85,22 @@ public static class MegastructureSetup
     /// 결(텍스처)은 여기서 물리지 않습니다. <see cref="BrutalistTextureSetup"/> 이
     /// 로봇과 같은 표에서 물립니다 — 같은 콘크리트여야 같은 세계로 보입니다.
     /// </summary>
+    /// <summary>
+    /// 이 구조물이 <b>안개를 얼마나 먹는가</b>. 1 이면 남들과 똑같습니다.
+    ///
+    /// 실측: 안개는 128 m 에서 시작해 <b>257 m 에서 완전히 닫히고</b>, 파클립은
+    /// 482 m 입니다. 그 사이 225 m 는 <b>그리는데 안 보이는</b> 구간입니다. 나무
+    /// 한 그루는 거기서 사라져도 되지만 - 안개는 애초에 나무가 사라지는 자리와
+    /// 지형 타일 경계를 감추려고 그 거리에 맞춰져 있습니다 - 438 m 짜리 지표는
+    /// 안 됩니다. 250 m 밖에서 이미 하늘값으로 씻겨 실루엣만 남았습니다.
+    ///
+    /// <b>안개를 전역으로 늘리면 안 됩니다.</b> 늘리는 순간 안개가 감추려던 것이
+    /// 드러납니다 - 231 m 의 나무 팝과 252 m 의 지형 경계입니다. 그래서 이 구조물
+    /// 에만 덜 먹입니다. 실제 대기도 그렇습니다: 400 m 짜리 덩어리는 아지랑이
+    /// 위로 솟아 있고, 그 앞의 나무는 아지랑이 속에 있습니다.
+    /// </summary>
+    private const float FogScale = 0.55f;
+
     private static readonly (string fbx, string asset, Color value, Color glow)[] Materials =
     {
         ("M_Mega_Concrete", "MegaConcrete", new Color(0.66f, 0.65f, 0.61f), default),
@@ -301,6 +317,7 @@ public static class MegastructureSetup
             material.parent = parent;
             material.SetColor("_BaseColor", value);
             material.SetColor("_Color", value);
+            material.SetFloat("_FogScale", FogScale);
             material.enableInstancing = true;
 
             // <b>발광은 키워드가 켜져야 합니다.</b> 색만 넣으면 조용히 무시됩니다 -

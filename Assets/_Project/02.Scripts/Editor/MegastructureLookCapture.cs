@@ -62,9 +62,6 @@ public static class MegastructureLookCapture
     private const int Width = 1280;
     private const int Height = 720;
 
-    /// <summary>ViewRangeScaler 가 런타임에 거는 안개 거리입니다. 사다리가 내는 값입니다.</summary>
-    private const float RuntimeFogStart = 166.6f;
-    private const float RuntimeFogEnd = 280f;
 
     /// <summary>찍는 시각. 한낮은 그림자가 죽어 형태를 못 봅니다.</summary>
     private const float Daylight = 1.0f;
@@ -164,6 +161,13 @@ public static class MegastructureLookCapture
                 Shoot(camera, target,
                       middle + Vector3.up * (spine.position.y + 26f) + side * 250f,
                       (-side + along * 0.5f).normalized, "far");
+
+                // <b>안개가 완전히 닫힌 뒤</b>. 안개는 257 m 에서 100% 인데 파클립은
+                // 482 m 라, 이 자리는 <b>그리는데 안 보이는</b> 구간입니다. 438 m 짜리
+                // 지표가 여기서 읽히지 않으면 그것은 지표가 아닙니다.
+                Shoot(camera, target,
+                      middle + Vector3.up * (spine.position.y + 34f) + side * 420f,
+                      (-side + along * 0.35f).normalized, "land");
             }
             finally
             {
@@ -261,10 +265,25 @@ public static class MegastructureLookCapture
         // 여기서는 그것이 고른 하늘을 직접 물려 줍니다.
         if (activeSkyField.GetValue(sky) is Material chosen) RenderSettings.skybox = chosen;
 
+        // <b>안개 거리를 여기 적어 두면 안 됩니다.</b> 처음에는 166.6 / 280 을
+        // 상수로 베껴 왔는데, 그 값은 사다리가 <b>어느 시점에 내던 값</b>을 옮겨 적은
+        // 것이라 설정이 바뀌면 조용히 거짓말이 됩니다. 런타임이 읽는 곳에서 읽습니다.
+        Camera main = MainCamera();
+        if (main != null) ViewDistances.SetViewBase(main.farClipPlane);
+
+        ViewDistances.Ladder ladder = ViewDistances.Current;
+
         RenderSettings.fog = true;
         RenderSettings.fogMode = FogMode.Linear;
-        RenderSettings.fogStartDistance = RuntimeFogStart;
-        RenderSettings.fogEndDistance = RuntimeFogEnd;
+        RenderSettings.fogStartDistance = ladder.FogStart;
+        RenderSettings.fogEndDistance = ladder.FogEnd;
+
+        if (main != null) main.farClipPlane = ladder.FarClip;
+
+        Debug.Log($"MegastructureLookCapture: 사다리 — 안개 {ladder.FogStart:F0} ~ " +
+                  $"{ladder.FogEnd:F0} m · 파클립 {ladder.FarClip:F0} m · " +
+                  $"나무 페이드 {ladder.FadeStart:F0} ~ {ladder.FadeEnd:F0} m · " +
+                  $"터레인 {ladder.TerrainActive:F0} m");
 
         release = () =>
         {
