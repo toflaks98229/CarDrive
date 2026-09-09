@@ -33,7 +33,8 @@ Material:
     m_Ints: []
     m_Floats:
     - _BaseMapStrength: 0.45
-    - _FogScale: 0.25
+    - _FogReach: 5
+    - _FogScale: 1
     - _HeightBottom: 66.639465
     - _HeightStrength: 0
     - _HeightTop: 17.639465

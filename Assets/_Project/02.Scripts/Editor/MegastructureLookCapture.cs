@@ -60,7 +60,7 @@ public static class MegastructureLookCapture
     private const string OutputDirectory = "Logs/MegaLook";
 
     /// <summary>⚠ <c>ViewRangeScaler</c> 의 같은 이름 상수와 <b>짝입니다.</b></summary>
-    private const float LandmarkReach = 2000f;
+    private const float LandmarkReach = 1450f;
     private const int LandmarkLayer = 12;
 
     private const int Width = 1280;

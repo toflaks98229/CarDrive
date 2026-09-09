@@ -27,6 +27,7 @@ Shader "CarDrive/Toon Lit"
         // 그래서 안개를 전역으로 늘리는 대신(늘리면 감추려던 것이 드러납니다) 이
         // 물체만 덜 먹게 합니다.
         _FogScale ("안개 먹는 정도 (1이 보통)", Range(0, 1)) = 1
+        _FogReach ("안개가 닫히는 거리 배수 (1이 보통)", Range(1, 12)) = 1
         _BaseColor ("바탕색", Color) = (1, 1, 1, 1)
         [Toggle(_GRAIN_ON)] _UseGrain ("바탕 텍스처를 결로 쓰기", Float) = 0
         [HDR] _BaseMapGain ("결 이득 (맵 평균을 1로 맞춤)", Color) = (1, 1, 1, 1)
@@ -134,6 +135,7 @@ Shader "CarDrive/Toon Lit"
         CBUFFER_START(UnityPerMaterial)
             float4 _BaseMap_ST;
             half   _FogScale;
+            half   _FogReach;
             half4  _BaseColor;
             half4  _BaseMapGain;
             half   _BaseMapStrength;
@@ -325,9 +327,22 @@ Shader "CarDrive/Toon Lit"
         /// <b>이 블록의 맨 끝에 있어야 합니다.</b> 인클루드 사이에 끼워 넣었더니
         /// 조건부 블록 안에 들어가 어떤 변형에서는 정의되지 않았습니다.
         /// </summary>
+        // <b>안개는 방사 거리로 잽니다.</b> URP 기본은 <c>positionCS.z</c>(평면 깊이)라
+        // 같은 건물이 화면 가운데 있을 때와 가장자리에 있을 때 안개를 다르게 먹습니다.
+        //
+        // <c>_FogReach</c> 는 안개가 <b>닫히는 거리</b>를 늘립니다. <c>_FogScale</c> 과는
+        // 다른 물건입니다 - 그쪽은 안개의 <b>세기</b>를 줄이므로 아무리 멀어도 제
+        // 색이 남아, 랜드마크가 2 km 밖에서도 또렷하게 서 있었습니다. 크기가 큰
+        // 것은 <b>더 멀리서 사라져야</b> 하는 것이지 <b>안 사라져야</b> 하는 것이
+        // 아닙니다. 거리를 나눠 두면 안개가 제대로 닫히되 그 자리가 멀어집니다.
+        //
+        // ⚠ 이것이 파클립을 지켜 주기도 합니다. 평면 깊이는 언제나 방사 거리
+        // 이하이므로, 안개가 방사 거리로 완전히 닫히면 <b>잘리는 자리는 반드시
+        // 안개 안</b>입니다 - 랜드마크 사거리를 안개가 닫히는 거리보다 멀게만
+        // 두면 잘린 단면이 드러날 수 없습니다.
         half CarDriveFogFactor(float3 positionWS)
         {
-            float d = length(GetCameraPositionWS() - positionWS);
+            float d = length(GetCameraPositionWS() - positionWS) / max(_FogReach, 1.0h);
 
             #if defined(FOG_LINEAR)
                 return half(saturate(d * unity_FogParams.z + unity_FogParams.w));

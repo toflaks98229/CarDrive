@@ -33,7 +33,8 @@ Material:
     m_Ints: []
     m_Floats:
     - _BaseMapStrength: 0.45
-    - _FogScale: 0.35
+    - _FogReach: 3.5
+    - _FogScale: 1
     - _SplatOn: 0
     - _UseGrain: 1
     - _UseHatching: 0
