@@ -42,6 +42,22 @@ public static class MegastructureSetup
 
     private const string ManifestPath = ModelDir + "/presets.json";
 
+    private const string LodSuffix = "_LOD1";
+
+    /// <summary>
+    /// 거친 판본으로 갈아타는 <b>판단 기준 크기</b>(m)입니다. 실제 크기가 아닙니다.
+    ///
+    /// 유니티는 화면 높이 비율 = <c>size / (거리 x 2 tan(화각/2))</c> 로 LOD 를
+    /// 고릅니다. 시타델의 진짜 크기는 505 m 라 <b>어느 거리에서도 화면을 가득
+    /// 채웁니다</b> - 파클립 482 m 에서도 0.81 이어서, 임계값을 1 로 두어도 갈아탈
+    /// 일이 없습니다. 그래서 size 는 "이 거리에서 갈아탄다" 를 적는 자리로 씁니다.
+    ///
+    /// 117 = 0.30(임계값) x 300 m x 1.30(화각 66° 의 2 tan(33°)). 곧 <b>300 m</b>
+    /// 에서 갈아탑니다. 안개가 257 m 에서 닫히고 이 구조물은 그 뒤로도 45% 만
+    /// 남으므로(_FogScale), 300 m 밖의 격자와 갤러리는 읽히지 않습니다.
+    /// </summary>
+    private const float LodSize = 117f;
+
     // --- Manifest ---
 
     /// <summary>
@@ -74,6 +90,11 @@ public static class MegastructureSetup
         public float length;
         public int weight;
         public float top;
+
+        /// <summary>멀리서 쓸 판본의 메시 이름입니다. 없으면 빈 문자열입니다.</summary>
+        public string lod1;
+
+        public int lod1Tris;
     }
 
     /// <summary>
@@ -132,11 +153,23 @@ public static class MegastructureSetup
             // 둘을 다른 규칙으로 놓습니다 - 뼈대는 베이마다, 부품은 프리셋마다.
             Dictionary<string, GameObject> made = new Dictionary<string, GameObject>();
 
+            // <b>거친 판본은 따로 붙입니다.</b> 그냥 돌리면 그것도 프리팹 하나가
+            // 되어 스파인에 <b>두 번째 시타델</b>로 끼어듭니다.
             foreach (string model in models)
             {
                 Configure(model, materials);
+
+                if (model.EndsWith(LodSuffix + ".fbx")) continue;
+
                 GameObject piece = BuildBay(model);
                 made[piece.name] = piece;
+            }
+
+            foreach (string model in models)
+            {
+                if (!model.EndsWith(LodSuffix + ".fbx")) continue;
+
+                AttachLod(model);
             }
 
             if (!made.TryGetValue(manifest.core, out GameObject core))
@@ -351,6 +384,89 @@ public static class MegastructureSetup
         }
 
         importer.SaveAndReimport();
+    }
+
+    /// <summary>
+    /// 거친 판본을 <b>원래 프리팹의 LOD 1</b>로 붙입니다.
+    ///
+    /// 데시메이션이 아니라 <b>안 지은 것</b>입니다 - 상자로 만든 것을 깎으면 각이
+    /// 뭉개져 삼각형 죽이 됩니다. 만드는 쪽이 구조를 알므로, 멀리서 안 읽히는
+    /// 것(갤러리 · 끝면 격자)을 애초에 빼고 한 번 더 냅니다.
+    ///
+    /// 콜라이더는 달지 않습니다. LOD 1 은 <b>보이기만</b> 하는 것이고, 부딪히는
+    /// 것은 늘 원래 파츠입니다.
+    /// </summary>
+    private static void AttachLod(string path)
+    {
+        string coarse = Path.GetFileNameWithoutExtension(path);
+        string basePath = PrefabDir + "/" + coarse.Substring(0, coarse.Length - LodSuffix.Length)
+                          + ".prefab";
+
+        if (!File.Exists(basePath))
+        {
+            Debug.LogError("MegastructureSetup: LOD 를 붙일 프리팹이 없습니다: " + basePath);
+            return;
+        }
+
+        GameObject fbx = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+        MeshFilter source = fbx.GetComponentInChildren<MeshFilter>(true);
+        Renderer sourceRenderer = fbx.GetComponentInChildren<Renderer>(true);
+
+        if (source == null || sourceRenderer == null)
+        {
+            Debug.LogError("MegastructureSetup: 거친 판본에 메시가 없습니다: " + path);
+            return;
+        }
+
+        GameObject root = PrefabUtility.LoadPrefabContents(basePath);
+
+        try
+        {
+            Transform old = root.transform.Find(LodSuffix);
+            if (old != null) UnityEngine.Object.DestroyImmediate(old.gameObject);
+
+            Renderer[] near = root.GetComponentsInChildren<Renderer>(true);
+
+            GameObject far = new GameObject(LodSuffix);
+            far.transform.SetParent(root.transform, false);
+            far.layer = root.layer;
+
+            GameObjectUtility.SetStaticEditorFlags(far,
+                StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccluderStatic |
+                StaticEditorFlags.OccludeeStatic);
+
+            far.AddComponent<MeshFilter>().sharedMesh = source.sharedMesh;
+            MeshRenderer renderer = far.AddComponent<MeshRenderer>();
+            renderer.sharedMaterials = sourceRenderer.sharedMaterials;
+
+            LODGroup group = root.GetComponent<LODGroup>();
+            if (group == null) group = root.AddComponent<LODGroup>();
+
+            group.SetLODs(new[]
+            {
+                new LOD(0.30f, near),
+                // 두 번째는 <b>사라지지 않게</b> 합니다. 0.30 짜리 하나만 두면
+                // 300 m 밖에서 시타델이 통째로 없어집니다.
+                new LOD(0.001f, new[] { (Renderer)renderer }),
+            });
+
+            // ⚠ RecalculateBounds() 를 부르면 안 됩니다. 진짜 크기(505 m)로 덮어써
+            // 갈아타는 거리가 사라집니다.
+            group.size = LodSize;
+
+            PrefabUtility.SaveAsPrefabAsset(root, basePath);
+
+            int nearTris = near.Sum(r => r.GetComponent<MeshFilter>() != null
+                ? r.GetComponent<MeshFilter>().sharedMesh.triangles.Length / 3 : 0);
+
+            Debug.Log($"MegastructureSetup: {coarse} → LOD · " +
+                      $"{nearTris:N0} → {source.sharedMesh.triangles.Length / 3:N0} tris · " +
+                      $"기준 크기 {LodSize:F0} m (화각 66° 에서 300 m 에 갈아탐)");
+        }
+        finally
+        {
+            PrefabUtility.UnloadPrefabContents(root);
+        }
     }
 
     private static GameObject BuildBay(string path)

@@ -152,7 +152,7 @@ PRESETS = {
     # <b>초거대.</b> 스파인이 뚫고 지나가는 덩어리. 세 베이에 걸치고 170 m 를 올라갑니다.
     # <b>지표는 나머지보다 확실히 커야 합니다.</b> 층이 셋으로 늘고 수직 프리셋이
     # 260 m 를 넘은 뒤로 176 m 짜리 덩어리는 더 이상 지표가 아니었습니다.
-    "Citadel": dict(bays=3, tiers=48, upper=380.0, fill=0.6, block=True, weight=1,
+    "Citadel": dict(bays=3, tiers=48, upper=380.0, fill=0.6, block=True, weight=1, lod=True,
                     levels=(0,)),
 
     # 지상과 데크를 잇는 되돌이 경사로. <b>인공 지반을 실제로 쓸 수 있게 하는</b>
@@ -1194,7 +1194,7 @@ def rooms(m, s, length, prefix):
     return made
 
 
-def citadel(m, s, length, rng):
+def citadel(m, s, length, rng, coarse=False):
     """
     <b>초거대 덩어리.</b> 스파인이 뚫고 지나갑니다.
 
@@ -1260,6 +1260,11 @@ def citadel(m, s, length, rng):
         # 실루엣을 그대로 두려면 <b>지금 갈라 두어야</b> 합니다.
         m.group("Stage%dSkin" % k)
 
+        # <b>먼 데서는 이것이 안 보입니다.</b> 격자 한 칸이 12 x 21 m 인데
+        # 300 m 밖에서는 화면 높이의 4% 라, 그리는 값에 비해 읽히는 것이 없습니다.
+        if coarse:
+            continue
+
         endwall(m, w * 0.5, d * 0.5, z0 + 2.6, z1, rng, 0.34 - k * 0.09)
 
         # 테라스 난간에 붙는 캡슐 갤러리. 단마다 <b>덜 찹니다</b> - 위층은 아직
@@ -1304,10 +1309,15 @@ def build_core():
     return m.to_object("SM_Mega_Core")
 
 
-def build(name):
+def build(name, coarse=False):
     """
     프리셋이 <b>더하는 것</b>만 세웁니다. 뼈대는 build_core() 가 따로 냅니다.
     원점은 지면이자 프리셋의 한가운데입니다.
+
+    <c>coarse</c> 는 <b>멀리서 볼 판본</b>입니다. 갤러리와 끝면 격자를 빼고 덩어리만
+    남깁니다 - 시타델의 30,720 삼각형 중 29,304(95%)가 그 둘이고, 300 m 밖에서는
+    갤러리 슬롯 하나가 화면에서 두 화소입니다. <b>깎아 만드는 것이 아니라 안 짓는
+    것</b>입니다 - 상자로 만든 것을 데시메이션하면 각이 뭉개져 삼각형 죽이 됩니다.
 
     난간은 여기 있습니다 — 프리셋마다 끊는 자리가 달라 공용 뼈대에 넣을 수 없습니다.
     대신 <b>양 끝의 단면은 모든 프리셋이 같아야</b> 하고, verify() 가 그것을 봅니다.
@@ -1335,7 +1345,7 @@ def build(name):
     # 위로 갈수록 덜 채워 하늘이 보이는 비율이 늘게 합니다.
     open_at = tuple((r[0], 0, r[2]) for r in s.get("rooms", ()))
 
-    for i, level in enumerate(s.get("levels", (0,))):
+    for i, level in enumerate(() if coarse else s.get("levels", (0,))):
         thin = dict(s)
         thin["fill"] = s.get("fill", 0.6) * (1.0 - 0.22 * i)
 
@@ -1357,13 +1367,22 @@ def build(name):
                     ("Overpass", overpass), ("Spur", spur), ("Shaft", shaft),
                     ("Tower", tower)):
         m.group(tag)
-        fn(m, s, length, rng)
+
+        if fn is citadel:
+            fn(m, s, length, rng, coarse)
+        else:
+            fn(m, s, length, rng)
 
     m.group("Deck")
     props(m, s, length, rng)
 
     m.group("Landing")
     inside = rooms(m, s, length, prefix)
+
+    # 거친 판본은 <b>한 덩어리</b>입니다. 멀리서 쓸 것을 파츠로 나누면 걸러지는 것도
+    # 없이 드로우만 늘어납니다.
+    if coarse:
+        return [m.to_object(prefix + "_LOD1")]
 
     return m.to_parts(prefix) + inside
 
@@ -1479,6 +1498,17 @@ def run():
             fits=span <= want + 0.01,
             weight=PRESETS[name]["weight"])))
 
+        # <b>멀리서 볼 판본.</b> 덩치가 큰 것에만 답니다.
+        if not PRESETS[name].get("lod"):
+            continue
+
+        hardsurface.wipe()
+        hardsurface.ensure_materials(MATS)
+
+        coarse = emit("SM_Mega_" + name + "_LOD1", build(name, coarse=True))
+        report[-1]["lod1"] = coarse["mesh"]
+        report[-1]["lod1Tris"] = coarse["tris"]
+
     # 이음매 검사는 <b>전부 만든 뒤</b>에 합니다. 하나만 보고는 알 수 없습니다.
     hardsurface.wipe()
     hardsurface.ensure_materials(MATS)
@@ -1493,7 +1523,8 @@ def run():
             seamPoints=points,
             presets=[dict(name=r["preset"], mesh=r["mesh"], bays=r["bays"],
                           length=r["length"], weight=r["weight"], top=r["top"],
-                          tris=r["tris"], parts=r["parts"])
+                          tris=r["tris"], parts=r["parts"],
+                          lod1=r.get("lod1", ""), lod1Tris=r.get("lod1Tris", 0))
                      for r in report]), f, indent=1)
 
     return core_report, report, points

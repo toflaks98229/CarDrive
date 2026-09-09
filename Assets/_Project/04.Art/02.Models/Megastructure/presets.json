@@ -16,7 +16,9 @@
    "weight": 5,
    "top": 36.6,
    "tris": 396,
-   "parts": 1
+   "parts": 1,
+   "lod1": "",
+   "lod1Tris": 0
   },
   {
    "name": "Habitat",
@@ -26,7 +28,9 @@
    "weight": 6,
    "top": 168.4,
    "tris": 4200,
-   "parts": 5
+   "parts": 5,
+   "lod1": "",
+   "lod1Tris": 0
   },
   {
    "name": "Industry",
@@ -36,7 +40,9 @@
    "weight": 3,
    "top": 115.8,
    "tris": 1908,
-   "parts": 1
+   "parts": 1,
+   "lod1": "",
+   "lod1Tris": 0
   },
   {
    "name": "Junction",
@@ -46,7 +52,9 @@
    "weight": 2,
    "top": 122.4,
    "tris": 2256,
-   "parts": 1
+   "parts": 1,
+   "lod1": "",
+   "lod1Tris": 0
   },
   {
    "name": "Citadel",
@@ -56,7 +64,9 @@
    "weight": 1,
    "top": 438.2,
    "tris": 30720,
-   "parts": 11
+   "parts": 11,
+   "lod1": "SM_Mega_Citadel_LOD1",
+   "lod1Tris": 1416
   },
   {
    "name": "Ramp",
@@ -66,7 +76,9 @@
    "weight": 2,
    "top": 38.0,
    "tris": 1344,
-   "parts": 1
+   "parts": 1,
+   "lod1": "",
+   "lod1Tris": 0
   },
   {
    "name": "Crane",
@@ -76,7 +88,9 @@
    "weight": 3,
    "top": 172.3,
    "tris": 1320,
-   "parts": 1
+   "parts": 1,
+   "lod1": "",
+   "lod1Tris": 0
   },
   {
    "name": "Overpass",
@@ -86,7 +100,9 @@
    "weight": 2,
    "top": 62.8,
    "tris": 1056,
-   "parts": 1
+   "parts": 1,
+   "lod1": "",
+   "lod1Tris": 0
   },
   {
    "name": "Spur",
@@ -96,7 +112,9 @@
    "weight": 2,
    "top": 50.4,
    "tris": 828,
-   "parts": 1
+   "parts": 1,
+   "lod1": "",
+   "lod1Tris": 0
   },
   {
    "name": "Shaft",
@@ -106,7 +124,9 @@
    "weight": 1,
    "top": 264.4,
    "tris": 1740,
-   "parts": 1
+   "parts": 1,
+   "lod1": "",
+   "lod1Tris": 0
   },
   {
    "name": "CapsuleTower",
@@ -116,7 +136,9 @@
    "weight": 1,
    "top": 212.2,
    "tris": 2064,
-   "parts": 1
+   "parts": 1,
+   "lod1": "",
+   "lod1Tris": 0
   }
  ]
 }
