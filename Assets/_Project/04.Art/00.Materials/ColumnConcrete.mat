@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: MegaConcrete
+  m_Name: ColumnConcrete
   m_Shader: {fileID: 4800000, guid: 709c1582bc7946bf935f7ebd1d7c9be8, type: 3}
   m_Parent: {fileID: 2100000, guid: 81069c6d4b4193d4fb4b08b86b84423c, type: 2}
   m_ModifiedSerializedProperties: 4
@@ -32,18 +32,18 @@ Material:
     m_Ints: []
     m_Floats:
     - _BaseMapStrength: 0.45
-    - _FogScale: 0.55
+    - _FogScale: 0.25
     - _HeightBottom: 66.639465
-    - _HeightStrength: 0.5
+    - _HeightStrength: 0
     - _HeightTop: 17.639465
     - _SplatOn: 0
     - _UseGrain: 1
     - _UseHatching: 0
     m_Colors:
-    - _BaseColor: {r: 0.66, g: 0.65, b: 0.61, a: 1}
+    - _BaseColor: {r: 0.3, g: 0.3, b: 0.29, a: 1}
     - _BaseMapGain: {r: 2.3808413, g: 2.3808413, b: 2.3808413, a: 1}
-    - _Color: {r: 0.66, g: 0.65, b: 0.61, a: 1}
+    - _Color: {r: 0.3, g: 0.3, b: 0.29, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 0}
-    - _HeightColor: {r: 0.3, g: 0.33, b: 0.27, a: 1}
+    - _HeightColor: {r: 0, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

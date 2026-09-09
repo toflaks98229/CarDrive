@@ -59,6 +59,10 @@ public static class MegastructureLookCapture
     private const string HolderName = "Megastructure";
     private const string OutputDirectory = "Logs/MegaLook";
 
+    /// <summary>⚠ <c>ViewRangeScaler</c> 의 같은 이름 상수와 <b>짝입니다.</b></summary>
+    private const float LandmarkReach = 2000f;
+    private const int LandmarkLayer = 12;
+
     private const int Width = 1280;
     private const int Height = 720;
 
@@ -245,6 +249,24 @@ public static class MegastructureLookCapture
 
                     Shoot(camera, target, eye,
                           (foot + Vector3.up * 150f - eye).normalized, "column");
+
+                    // <b>같은 자리에서 고개만 든 석 장.</b> 파클립은 구가 아니라
+                    // 평면이라 잘리는 깊이가 <c>d·cos + h·sin</c> 으로 <b>상하 각도에
+                    // 따라 변합니다</b> — 고개를 들면 기둥 끝이 잘려 나갔습니다.
+                    // 세 장에서 기둥 꼭대기가 <b>같은 자리에 있으면</b> 고쳐진 것입니다.
+                    Vector3 watch = foot + new Vector3(150f, 12f, 110f);
+
+                    foreach (float pitch in new[] { 10f, 35f, 62f })
+                    {
+                        Vector3 flat = (foot - watch);
+                        flat.y = 0f;
+
+                        Vector3 look = Quaternion.AngleAxis(-pitch, Vector3.Cross(Vector3.up, flat))
+                                       * flat.normalized;
+
+                        Shoot(camera, target, watch, look,
+                              "pitch_" + pitch.ToString("00"));
+                    }
                 }
 
                 // <b>지반의 가장자리.</b> 대지가 자연 지형이 아니라 건축물의 한
@@ -391,6 +413,7 @@ public static class MegastructureLookCapture
         // 안개는 빠뜨리고 있었습니다. 배치모드는 씬을 저장하지 않아 티가 안 났지만,
         // 에디터에서 부르면 본 카메라의 파클립이 482 로 남습니다.
         float wasFar = main != null ? main.farClipPlane : 0f;
+        float[] wasCull = main != null ? main.layerCullDistances : null;
         bool wasFog = RenderSettings.fog;
         FogMode wasFogMode = RenderSettings.fogMode;
         float wasFogStart = RenderSettings.fogStartDistance;
@@ -417,12 +440,32 @@ public static class MegastructureLookCapture
         RenderSettings.fogStartDistance = ladder.FogStart;
         RenderSettings.fogEndDistance = ladder.FogEnd;
 
-        if (main != null) main.farClipPlane = ladder.FarClip;
+        if (main != null)
+        {
+            main.farClipPlane = ladder.FarClip;
+
+            // ⚠ <b>랜드마크 사거리를 여기서도 재현해야 합니다.</b> 재생 중에는
+            // <c>ViewRangeScaler.ReachLandmarks</c> 가 매 프레임 이걸 하는데,
+            // 배치모드 캡처에서는 그 LateUpdate 가 돌지 않습니다. 빠뜨리면
+            // <b>고치려는 바로 그 잘림을 그대로 찍고</b> 고쳐졌다고 착각합니다 —
+            // 정확히는 반대로, 고쳤는데 안 고쳐진 그림을 보게 됩니다.
+            main.farClipPlane = Mathf.Max(ladder.FarClip, LandmarkReach);
+
+            float[] cull = new float[32];
+
+            for (int i = 0; i < cull.Length; i++)
+            {
+                cull[i] = i == LandmarkLayer ? 0f : ladder.FarClip;
+            }
+
+            main.layerCullDistances = cull;
+        }
 
         Debug.Log($"MegastructureLookCapture: 사다리 — 안개 {ladder.FogStart:F0} ~ " +
                   $"{ladder.FogEnd:F0} m · 파클립 {ladder.FarClip:F0} m · " +
                   $"나무 페이드 {ladder.FadeStart:F0} ~ {ladder.FadeEnd:F0} m · " +
-                  $"터레인 {ladder.TerrainActive:F0} m");
+                  $"터레인 {ladder.TerrainActive:F0} m · " +
+                  $"랜드마크 사거리 {(main != null ? main.farClipPlane : 0f):F0} m");
 
         release = () =>
         {
@@ -435,7 +478,11 @@ public static class MegastructureLookCapture
             RenderSettings.skybox = skyboxAsset;
             clockField.SetValue(sky, wasClock);
 
-            if (main != null) main.farClipPlane = wasFar;
+            if (main != null)
+            {
+                main.farClipPlane = wasFar;
+                main.layerCullDistances = wasCull;
+            }
 
             RenderSettings.fog = wasFog;
             RenderSettings.fogMode = wasFogMode;

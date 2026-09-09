@@ -54,6 +54,12 @@ public static class SkyColumnSetup
     /// <summary>발이 지형에 묻히는 깊이. 지형이 울퉁불퉁해 0 이면 밑동이 뜹니다.</summary>
     private const float Sink = 7f;
 
+    /// <summary>레이어 12. <c>TagManager</c> 의 "Landmark" 입니다.</summary>
+    private const int LandmarkLayer = 12;
+
+    /// <summary>없으면 만들어 두는 머티리얼의 본. 셰이더와 변형 부모가 딸려 옵니다.</summary>
+    private const string Seed = MaterialDir + "/MegaConcrete.mat";
+
     public static void Run()
     {
         int errors = 0;
@@ -113,16 +119,12 @@ public static class SkyColumnSetup
         importer.materialLocation = ModelImporterMaterialLocation.InPrefab;
 
         foreach (string name in new[]
-                 { "M_Mega_Concrete", "M_Mega_Steel", "M_Mega_Dark", "M_Mega_Signal" })
+                 { "M_Column_Concrete", "M_Column_Dark", "M_Column_Signal" })
         {
-            string asset = MaterialDir + "/" + name.Replace("M_Mega_", "Mega") + ".mat";
-            Material material = AssetDatabase.LoadAssetAtPath<Material>(asset);
+            string asset = MaterialDir + "/" + name.Replace("M_Column_", "Column") + ".mat";
+            Material material = Ensure(asset);
 
-            if (material == null)
-            {
-                Debug.LogError("SkyColumnSetup: 재질이 없습니다 — " + asset);
-                continue;
-            }
+            if (material == null) continue;
 
             importer.AddRemap(
                 new AssetImporter.SourceAssetIdentifier(typeof(Material), name), material);
@@ -136,7 +138,11 @@ public static class SkyColumnSetup
 
         foreach (MeshFilter filter in root.GetComponentsInChildren<MeshFilter>(true))
         {
-            filter.gameObject.layer = 0;
+            // <b>랜드마크 레이어입니다.</b> 451 m 짜리라 파클립(482 m) 밖으로
+            // 나가는데, 파클립은 평면이라 잘리는 자리가 <b>시선의 상하 각도에 따라
+            // 움직입니다</b> — 고개를 들면 기둥 끝이 잘려 나갔습니다.
+            // ViewRangeScaler.ReachLandmarks 가 이 레이어만 더 멀리 그립니다.
+            filter.gameObject.layer = LandmarkLayer;
 
             // 차가 통과하면 안 됩니다. 정적이고 618 면뿐이라 볼록화가 필요 없습니다.
             MeshCollider collider = filter.gameObject.AddComponent<MeshCollider>();
@@ -151,6 +157,31 @@ public static class SkyColumnSetup
         Debug.Log("SkyColumnSetup: 프리팹 — " + PrefabPath);
 
         return saved;
+    }
+
+    /// <summary>
+    /// 머티리얼 에셋이 없으면 <see cref="Seed"/> 를 복사해 만듭니다.
+    ///
+    /// <b>색은 여기서 정하지 않습니다.</b> 껍데기만 만들어 두고, 값·결·안개는
+    /// <c>BrutalistTextureSetup</c> 의 팔레트가 씁니다 — 이 프로젝트에서 겉모습의
+    /// 주인은 한 곳뿐이고, 여기서 색을 쓰면 그 규칙이 깨집니다.
+    /// </summary>
+    private static Material Ensure(string path)
+    {
+        Material found = AssetDatabase.LoadAssetAtPath<Material>(path);
+
+        if (found != null) return found;
+
+        if (!AssetDatabase.CopyAsset(Seed, path))
+        {
+            Debug.LogError("SkyColumnSetup: 머티리얼을 만들지 못했습니다 — " + path);
+            return null;
+        }
+
+        Debug.Log("SkyColumnSetup: 머티리얼 껍데기 생성 — " + path +
+                  " (값은 BrutalistTextureSetup 이 씁니다)");
+
+        return AssetDatabase.LoadAssetAtPath<Material>(path);
     }
 
     /// <summary>

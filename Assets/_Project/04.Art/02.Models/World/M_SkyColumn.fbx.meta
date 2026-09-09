@@ -7,6 +7,21 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: M_Column_Concrete
+    second: {fileID: 2100000, guid: 64e6773be23b8f143b9f1d6a02a72d63, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Column_Dark
+    second: {fileID: 2100000, guid: 21b9e28f77eb9a64ba779d54bf2bd6ad, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Column_Signal
+    second: {fileID: 2100000, guid: 6d858839746ed3948bf01792fad4fadf, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: M_Mega_Concrete
     second: {fileID: 2100000, guid: 8cee421c9f64b084a9066228cbb6db1b, type: 2}
   - first:

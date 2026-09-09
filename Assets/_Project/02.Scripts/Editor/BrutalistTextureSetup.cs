@@ -159,6 +159,25 @@ public static class BrutalistTextureSetup
     /// </summary>
     private const float MegaFog = 0.55f;
 
+    /// <summary>
+    /// <b>대기권을 뚫는 기둥이 안개를 먹는 정도.</b> 메가스트럭처보다도 덜 먹입니다.
+    ///
+    /// 이유는 하늘입니다. 하늘을 덮은 천장은 스카이맵이고, 그 안의 기둥들은 1~10 km
+    /// 밖인데도 <b>어두운 실루엣</b>으로 또렷합니다 — 파노라마의 연무가 600 m 에서
+    /// 40 km 에 걸쳐 아주 천천히 끼기 때문입니다. 그런데 씬 안개는 257 m 에서
+    /// 완전히 닫히므로, 같은 기둥인데 <b>진짜 기하 쪽만 300 m 에서 크림색으로
+    /// 뭉개졌습니다.</b> 하늘의 기둥은 검고 땅의 기둥은 흰, 대번에 보이는 이질감입니다.
+    ///
+    /// 두 안개의 속도를 맞출 수는 없습니다 — 씬 안개는 나무 팝(231 m)과 지형
+    /// 경계(252 m)를 가리는 일을 하고 있고, 하늘은 km 단위를 보여 줘야 합니다.
+    /// 그래서 <b>기둥만</b> 안개를 거의 안 먹여 하늘 쪽 거동에 맞춥니다.
+    ///
+    /// ⚠ 이 값을 낮추면 기둥이 <b>먼 데서도 또렷해지므로</b> 파클립에 잘리는 것이
+    /// 보이게 됩니다. <see cref="ViewRangeScaler"/> 의 랜드마크 사거리와 짝입니다 —
+    /// 하나만 바꾸면 지평선에 기둥이 잘린 단면이 그어집니다.
+    /// </summary>
+    private const float ColumnFog = 0.25f;
+
     /// <summary>이 세계의 표면 전부입니다. 로봇도 건물도 방도 같은 콘크리트를 씁니다.</summary>
     public static readonly Surface[] Palette =
     {
@@ -185,6 +204,16 @@ public static class BrutalistTextureSetup
         // 아스팔트도 2 m. 차선 파선이 4 m 이므로 그 절반이 결의 단위가 됩니다.
         new Surface("M_Mega_Road", "MegaRoad", new Color(0.135f, 0.140f, 0.150f),
                     PhotoAsphalt, default, MegaFog, 0.5f),
+
+        // 대기권을 뚫는 기둥. 메가스트럭처와 <b>일부러 다른 값</b>을 씁니다 —
+        // 콘크리트 0.66 은 안개를 먹기도 전에 이미 밝아, 하늘에 그려 둔 검은
+        // 기둥들과 나란히 두면 다른 물건으로 보입니다.
+        new Surface("M_Column_Concrete", "ColumnConcrete", new Color(0.30f, 0.30f, 0.29f),
+                    PhotoConcrete, default, ColumnFog, 0.5f),
+        new Surface("M_Column_Dark", "ColumnDark", new Color(0.105f, 0.108f, 0.115f),
+                    PhotoMetal, default, ColumnFog),
+        new Surface("M_Column_Signal", "ColumnSignal", new Color(0.86f, 0.36f, 0.09f),
+                    PhotoMetal, new Color(0.52f, 0.19f, 0.035f), ColumnFog),
 
         // 빌려 쓰는 것. 색을 여기서 정하지 않습니다.
         new Surface("M_Rock", "RockLowPoly", null, null),

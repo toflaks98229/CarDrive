@@ -127,6 +127,17 @@ namespace CarDrive.Systems
         /// 둘이 되었으면 알립니다. <b>고치지 않더라도 드러나기만 하면 반은 해결됩니다.</b>
         /// 이 문제의 본질이 "조용히 두 배로 돈다"였기 때문입니다.
         /// </summary>
+        /// <summary>
+        /// 랜드마크가 보이는 거리(m)입니다. 세계가 1100 x 1200 m 이므로 대각선
+        /// 끝에서 기둥 꼭대기까지가 최악이고, 거기에 여유를 둔 값입니다.
+        /// </summary>
+        private const float LandmarkReach = 2000f;
+
+        /// <summary>레이어 12. <c>TagManager</c> 의 "Landmark" 입니다.</summary>
+        private const int LandmarkLayer = 12;
+
+        private static float[] cullDistances;
+
         void Awake()
         {
             if (active != null && active != this)
@@ -158,7 +169,9 @@ namespace CarDrive.Systems
             if (settings.hideDrawDistanceWithFog) ApplyFog(ladder.FogStart, ladder.FogEnd);
 
             // 2. 파클립. 켜져 있는 타일을 자르지 않을 만큼 멉니다.
+            //    <b>랜드마크만 더 멀리 봅니다.</b> 아래 ReachLandmarks 를 보십시오.
             camera.farClipPlane = ladder.FarClip;
+            ReachLandmarks(camera, ladder.FarClip);
 
             // 3. 그림자 거리. <b>이 프로젝트에서 URP 에셋의 그림자 거리를 쓰는 유일한 곳입니다.</b>
             if (settings.applyShadowDistanceAtRuntime) ApplyShadowDistance(ladder.Shadow);
@@ -276,6 +289,48 @@ namespace CarDrive.Systems
         /// </summary>
         /// <param name="start">안개가 시작되는 거리(m). 이보다 가까우면 완전히 맑습니다.</param>
         /// <param name="end">안개가 완전히 덮는 거리(m).</param>
+
+        /// <summary>
+        /// <b>랜드마크 레이어만 파클립 너머까지 그립니다.</b>
+        ///
+        /// 대기권을 뚫는 기둥은 451 m 짜리라, 300 m 밖에서 올려다보면 꼭대기가
+        /// 파클립(약 482 m) 밖으로 나갑니다. 그런데 <b>파클립은 구가 아니라
+        /// 평면</b>이라 잘리는 깊이가 <c>d·cos(각) + h·sin(각)</c> 으로 <b>시선의
+        /// 상하 각도에 따라 변합니다</b> — 고개를 들면 기둥 끝이 잘려 나가고
+        /// 내리면 돌아옵니다. 실제로 그렇게 보였습니다.
+        ///
+        /// 안개가 가려 주지 않습니다. 기둥은 <c>_FogScale</c> 이 0.25 라 아무리
+        /// 멀어도 4 분의 3 은 남아, 잘린 단면이 그대로 드러납니다. (안개를 다
+        /// 먹이면 <b>평면 깊이는 언제나 방사 거리 이하</b>이므로 잘리는 자리가
+        /// 반드시 안개 안이라 이 문제가 없습니다 — 하지만 그러면 기둥이 하늘에
+        /// 그려 둔 검은 기둥들과 달리 크림색으로 뭉개집니다.)
+        ///
+        /// <b>사다리는 건드리지 않습니다.</b> 씬의 파클립은 <c>SetViewBase</c> 의
+        /// 기준이고 거기서 안개·나무·지형 거리가 전부 파생되므로, 그 값을 올리면
+        /// 세계가 통째로 달라집니다. 대신 카메라의 파클립만 늘리고
+        /// <c>layerCullDistances</c> 로 <b>나머지 레이어를 원래 거리에 묶어</b>
+        /// 둡니다 — 컬링 결과는 한 톨도 바뀌지 않고 랜드마크만 더 갑니다.
+        ///
+        /// ⚠ <c>layerCullSpherical</c> 은 켜지 않습니다. 켜면 모든 레이어의 컬링이
+        /// 방사 거리로 바뀌어, 화면 가장자리의 물체가 예전보다 일찍 사라집니다.
+        /// </summary>
+        private static void ReachLandmarks(Camera camera, float far)
+        {
+            camera.farClipPlane = Mathf.Max(far, LandmarkReach);
+
+            // 배열을 매 프레임 새로 만들지 않습니다. 32 칸짜리라 싸 보여도
+            // LateUpdate 에서 도는 것은 다릅니다.
+            if (cullDistances == null) cullDistances = new float[32];
+
+            for (int i = 0; i < cullDistances.Length; i++)
+            {
+                // 0 은 <b>카메라 파클립을 쓰라</b>는 뜻입니다. 랜드마크만 그렇게 둡니다.
+                cullDistances[i] = i == LandmarkLayer ? 0f : far;
+            }
+
+            camera.layerCullDistances = cullDistances;
+        }
+
         private static void ApplyFog(float start, float end)
         {
             RenderSettings.fog = true;
