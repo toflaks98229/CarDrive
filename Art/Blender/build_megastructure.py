@@ -124,7 +124,7 @@ CONCRETE, STEEL, DARK, SIGNAL, ROAD = 0, 1, 2, 3, 4
 PRESETS = {
     # 연결 조직. 아무것도 얹지 않은 맨 골조입니다. 사이사이에 이것이 있어야
     # 나머지가 <b>얹힌 것</b>으로 보입니다 — 전부 채우면 그냥 긴 건물입니다.
-    "Viaduct": dict(bays=1, tiers=0, upper=0.0, weight=5),
+    "Viaduct": dict(bays=1, tiers=0, upper=0.0, weight=5, busy=0.35),
 
     # 사람이 사는 칸. 골조 슬롯에 캡슐이 꽂히고 몇 자리는 비어 있습니다.
     # 한쪽 난간을 끊어 <b>데크에서 뛰어내릴 수 있게</b> 합니다. 거주 구간마다 있으면
@@ -142,6 +142,7 @@ PRESETS = {
 
     # 설비. 탱크와 굴뚝, 데크 위를 건너는 컨베이어 갠트리.
     "Industry": dict(bays=1, tiers=2, upper=15.0, fill=0.35, tanks=True, weight=3,
+                    busy=1.6,
                     levels=(0, 1)),
 
     # 분기. 스파인에서 직각으로 갈라지는 두 번째 데크와 큰 코어.
@@ -163,7 +164,7 @@ PRESETS = {
 
     # 크레인길. Archigram 의 Plug-In City 가 캡슐을 꽂고 빼던 그 장치입니다.
     # 캡슐이 <b>어떻게</b> 꽂히는지를 보여 주므로 3번 항목을 가장 직접 말합니다.
-    "Crane": dict(bays=1, tiers=1, upper=0.0, fill=0.3, crane=True, weight=3,
+    "Crane": dict(bays=1, tiers=1, upper=0.0, fill=0.3, crane=True, weight=3, busy=1.8,
                  levels=(2,)),
 
     # 무너진 구간. 캡슐은 뜯겨 나갔는데 <b>골조는 서 있습니다</b> — 4번 항목
@@ -255,6 +256,16 @@ def core(m, length, bays):
 
             m.box((0.0, 0.0, base - duct * 0.45), (length, duct * 1.8, duct * 0.9), STEEL)
 
+            # <b>밑을 지날 때 보라고</b> 다는 등입니다. 데크 밑은 54 m 짜리 뚜껑이
+            # 덮인 곳이라 늘 그늘인데, 그늘이 <b>어두운 빈 곳</b>이 되면 지나갈 곳으로
+            # 안 읽힙니다. 밝은 것이 있어야 어두운 것이 어둠이 됩니다.
+            #
+            # 간격은 노면의 등주와 같은 21 m 입니다. 위아래가 같은 자로 세어져야
+            # 데크를 사이에 둔 두 공간이 <b>한 구조물</b>로 묶입니다.
+            for x in (-length * 0.25, length * 0.25):
+                m.box((x, 0.0, base - duct * 1.15), (1.6, W * 0.6, 0.5), STEEL)
+                m.box((x, 0.0, base - duct * 1.36), (1.15, W * 0.58, 0.22), SIGNAL)
+
         m.box((0.0, 0.0, top - SOCKET["deck"] * 0.5),
               (length, W + 0.5, SOCKET["deck"]), CONCRETE)
 
@@ -322,6 +333,55 @@ def road(m, length, W, top):
         m.box((x, y - side * 2.2, top + 6.86), (0.5, 1.5, 0.22), SIGNAL)
 
 
+def props(m, s, length, rng):
+    """
+    데크 어깨에 놓인 <b>사람 크기의 물건</b>들입니다.
+
+    1,596 x 96 m 짜리 데크 위에 놓인 것이 <b>하나도 없었습니다.</b> 참조한 게임들의
+    광장이 텅 비어 있는데도 넓게 읽히는 이유는 볼라드 몇 개와 상자 몇 개가 있어서
+    였습니다 - 밀도가 아니라 <b>있느냐 없느냐</b>의 문제입니다. 잴 것이 하나도 없는
+    바닥은 넓은 것이 아니라 아무것도 아닙니다.
+
+    <b>코어가 아니라 프리셋에 답니다.</b> 코어는 42 m 마다 똑같이 되풀이되므로,
+    거기 놓으면 물건이 자로 변해 버립니다. 자는 등주 하나로 충분하고, 물건은
+    불규칙해야 물건입니다.
+
+    노면(y ±44)과 난간벽(y ±47.4) 사이의 어깨에만 둡니다. 차선 위에 놓으면 그냥
+    장애물입니다.
+    """
+    W = SOCKET["width"]
+    inner = length - SOCKET["inset"] * 2.0
+    span = inner - 4.0
+    z = DECKS[0]
+
+    for _ in range(max(2, int(span / 6.0 * s.get("busy", 1.0)))):
+        x = -span * 0.5 + rng.random() * span
+        side = 1.0 if rng.random() < 0.5 else -1.0
+        y = side * (W * 0.5 - 3.6 + rng.random() * 1.9)
+        kind = rng.random()
+
+        if kind < 0.34:
+            # 볼라드. 꼭대기만 칠해 <b>사람이 두는 것</b>임을 말합니다.
+            m.box((x, y, z + 0.5), (0.32, 0.32, 1.0), CONCRETE)
+            m.box((x, y, z + 1.04), (0.36, 0.36, 0.14), SIGNAL)
+
+        elif kind < 0.62:
+            # 자재 상자. 눕혀 쌓습니다.
+            wide = 1.6 + rng.random() * 1.0
+            m.box((x, y, z + 0.7), (wide, 1.5, 1.4), STEEL)
+            m.box((x, y, z + 1.44), (wide - 0.2, 1.3, 0.12), DARK)
+
+        elif kind < 0.82:
+            # 표지판. 세로로 서서 <b>수평선을 끊습니다.</b>
+            m.box((x, y, z + 1.3), (0.16, 0.16, 2.6), STEEL)
+            m.box((x, y - side * 0.1, z + 2.3), (1.5, 0.1, 0.9), CONCRETE)
+            m.box((x, y - side * 0.17, z + 2.3), (1.2, 0.06, 0.62), DARK)
+
+        else:
+            # 배수구. 바닥에 붙어 <b>바닥이 만들어진 것</b>임을 말합니다.
+            m.box((x, y, z + 0.05), (1.1, 0.9, 0.1), STEEL)
+
+
 def parapet(m, length, y, gaps):
     """
     난간을 <b>토막으로</b> 세웁니다. <c>gaps</c> 의 구간은 비웁니다.
@@ -349,12 +409,34 @@ def parapet(m, length, y, gaps):
 
     parts.append((edge, length * 0.5))
 
+    # <b>판이 아니라 선이어야 합니다.</b> 1.4 m 짜리 콘크리트 판 한 장이었는데,
+    # 그러면 사람 크기의 것이 화면에 하나도 안 걸립니다. 참조한 게임들이 100 m 짜리
+    # 덩어리를 읽게 만드는 것은 전경에 걸리는 <b>5~15 cm 짜리 선재</b>였습니다.
+    #
+    # 다만 아래는 벽으로 남깁니다 - 차가 부딪히는 높이이고, 여기까지 파이프로 두면
+    # 방호가 아니라 장식이 됩니다. 벽 0.80 m 위에 난간을 얹습니다.
+    wall = 0.80
+    rails = (0.30, 0.58)
+
     for lo, hi in parts:
         if hi - lo <= 0.2:
             continue
 
-        m.box(((lo + hi) * 0.5, y, DECK_TOP + SOCKET["parapet"] * 0.5),
-              (hi - lo, 1.2, SOCKET["parapet"]), CONCRETE)
+        m.box(((lo + hi) * 0.5, y, DECK_TOP + wall * 0.5),
+              (hi - lo, 1.2, wall), CONCRETE)
+
+        # 가로대는 <b>이음매를 지나갑니다.</b> 옆 베이의 난간과 이어져야 합니다.
+        for up in rails:
+            m.box(((lo + hi) * 0.5, y, DECK_TOP + wall + up),
+                  (hi - lo, 0.12, 0.12), STEEL)
+
+        # 기둥은 <b>토막 안쪽에만</b> 섭니다. 이음매에 걸리면 단면이 달라집니다.
+        posts = max(1, int((hi - lo) / 3.5))
+        pitch = (hi - lo) / posts
+
+        for i in range(posts):
+            m.box((lo + (i + 0.5) * pitch, y, DECK_TOP + wall + rails[1] * 0.5),
+                  (0.14, 0.14, rails[1] + 0.12), STEEL)
 
     for center, width in gaps:
         for side in (-1.0, 1.0):
@@ -455,10 +537,12 @@ def capsules(m, s, length, rng, y_half=None, base=None, fade=False, deck=None,
                   (inner, walk, 0.3), CONCRETE)
 
             for lo, hi in segments(holes(sign, t)):
-                m.box(((lo + hi) * 0.5, sign * (W + walk + 0.5), z0 + t * tier + 1.1),
-                      (hi - lo, 0.25, 1.1), CONCRETE)
-                m.box(((lo + hi) * 0.5, sign * (W + walk + 0.5), z0 + t * tier + 1.72),
-                      (hi - lo, 0.45, 0.14), DARK)
+                # 아래는 얇은 판, 위는 파이프. 상자 수는 그대로인데 30 m 위에서
+                # 내려다볼 때 <b>가장자리에 선이 걸립니다.</b>
+                m.box(((lo + hi) * 0.5, sign * (W + walk + 0.5), z0 + t * tier + 0.85),
+                      (hi - lo, 0.14, 0.62), CONCRETE)
+                m.box(((lo + hi) * 0.5, sign * (W + walk + 0.56), z0 + t * tier + 1.36),
+                      (hi - lo, 0.11, 0.11), STEEL)
 
         for t in range(s["tiers"]):
             # 위로 갈수록 덜 찹니다. 아직 못 올라간 것이지 지어진 적 없는 것이 아닙니다.
@@ -1267,6 +1351,9 @@ def build(name):
                     ("Tower", tower)):
         m.group(tag)
         fn(m, s, length, rng)
+
+    m.group("Deck")
+    props(m, s, length, rng)
 
     m.group("Landing")
     inside = rooms(m, s, length, prefix)

@@ -5,8 +5,8 @@
  "deckTop": 35.2,
  "gate": 24.0,
  "core": "SM_Mega_Core",
- "coreTris": 1680,
- "seamPoints": 8,
+ "coreTris": 1728,
+ "seamPoints": 24,
  "presets": [
   {
    "name": "Viaduct",
@@ -14,8 +14,8 @@
    "bays": 1,
    "length": 42.0,
    "weight": 5,
-   "top": 36.6,
-   "tris": 24,
+   "top": 36.7,
+   "tris": 408,
    "parts": 1
   },
   {
@@ -25,8 +25,8 @@
    "length": 42.0,
    "weight": 6,
    "top": 168.4,
-   "tris": 6132,
-   "parts": 9
+   "tris": 6576,
+   "parts": 10
   },
   {
    "name": "Industry",
@@ -35,7 +35,7 @@
    "length": 42.0,
    "weight": 3,
    "top": 115.8,
-   "tris": 1716,
+   "tris": 2268,
    "parts": 1
   },
   {
@@ -45,7 +45,7 @@
    "length": 84.0,
    "weight": 2,
    "top": 122.4,
-   "tris": 2316,
+   "tris": 3252,
    "parts": 1
   },
   {
@@ -55,8 +55,8 @@
    "length": 126.0,
    "weight": 1,
    "top": 438.2,
-   "tris": 72528,
-   "parts": 10
+   "tris": 73884,
+   "parts": 11
   },
   {
    "name": "Ramp",
@@ -64,8 +64,8 @@
    "bays": 2,
    "length": 84.0,
    "weight": 2,
-   "top": 37.0,
-   "tris": 504,
+   "top": 38.0,
+   "tris": 1416,
    "parts": 1
   },
   {
@@ -75,7 +75,7 @@
    "length": 42.0,
    "weight": 3,
    "top": 172.3,
-   "tris": 876,
+   "tris": 1428,
    "parts": 1
   },
   {
@@ -85,7 +85,7 @@
    "length": 42.0,
    "weight": 2,
    "top": 166.6,
-   "tris": 2496,
+   "tris": 2904,
    "parts": 1
   },
   {
@@ -95,7 +95,7 @@
    "length": 84.0,
    "weight": 2,
    "top": 62.8,
-   "tris": 204,
+   "tris": 1140,
    "parts": 1
   },
   {
@@ -105,7 +105,7 @@
    "length": 42.0,
    "weight": 2,
    "top": 50.4,
-   "tris": 456,
+   "tris": 864,
    "parts": 1
   },
   {
@@ -115,7 +115,7 @@
    "length": 84.0,
    "weight": 1,
    "top": 264.4,
-   "tris": 912,
+   "tris": 1824,
    "parts": 1
   },
   {
@@ -125,7 +125,7 @@
    "length": 84.0,
    "weight": 1,
    "top": 212.2,
-   "tris": 1224,
+   "tris": 2124,
    "parts": 1
   }
  ]

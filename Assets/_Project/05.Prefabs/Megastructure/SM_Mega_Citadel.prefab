@@ -108,6 +108,11 @@ PrefabInstance:
       propertyPath: m_StaticEditorFlags
       value: 22
       objectReference: {fileID: 0}
+    - target: {fileID: 1186345473410387595, guid: b938d83879858124bb18c9de48b6231b,
+        type: 3}
+      propertyPath: m_StaticEditorFlags
+      value: 22
+      objectReference: {fileID: 0}
     - target: {fileID: 3609292599735444666, guid: b938d83879858124bb18c9de48b6231b,
         type: 3}
       propertyPath: m_StaticEditorFlags
@@ -126,6 +131,10 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 4661025339714785632}
+    - targetCorrespondingSourceObject: {fileID: 1186345473410387595, guid: b938d83879858124bb18c9de48b6231b,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5251647879037699965}
     - targetCorrespondingSourceObject: {fileID: -9082331956342948281, guid: b938d83879858124bb18c9de48b6231b,
         type: 3}
       insertIndex: -1
@@ -359,6 +368,34 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 5331367186076265325, guid: b938d83879858124bb18c9de48b6231b, type: 3}
+--- !u!1 &6444384736230659346 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1186345473410387595, guid: b938d83879858124bb18c9de48b6231b,
+    type: 3}
+  m_PrefabInstance: {fileID: 5267438233188211609}
+  m_PrefabAsset: {fileID: 0}
+--- !u!64 &5251647879037699965
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6444384736230659346}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 4886787547229315281, guid: b938d83879858124bb18c9de48b6231b, type: 3}
 --- !u!1 &6566606851866359178 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: -7910303323044090349, guid: b938d83879858124bb18c9de48b6231b,
