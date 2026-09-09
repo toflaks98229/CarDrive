@@ -423,7 +423,7 @@ public static class MegastructureLookCapture
 
         UnityEngine.Object.DestroyImmediate(shot);
 
-        Debug.Log($"  {name,-6} ({at.x,6:F0}, {at.y,5:F0}, {at.z,6:F0}) · " +
+        Debug.Log($"  {name,-12} ({at.x,6:F0}, {at.y,5:F0}, {at.z,6:F0}) · " +
                   $"평균밝기 {sum / pixels.Length:F4}");
     }
 

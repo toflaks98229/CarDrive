@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 
 /// <summary>
@@ -42,6 +43,12 @@ public static class MegastructureCullCheck
 
     /// <summary>배치기가 다리 밑동에 뿌린 파편을 담는 자식의 이름입니다.</summary>
     private const string RubbleName = "Rubble";
+
+    /// <summary>툰 셰이더의 외곽선 패스입니다. URP 에서는 LightMode 태그로 찾습니다.</summary>
+    private const string OutlinePass = "SRPDefaultUnlit";
+
+    /// <summary>외곽선 패스를 가진 유일한 셰이더입니다.</summary>
+    private const string OutlineShader = "CarDrive/Toon Lit";
 
     /// <summary>씬 카메라의 화각과 원거리 클립입니다. 실제 값을 못 찾으면 이것을 씁니다.</summary>
     private const float FallbackFov = 60f;
@@ -133,6 +140,9 @@ public static class MegastructureCullCheck
         /// <summary>LODGroup 이 판단 기준으로 쓰는 크기(m)입니다.</summary>
         public float LodSize;
 
+        /// <summary>이 프리셋이 내보내는 패스 수(외곽선 포함)입니다.</summary>
+        public int Passes = 1;
+
         public Vector3 At;
 
         /// <summary>
@@ -195,8 +205,11 @@ public static class MegastructureCullCheck
                 // 늘 머티리얼 셋을 다 쓰므로 늘 3 번 그리지만, 나눈 파츠는 저마다
                 // 한두 개만 씁니다 — 렌더러가 늘어도 드로우는 안 늘 수 있습니다.
                 int mask = Used(filter.sharedMesh);
+                int passes = r.sharedMaterials.Length > 0
+                    ? r.sharedMaterials.Max(Passes)
+                    : 1;
 
-                group.Parts.Add((r.bounds, count, Bits(mask), step));
+                group.Parts.Add((r.bounds, count, Bits(mask) * passes, step));
 
                 // <b>합쳤다면</b>의 기준은 LOD 0 입니다. 나누기 전에는 LOD 도
                 // 없었으므로, 거친 판본을 여기 더하면 없던 것과 비교하게 됩니다.
@@ -204,6 +217,7 @@ public static class MegastructureCullCheck
                 {
                     group.Tris += count;
                     group.Mask |= mask;
+                    group.Passes = Mathf.Max(group.Passes, passes);
 
                     group.Merged = group.Merged.size == Vector3.zero
                         ? r.bounds
@@ -215,6 +229,35 @@ public static class MegastructureCullCheck
         }
 
         return made;
+    }
+
+    /// <summary>
+    /// 이 머티리얼이 실제로 내보내는 <b>패스 수</b>입니다.
+    ///
+    /// 제출의 단위는 렌더러도 서브메시도 아니고 <b>렌더러 x 서브메시 x 패스</b>
+    /// 입니다. 이 프로젝트의 툰 셰이더는 외곽선을 <c>SRPDefaultUnlit</c> 이라는
+    /// <b>별도 패스</b>로 갖고 있어, 켜져 있는 한 물체마다 드로우가 한 벌 더
+    /// 나갑니다 - 외곽선 두께가 0 이어서 <b>아무것도 안 그리더라도</b> 그렇습니다.
+    /// 정점 셰이더가 꼭짓점을 한 점으로 뭉개는 것은 래스터화만 건너뛰는 것이지
+    /// 제출을 건너뛰는 것이 아닙니다.
+    ///
+    /// 그래서 이 도구가 세던 "드로우" 는 <b>절반</b>이었습니다.
+    /// </summary>
+    private static int Passes(Material material)
+    {
+        if (material == null || material.shader == null) return 1;
+
+        // <b>리플렉션으로는 알 수 없었습니다.</b> <c>Shader.passCount</c> 가 이
+        // 맥락에서 1 을 돌려주고 <c>FindPassTagValue</c> 의 LightMode 도 비어
+        // 나옵니다 - 셰이더가 완전히 로드되지 않은 상태로 보입니다.
+        // <c>GetShaderPassEnabled</c> 는 <b>없는 패스에도 true</b> 를 돌려주므로
+        // 그것만으로는 존재 여부를 못 가립니다.
+        //
+        // 그래서 <b>소스에서 확인된 사실</b>로 셉니다. 외곽선 패스
+        // (<c>LightMode = SRPDefaultUnlit</c>)를 가진 셰이더는 이 하나뿐입니다.
+        if (material.shader.name != OutlineShader) return 1;
+
+        return material.GetShaderPassEnabled(OutlinePass) ? 2 : 1;
     }
 
     /// <summary>실제로 삼각형이 들어 있는 서브메시 <b>자리</b>들입니다. 빈 것은 안 그립니다.</summary>
@@ -317,7 +360,7 @@ public static class MegastructureCullCheck
                 wholeTris += group.Tris;
 
                 // 합친 메시는 프리셋이 쓰는 머티리얼을 <b>한 벌씩</b> 갖습니다.
-                wholeDraws += Bits(group.Mask);
+                wholeDraws += Bits(group.Mask) * group.Passes;
             }
 
             // <b>지금 어느 단계가 살아 있는가.</b> 유니티와 같은 식입니다 -
