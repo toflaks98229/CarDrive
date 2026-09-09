@@ -14,8 +14,8 @@
    "bays": 1,
    "length": 42.0,
    "weight": 5,
-   "top": 36.7,
-   "tris": 408,
+   "top": 36.6,
+   "tris": 396,
    "parts": 1
   },
   {
@@ -25,8 +25,8 @@
    "length": 42.0,
    "weight": 6,
    "top": 168.4,
-   "tris": 6576,
-   "parts": 10
+   "tris": 4200,
+   "parts": 5
   },
   {
    "name": "Industry",
@@ -35,7 +35,7 @@
    "length": 42.0,
    "weight": 3,
    "top": 115.8,
-   "tris": 2400,
+   "tris": 1908,
    "parts": 1
   },
   {
@@ -45,7 +45,7 @@
    "length": 84.0,
    "weight": 2,
    "top": 122.4,
-   "tris": 3384,
+   "tris": 2256,
    "parts": 1
   },
   {
@@ -55,7 +55,7 @@
    "length": 126.0,
    "weight": 1,
    "top": 438.2,
-   "tris": 73884,
+   "tris": 30720,
    "parts": 11
   },
   {
@@ -65,7 +65,7 @@
    "length": 84.0,
    "weight": 2,
    "top": 38.0,
-   "tris": 1416,
+   "tris": 1344,
    "parts": 1
   },
   {
@@ -75,7 +75,7 @@
    "length": 42.0,
    "weight": 3,
    "top": 172.3,
-   "tris": 1572,
+   "tris": 1320,
    "parts": 1
   },
   {
@@ -85,7 +85,7 @@
    "length": 42.0,
    "weight": 2,
    "top": 166.6,
-   "tris": 2904,
+   "tris": 2340,
    "parts": 1
   },
   {
@@ -95,7 +95,7 @@
    "length": 84.0,
    "weight": 2,
    "top": 62.8,
-   "tris": 1140,
+   "tris": 1056,
    "parts": 1
   },
   {
@@ -105,7 +105,7 @@
    "length": 42.0,
    "weight": 2,
    "top": 50.4,
-   "tris": 864,
+   "tris": 828,
    "parts": 1
   },
   {
@@ -115,7 +115,7 @@
    "length": 84.0,
    "weight": 1,
    "top": 264.4,
-   "tris": 1824,
+   "tris": 1740,
    "parts": 1
   },
   {
@@ -125,7 +125,7 @@
    "length": 84.0,
    "weight": 1,
    "top": 212.2,
-   "tris": 2124,
+   "tris": 2064,
    "parts": 1
   }
  ]

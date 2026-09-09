@@ -400,13 +400,11 @@ def props(m, s, length, rng):
             # 자재 상자. 눕혀 쌓습니다.
             wide = 1.6 + rng.random() * 1.0
             m.box((x, y, z + 0.7), (wide, 1.5, 1.4), STEEL)
-            m.box((x, y, z + 1.44), (wide - 0.2, 1.3, 0.12), DARK)
 
         elif kind < 0.82:
             # 표지판. 세로로 서서 <b>수평선을 끊습니다.</b>
             m.box((x, y, z + 1.3), (0.16, 0.16, 2.6), STEEL)
             m.box((x, y - side * 0.1, z + 2.3), (1.5, 0.1, 0.9), CONCRETE)
-            m.box((x, y - side * 0.17, z + 2.3), (1.2, 0.06, 0.62), DARK)
 
         else:
             # 배수구. 바닥에 붙어 <b>바닥이 만들어진 것</b>임을 말합니다.
@@ -472,8 +470,11 @@ def parapet(m, length, y, gaps):
     for center, width in gaps:
         for side in (-1.0, 1.0):
             x = min(max(center + side * width * 0.5, -limit), limit)
+            # <b>마구리는 남기되 콘크리트로.</b> 지우면 난간이 허공에서 잘린
+            # 판으로 보입니다 - 검은 상자로 보이던 것이 문제였지 마구리 자체가
+            # 문제는 아니었습니다.
             m.box((x, y, DECK_TOP + SOCKET["parapet"] * 0.5),
-                  (0.6, 1.6, SOCKET["parapet"] + 0.3), DARK)
+                  (0.6, 1.6, SOCKET["parapet"] + 0.3), CONCRETE)
 
             # 마구리 <b>꼭대기만</b> 액센트입니다. 여기가 뛰어내릴 수 있는 자리라는
             # 표시이고, 이 세계에서 채도가 있는 것은 갈 수 있는 곳뿐입니다.
@@ -597,19 +598,11 @@ def capsules(m, s, length, rng, y_half=None, base=None, fade=False, deck=None,
 
                 x = -inner * 0.5 + (col + 0.5) * pitch
 
-                # 캡슐은 통로 <b>바깥</b>에 꽂힙니다.
-                m.box((x, sign * (reach + cd * 0.6), z0 + (t + 0.5) * tier),
-                      (cw, cd * 1.4, ch), DARK)
-
-                # 통로로 열리는 문. 어두운 캡슐에 밝은 문틀이라 <b>들어갈 수 있는 것</b>으로
-                # 읽힙니다 - 이것이 없으면 그냥 매달린 상자입니다.
+                # <b>꽂힌 캡슐은 걷어 냈습니다.</b> 남는 것은 슬롯 기둥과 통로,
+                # 곧 <b>아직 아무것도 안 꽂힌 골조</b>입니다. 문틀만 남깁니다 -
+                # 슬롯이 무엇을 받는 자리인지는 여전히 문이 말합니다.
                 m.box((x, sign * (reach - 0.05), z0 + (t + 0.5) * tier - 0.35),
                       (1.5, 0.4, 2.3), CONCRETE)
-                m.box((x, sign * (reach + 0.12), z0 + (t + 0.5) * tier - 0.35),
-                      (1.0, 0.2, 2.0), DARK)
-
-                m.box((x, sign * (reach + cd * 1.3), z0 + (t + 0.62) * tier),
-                      (cw * 0.5, 0.4, ch * 0.28), STEEL)
 
 
 def access(m, s, length, rng, deck=None):
@@ -637,12 +630,12 @@ def access(m, s, length, rng, deck=None):
     # 코어. 데크에서 맨 위 통로까지.
     m.box((x, side * (reach + 2.2), (floor + top) * 0.5),
           (5.2, 5.2, top - floor), CONCRETE)
-    m.box((x, side * (reach + 2.2), top + 0.5), (6.0, 6.0, 1.0), DARK)
+    m.box((x, side * (reach + 2.2), top + 0.5), (6.0, 6.0, 1.0), STEEL)
 
     # 계단실 창. 층마다 하나씩 나면 <b>안에 계단이 있다</b>는 것이 밖에서 읽힙니다.
     for t in range(s["tiers"]):
         m.box((x, side * (reach + 4.7), floor + (t + 0.5) * tier),
-              (1.2, 0.4, 2.0), DARK)
+              (1.2, 0.4, 2.0), STEEL)
 
     # 데크에서 코어로 건너가는 다리.
     m.box((x, side * (W * 0.5 + (reach + 2.2 - W * 0.5) * 0.5), floor - 0.15),
@@ -843,15 +836,14 @@ def hang(m, s, length, rng):
         # 가로지르는 레일. <b>스파인을 가로질러</b> 놓입니다 - 나란히 놓으면
         # 데크와 같은 방향이라 층이 갈린 것이 안 보입니다.
         m.box((x, 0.0, rail), (2.2, W * 0.86, 1.4), STEEL)
-        m.box((x, 0.0, rail - 0.9), (2.4, W * 0.88, 0.35), DARK)
+        m.box((x, 0.0, rail - 0.9), (2.4, W * 0.88, 0.35), STEEL)
 
-    # 매달린 포드 하나. 레일 위를 <b>가로질러 가는 중</b>인 것으로 둡니다.
+    # 레일 위를 달리는 <b>트롤리</b>. 매달려 있던 포드는 걷어 냈습니다.
     px = -inner * 0.24
     py = W * 0.16
 
-    m.box((px, py, rail - 2.6), (1.0, 1.0, 3.0), STEEL)
-    m.box((px, py, rail - 6.4), (5.2, 8.4, 4.6), DARK)
-    m.box((px, py + 4.3, rail - 6.0), (3.4, 0.3, 1.8), SIGNAL)
+    m.box((px, py, rail - 1.9), (2.6, 3.4, 1.6), STEEL)
+    m.box((px, py, rail - 3.1), (1.4, 1.4, 1.0), SIGNAL)
 
 
 def crane(m, s, length, rng):
@@ -886,17 +878,19 @@ def crane(m, s, length, rng):
     m.box((0.0, 0.0, rail + 2.9), (4.6, W + 14.4, 0.4), STEEL)
     m.box((inner * 0.14, W * 0.22, rail - 1.6), (5.0, 5.0, 2.4), SIGNAL)
 
-    # 매달린 캡슐
-    m.box((inner * 0.14, W * 0.22, rail - 5.4), (1.0, 1.0, 5.2), STEEL)
-    m.box((inner * 0.14, W * 0.22, rail - 10.0), (6.4, 5.0, 4.4), DARK)
+    # 갈고리만. 매달려 있던 캡슐은 걷어 냈습니다.
+    m.box((inner * 0.14, W * 0.22, rail - 4.2), (0.8, 0.8, 2.8), STEEL)
+    m.box((inner * 0.14, W * 0.22, rail - 6.0), (2.2, 2.2, 0.9), STEEL)
 
     # 데크에 쌓아 둔 캡슐
     deck = DECKS[s.get('levels', (0,))[-1]]
 
+    # 쌓아 둔 캡슐 대신 <b>자재</b>를 쌓습니다. 강철 각재 더미입니다.
     for i in range(3):
-        m.box((-inner * 0.28 + i * 7.2, -W * 0.2, deck + 2.3), (6.4, 5.0, 4.4), DARK)
+        m.box((-inner * 0.28 + i * 7.2, -W * 0.2, deck + 0.7), (6.4, 4.4, 1.4), STEEL)
     for i in range(2):
-        m.box((-inner * 0.28 + i * 7.2, -W * 0.2, deck + 6.8), (6.4, 5.0, 4.4), DARK)
+        m.box((-inner * 0.28 + i * 7.2 + 3.6, -W * 0.2, deck + 2.1),
+              (6.4, 4.0, 1.4), STEEL)
 
     # <b>기계가 사건이어야 합니다.</b> 크레인만 서 있으면 배경이고, 그 발밑에
     # 일하던 흔적이 있어야 <b>짓다 만 것</b>으로 읽힙니다 - 자재 더미, 세워 둔
@@ -908,16 +902,16 @@ def crane(m, s, length, rng):
     # 운반차. 사람이 아니라 <b>기계의 크기</b>로 스케일을 잽니다.
     hx = -inner * 0.34
     m.box((hx, W * 0.16, deck + 1.5), (8.4, 3.4, 2.2), SIGNAL)
-    m.box((hx + 2.6, W * 0.16, deck + 3.3), (2.8, 3.0, 1.8), DARK)
+    m.box((hx + 2.6, W * 0.16, deck + 3.3), (2.8, 3.0, 1.8), STEEL)
 
     for i in (-1, 1):
         for j in (-1, 1):
             m.box((hx + i * 3.0, W * 0.16 + j * 1.8, deck + 0.7),
-                  (1.8, 0.8, 1.4), DARK)
+                  (1.8, 0.8, 1.4), STEEL)
 
     # 작업 구역을 그은 바닥 띠.
     m.box((inner * 0.30, -W * 0.26, deck + 0.06), (9.0, 9.0, 0.1), SIGNAL)
-    m.box((inner * 0.30, -W * 0.26, deck + 0.09), (8.0, 8.0, 0.1), DARK)
+    m.box((inner * 0.30, -W * 0.26, deck + 0.09), (8.0, 8.0, 0.1), ROAD)
 
 
 def breach(m, s, length, rng):
@@ -1107,7 +1101,7 @@ def tower(m, s, length, rng):
                     continue
 
                 m.box((x + face * (2.5 + cd * 0.5), y, base + (f + 0.5) * step),
-                      (cd, cw * 0.86, ch), DARK)
+                      (cd, cw * 0.86, ch), CONCRETE)
                 m.box((x + face * (2.5 + cd), y + side * cw * 0.3,
                        base + (f + 0.62) * step),
                       (0.4, cw * 0.3, ch * 0.3), STEEL)
@@ -1164,9 +1158,9 @@ def endwall(m, half_x, half_y, z0, z1, rng, fill, band=None, band_rows=2):
                 z = z0 + (j + 0.5) * pz
 
                 # 살보다 바깥에 꽂아 <b>골조가 뒤로 지나가게</b> 합니다.
-                m.box((x + sign * 3.4, y, z), (6.0, py * 0.55, pz * 0.5), DARK)
-                m.box((x + sign * 6.7, y, z + pz * 0.16),
-                      (0.6, py * 0.3, 0.6), STEEL)
+                # 꽂힌 유닛 대신 <b>빈 칸의 안쪽 면</b>을 냅니다. 격자만 남으면
+                # 밋밋하므로 칸마다 깊이를 주어 그림자가 지게 합니다.
+                m.box((x + sign * 0.6, y, z), (0.6, py * 0.62, pz * 0.58), CONCRETE)
 
 
 def rooms(m, s, length, prefix):
@@ -1220,52 +1214,9 @@ def rooms(m, s, length, prefix):
 
             made.append(obj)
 
-            # <b>바깥은 캡슐이어야 합니다.</b> 방 껍데기가 밝은 콘크리트라 갤러리에
-            # 놓으니 주변 캡슐(어두움)과 재질 문법이 어긋났습니다 — 이 언어에서 밝은
-            # 것은 <b>영구 골조</b>이고 어두운 것은 꽂아 넣은 유닛이므로, 밝은 방은
-            # "골조가 방 모양으로 튀어나왔다" 고 말하게 됩니다.
-            #
-            # 그래서 어두운 외피를 <b>벽 바깥에 따로</b> 두릅니다. 벽 재질을 통째로
-            # 바꾸면 안이 새까매져 들어갈 수 없는 방이 됩니다. 안은 콘크리트, 밖은
-            # 캡슐 — Nakagin 도 그랬습니다.
-            w_in, d_in, h_in = spec_room["inner"]
-            w_out = w_in + build_interiors.WALL * 2.0
-            h_out = h_in + build_interiors.SLAB
-            mid = sign * (front + off + depth * 0.5)
-            skin = 0.22
-
-            for edge in (-1.0, 1.0):
-                m.box((x + edge * (w_out * 0.5 + skin * 0.5), mid, z + h_out * 0.5),
-                      (skin, depth, h_out + skin), DARK)
-
-            m.box((x, mid, z + h_out + skin * 0.5),
-                  (w_out + skin * 2.0, depth, skin), DARK)
-
-            # 문틀. 어두운 캡슐 벽에서 <b>들어갈 수 있는 자리</b>만 채도를 갖습니다.
-            # 갤러리를 걸을 때 어느 캡슐이 열려 있는지가 이것으로 갈립니다.
-            #
-            # <b>틀이지 판이 아닙니다.</b> 처음에 문 앞에 2.2 x 2.3 짜리 상자 하나를
-            # 세웠더니 문이 통째로 막혀, 들어갈 수 있는 방이 8/8 에서 <b>0/8</b> 이
-            # 되었습니다. 문 폭은 방마다 다르므로 저쪽이 적어 둔 값을 읽습니다.
-            door = next((o for o in spec_room["openings"]
-                         if o[0] == "-z" and o[3] <= 0.001), None)
-
-            if door is not None:
-                wide, tall = door[2], door[4]
-                face = sign * (front + off - 0.07)
-
-                for jamb in (-1.0, 1.0):
-                    m.box((x + door[1] + jamb * (wide * 0.5 + 0.13), face, z + tall * 0.5),
-                          (0.26, 0.14, tall + 0.24), SIGNAL)
-
-                m.box((x + door[1], face, z + tall + 0.12),
-                      (wide + 0.52, 0.14, 0.24), SIGNAL)
-
-            # 막힌 끝에만 답니다. 통로는 양쪽이 문이라 막으면 통로가 아닙니다.
-            if not any(o[0] == "+z" for o in spec_room["openings"]):
-                m.box((x, sign * (front + off + depth + skin * 0.5), z + h_out * 0.5),
-                      (w_out, skin, h_out), DARK)
-
+            # <b>외피는 걷어 냈습니다.</b> 어두운 클래딩을 둘렀던 것은 방이
+            # 주변 캡슐과 같은 재질로 읽히게 하려던 것인데, 그 캡슐 자체가
+            # 없어졌으므로 두를 이유가 사라졌습니다. 방은 콘크리트 상자입니다.
             off += depth
 
         # 데크에서 통로로 건너가는 <b>발판</b>. 데크 끝이 48.25, 통로 시작이 48.6 이라
