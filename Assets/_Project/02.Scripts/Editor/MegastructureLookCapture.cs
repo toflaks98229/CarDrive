@@ -247,25 +247,48 @@ public static class MegastructureLookCapture
                           (foot + Vector3.up * 150f - eye).normalized, "column");
                 }
 
-                // <b>지반의 가장자리.</b> 대지가 자연 지형이 아니라 건축물의 한 조각
-                // 이라면, 끝까지 가면 땅이 아니라 <b>바닥이 안 보이는 구름</b>이
-                // 나와야 합니다. 지형의 모서리에 서서 밖을 봅니다.
-                Terrain ground = Terrain.activeTerrain;
+                // <b>지반의 가장자리.</b> 대지가 자연 지형이 아니라 건축물의 한
+                // 조각이라면, 끝까지 가면 땅이 아니라 잘린 단면과 <b>바닥이 안 보이는
+                // 구름</b>이 나와야 합니다.
+                //
+                // ⚠ <c>Terrain.activeTerrain</c> 으로 자리를 잡으면 안 됩니다. 지형이
+                // 타일 103 장이라 아무 타일이나 걸리고, 그 타일 모서리는 세계의
+                // 끝이 아니라 <b>이웃 타일과의 이음매</b>일 수 있습니다. 실제로 처음에
+                // 그렇게 잡아 들판 한가운데를 찍었습니다. 테두리 조각을 직접 찾습니다.
+                Transform rim = GameObject.Find("WorldRim")?.transform;
 
-                if (ground != null)
+                if (rim != null && rim.childCount > 0)
                 {
-                    Vector3 corner = ground.transform.position;
-                    Vector3 size = ground.terrainData.size;
+                    // <b>이름순으로 고릅니다.</b> 계층 순서는 실행마다 다를 수 있고,
+                    // 그러면 두 실행의 그림을 견줄 수 없습니다.
+                    Transform piece = Enumerable.Range(0, rim.childCount)
+                        .Select(i => rim.GetChild(i))
+                        .OrderBy(t => t.name, StringComparer.Ordinal)
+                        .First();
 
-                    // 모서리에서 안쪽으로 조금 들어와 섭니다. 정확히 경계에 서면
-                    // 지형 콜라이더 밖이라 높이를 못 읽습니다.
-                    Vector3 at = corner + new Vector3(size.x * 0.02f, 0f, size.z * 0.5f);
-                    at.y = ground.SampleHeight(at) + corner.y + 12f;
+                    Vector3 out2 = piece.forward;
 
-                    Shoot(camera, target, at, new Vector3(-1f, -0.18f, 0f).normalized,
-                          "edge_out");
-                    Shoot(camera, target, at, new Vector3(-1f, 0.9f, 0f).normalized,
-                          "edge_up");
+                    // <b>연석 너머로 내려다봐야</b> 합니다. 눈높이에서 찍었더니
+                    // 화면의 대부분이 풀밭이고 연석은 낮은 담으로 보였습니다 -
+                    // 이 장면의 요점은 담이 아니라 <b>그 아래에 아무것도 없다</b>는
+                    // 것이라, 바닥이 보이는 각으로 서야 합니다.
+                    Vector3 stand = piece.position - out2 * 7f + Vector3.up * 11f;
+
+                    Shoot(camera, target, stand,
+                          (out2 + Vector3.down * 0.85f).normalized, "edge_out");
+
+                    // 조금 물러나 지평선까지. 잘린 단면과 구름과 천장이 <b>한 화면에</b>
+                    // 들어오는지가 이 세계 설정이 서는지 마는지를 정합니다.
+                    Shoot(camera, target,
+                          piece.position - out2 * 46f + Vector3.up * 20f,
+                          (out2 + Vector3.down * 0.22f).normalized, "edge_far");
+
+                    // 테두리를 <b>따라</b> 봅니다. 조각 사이의 단차가 계단으로
+                    // 읽히는지, 아니면 그냥 어긋난 것으로 보이는지가 여기서 갈립니다.
+                    Shoot(camera, target,
+                          piece.position + piece.right * 42f - out2 * 10f + Vector3.up * 9f,
+                          (-piece.right + out2 * 0.30f + Vector3.down * 0.20f).normalized,
+                          "edge_along");
                 }
 
                 // <b>안개가 완전히 닫힌 뒤</b>. 안개는 257 m 에서 100% 인데 파클립은
