@@ -121,6 +121,7 @@ public static class MegastructurePlacer
             new Vector3(middle.x, best.high, middle.z), Quaternion.Euler(0f, best.angle, 0f));
 
         Collide(scene, spine);
+        Skirt(spine, best, length, bays);
 
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
@@ -136,6 +137,99 @@ public static class MegastructurePlacer
     }
 
     // --- Private Methods ---
+
+    /// <summary>
+    /// 다리 밑동에 <b>파편을 쌓습니다.</b>
+    ///
+    /// 다리를 16 m 파묻는 것으로 지형 기복은 삼켰지만, 그 결과 구조물이 지면에
+    /// <b>꽂혀만</b> 있습니다 - 콘크리트 기둥이 풀밭을 칼처럼 자르고 들어가고,
+    /// 그 자리에 아무 일도 일어나지 않은 것처럼 보입니다. 실제로 무언가를 땅에
+    /// 박으면 그 둘레가 파헤쳐지고 깨진 것이 쌓입니다.
+    ///
+    /// <b>새 메시를 만들지 않습니다.</b> 이미 있는 바위를 씁니다 - 볼록 껍질로 만든
+    /// 22~30 삼각형짜리이고, 깨진 콘크리트 덩어리로 보이기에 모자람이 없습니다.
+    ///
+    /// <b>정적으로 표시합니다.</b> 안 그러면 파편 하나가 드로우 하나입니다. 같은
+    /// 머티리얼을 쓰므로 정적 배칭이 묶어 줍니다.
+    ///
+    /// 바깥 두 줄에만, 두 베이 걸러 답니다. 전부 놓으면 152 곳이 되어 <b>파편이
+    /// 아니라 울타리</b>가 됩니다.
+    /// </summary>
+    private static void Skirt(GameObject spine, Line best, float length, int bays)
+    {
+        GameObject[] rocks = Enumerable.Range(1, 5)
+            .Select(i => AssetDatabase.LoadAssetAtPath<GameObject>(
+                $"Assets/_Project/05.Prefabs/Prop/Rock/Rock0{i}.prefab"))
+            .Where(g => g != null)
+            .ToArray();
+
+        if (rocks.Length == 0)
+        {
+            Debug.Log("MegastructurePlacer: 바위 프리팹이 없어 파편을 건너뜁니다");
+            return;
+        }
+
+        Transform holder = new GameObject("Rubble").transform;
+        holder.SetParent(spine.transform, false);
+
+        Vector3 along = Along(best.angle);
+        Vector3 perp = Perp(best.angle);
+        Vector3 middle = spine.transform.position;
+
+        // <b>같은 자리에 같은 것이 놓여야 합니다.</b> 다시 배치할 때마다 파편이
+        // 춤추면 무엇이 달라졌는지 비교할 수 없습니다.
+        UnityEngine.Random.InitState(20260909);
+
+        float step = length / bays;
+        int made = 0;
+
+        for (int i = 0; i < bays; i += 2)
+        {
+            Vector3 at = middle + along * ((i - bays * 0.5f + 0.5f) * step);
+
+            foreach (float lane in new[] { -1f, 1f })
+            {
+                Vector3 foot = at + perp * (LegOffset * lane);
+                if (!Ground(foot, out float ground)) continue;
+
+                int count = UnityEngine.Random.Range(2, 4);
+
+                for (int k = 0; k < count; k++)
+                {
+                    float angle = UnityEngine.Random.value * Mathf.PI * 2f;
+                    float reach = UnityEngine.Random.Range(5f, 11f);
+
+                    Vector3 spot = foot
+                        + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * reach;
+
+                    if (!Ground(spot, out float y)) continue;
+
+                    GameObject rock = (GameObject)PrefabUtility.InstantiatePrefab(
+                        rocks[UnityEngine.Random.Range(0, rocks.Length)], holder);
+
+                    // 반쯤 파묻습니다. 땅 위에 얹힌 것은 굴러온 것이고,
+                    // 파묻힌 것이라야 <b>여기서 깨진 것</b>으로 보입니다.
+                    float size = UnityEngine.Random.Range(1.4f, 3.2f);
+
+                    rock.transform.SetPositionAndRotation(
+                        new Vector3(spot.x, y - size * 0.35f, spot.z),
+                        Quaternion.Euler(UnityEngine.Random.Range(-18f, 18f),
+                                         UnityEngine.Random.value * 360f,
+                                         UnityEngine.Random.Range(-18f, 18f)));
+
+                    rock.transform.localScale = Vector3.one * size;
+
+                    GameObjectUtility.SetStaticEditorFlags(rock,
+                        StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccludeeStatic);
+
+                    made++;
+                }
+            }
+        }
+
+        Debug.Log($"MegastructurePlacer: 다리 밑동 파편 {made} 개 · " +
+                  $"{bays / 2} 베이 x 바깥 두 줄");
+    }
 
     private struct Line
     {
