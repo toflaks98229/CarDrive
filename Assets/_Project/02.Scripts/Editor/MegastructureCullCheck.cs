@@ -57,9 +57,12 @@ public static class MegastructureCullCheck
             Transform spine = Find(scene, SpineName);
             if (spine == null) throw new Exception("씬에 " + SpineName + " 이 없습니다");
 
-            Camera camera = Camera.allCameras.FirstOrDefault()
-                            ?? UnityEngine.Object.FindAnyObjectByType<Camera>(
-                                FindObjectsInactive.Include);
+            // <b>거울 카메라를 집으면 안 됩니다.</b> 이 씬에는 카메라가 다섯 대이고
+            // 그 중 셋이 차의 거울입니다. 거울은 화각도 원거리도 본 카메라와 달라,
+            // 여기서 잘못 집으면 <b>있지도 않은 시야로 컬링을 재게</b> 됩니다.
+            Camera camera = Camera.main ?? UnityEngine.Object
+                .FindObjectsByType<Camera>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)
+                .FirstOrDefault(c => c.cameraType == CameraType.Game && c.targetTexture == null);
 
             float fov = camera != null ? camera.fieldOfView : FallbackFov;
             float far = camera != null ? camera.farClipPlane : FallbackFar;
@@ -70,7 +73,8 @@ public static class MegastructureCullCheck
             int tris = groups.Sum(g => g.Tris);
 
             Debug.Log($"MegastructureCullCheck: 프리셋 {groups.Count} 개 · 파츠 {parts} 개 · " +
-                      $"삼각형 {tris:N0} · 화각 {fov:F0}° · 원거리 {far:F0} m");
+                      $"삼각형 {tris:N0} · 카메라 {(camera != null ? camera.name : "(없음)")} · " +
+                      $"화각 {fov:F0}° · 원거리 {far:F0} m");
 
             foreach (Eye eye in Vantages(spine, groups))
             {

@@ -33,20 +33,18 @@ using UnityEngine.SceneManagement;
 /// 그래서 <see cref="SceneLookCapture"/> 와 같은 방법으로 못 박습니다 — 가짜 시계를
 /// 꽂고, 다른 [ExecuteAlways] 를 재우고, 해와 하늘과 안개를 직접 물립니다.
 ///
-/// <b>⚠ 아직 재현되지 않습니다. 이 그림으로 재질 값을 판단하지 마십시오.</b>
+/// <b>카메라는 아무거나 집으면 안 됩니다.</b> 처음에 <c>Camera.allCameras</c> 의
+/// 첫 번째를 썼더니 <b>재질만 바꾸고 두 번 돌린 그림의 노출이 서로 달랐습니다</b> —
+/// 한 번은 마젠타, 한 번은 하얗게 날아갔습니다. 재질을 의심하고 값을 올렸다 내렸다
+/// 했는데, 원인은 이 씬에 카메라가 다섯 대(본 카메라 둘 + 차의 <b>거울 셋</b>)라는
+/// 것이었습니다. <c>allCameras</c> 는 순서를 보장하지 않으므로 실행마다 다른
+/// 카메라로 찍고 있었고, 거울 카메라에는 포스트 처리도 색 보정도 걸려 있지 않습니다.
 ///
-/// 못 박는 것을 여기까지 옮겼는데도 <b>재질만 바꾸고 두 번 돌린 그림의 노출이
-/// 서로 달랐습니다.</b> 한 번은 밝고 한 번은 어두웠고, 어두운 면이 마젠타로 밀리는
-/// 정도도 달랐습니다. 무엇이 남았는지는 아직 못 찾았습니다 — 볼륨의 노출과 색
-/// 보정이 재생 중에만 도는 무언가에 달려 있는 것으로 보입니다.
+/// 그래서 <see cref="SceneLookCapture"/> 와 같은 규칙으로 고릅니다 — <c>Camera.main</c>,
+/// 없으면 <b>렌더 타깃이 없는</b> 게임 카메라. 렌더 타깃이 있다는 것이 곧 거울입니다.
 ///
-/// 그러므로 지금 이것이 답할 수 있는 것은 <b>무엇이 어디에 있는가</b>뿐입니다:
-/// 차선이 소실점까지 이어지는가, 데크 밑 등이 보이는가, 경사로가 길로 보이는가.
-/// <b>얼마나 밝은가·무슨 색인가는 답하지 못합니다.</b>
-///
-/// 고치는 방향은 이 도구를 더 손보는 것이 아니라, 이미 맞는 그림을 내고 있는
-/// <see cref="SceneLookCapture"/> 에 시점을 하나 더 다는 것입니다. 반쪽짜리 계기를
-/// 둘 갖는 것보다 맞는 계기 하나를 늘리는 편이 낫습니다.
+/// 두 번 돌려 평균밝기가 같은지는 <b>도구가 스스로 찍습니다.</b> 계기가 재현되는지를
+/// 눈으로 판단하면 또 같은 함정에 빠집니다.
 ///
 /// ⚠ 렌더가 필요하므로 <c>-nographics</c> 를 붙이면 안 됩니다.
 /// <code>
@@ -110,11 +108,11 @@ public static class MegastructureLookCapture
 
             if (spine == null) throw new Exception("씬에 메가스트럭처가 없습니다");
 
-            Camera source = Camera.allCameras.FirstOrDefault()
-                            ?? UnityEngine.Object.FindAnyObjectByType<Camera>(
-                                FindObjectsInactive.Include);
+            Camera source = MainCamera();
+            if (source == null) throw new Exception("씬에 본 카메라가 없습니다");
 
-            if (source == null) throw new Exception("씬에 카메라가 없습니다");
+            Debug.Log($"MegastructureLookCapture: 카메라 {source.name} · " +
+                      $"화각 {source.fieldOfView:F0}° · 원거리 {source.farClipPlane:F0} m");
 
             Pin(out Action release);
 
@@ -286,6 +284,22 @@ public static class MegastructureLookCapture
         };
     }
 
+    /// <summary>
+    /// 찍을 카메라입니다. <b>렌더 타깃이 달린 것은 거울</b>이므로 거릅니다.
+    ///
+    /// 거울에는 포스트 처리와 색 보정이 없어, 그것으로 찍으면 게임과 전혀 다른
+    /// 그림이 나옵니다. 그리고 <c>allCameras</c> 의 순서는 보장되지 않으므로,
+    /// 거르지 않으면 <b>실행마다 다른 그림</b>이 나옵니다.
+    /// </summary>
+    private static Camera MainCamera()
+    {
+        if (Camera.main != null) return Camera.main;
+
+        return UnityEngine.Object
+            .FindObjectsByType<Camera>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)
+            .FirstOrDefault(c => c.cameraType == CameraType.Game && c.targetTexture == null);
+    }
+
     private static void Shoot(Camera camera, RenderTexture target,
                               Vector3 at, Vector3 look, string name)
     {
@@ -293,7 +307,14 @@ public static class MegastructureLookCapture
             at, Quaternion.LookRotation(look.normalized, Vector3.up));
 
         camera.targetTexture = target;
+
+        // <b>한 번 버리고 두 번째를 씁니다.</b> 카메라를 옮긴 직후의 첫 프레임은
+        // 아직 안 익습니다 - 볼륨과 노출이 새 자리를 반영하기 전에 그려집니다.
+        // 두 번 돌린 그림에서 <b>첫 촬영만</b> 평균밝기가 0.33 과 0.06 으로 갈렸고,
+        // 나머지 셋은 소수 넷째 자리까지 같았습니다. 그 하나가 이 프레임입니다.
         camera.Render();
+        camera.Render();
+
         camera.targetTexture = null;
 
         Texture2D shot = new Texture2D(Width, Height, TextureFormat.RGB24, false);
@@ -304,9 +325,21 @@ public static class MegastructureLookCapture
         RenderTexture.active = previous;
 
         File.WriteAllBytes(Path.Combine(OutputDirectory, name + ".png"), shot.EncodeToPNG());
+
+        // <b>평균밝기를 같이 찍습니다.</b> 두 번 돌려 이 값이 같아야 계기입니다.
+        // 그림을 눈으로 비교하면 "비슷해 보인다" 로 넘어가게 됩니다.
+        Color32[] pixels = shot.GetPixels32();
+        double sum = 0.0;
+
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            sum += (0.299f * pixels[i].r + 0.587f * pixels[i].g + 0.114f * pixels[i].b) / 255f;
+        }
+
         UnityEngine.Object.DestroyImmediate(shot);
 
-        Debug.Log($"  {name,-6} ({at.x:F0}, {at.y:F0}, {at.z:F0})");
+        Debug.Log($"  {name,-6} ({at.x,6:F0}, {at.y,5:F0}, {at.z,6:F0}) · " +
+                  $"평균밝기 {sum / pixels.Length:F4}");
     }
 
     private static Bounds Bounds(Transform spine)
