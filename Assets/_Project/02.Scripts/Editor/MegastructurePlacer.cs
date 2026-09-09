@@ -178,6 +178,10 @@ public static class MegastructurePlacer
 
         // <b>같은 자리에 같은 것이 놓여야 합니다.</b> 다시 배치할 때마다 파편이
         // 춤추면 무엇이 달라졌는지 비교할 수 없습니다.
+        //
+        // <b>전역이므로 돌려놓습니다.</b> 씨앗을 박아 두면 이 뒤에 도는 에디터
+        // 코드의 난수까지 이 씨앗을 따라갑니다.
+        UnityEngine.Random.State was = UnityEngine.Random.state;
         UnityEngine.Random.InitState(20260909);
 
         float step = length / bays;
@@ -226,6 +230,8 @@ public static class MegastructurePlacer
                 }
             }
         }
+
+        UnityEngine.Random.state = was;
 
         Debug.Log($"MegastructurePlacer: 다리 밑동 파편 {made} 개 · " +
                   $"{bays / 2} 베이 x 바깥 두 줄");

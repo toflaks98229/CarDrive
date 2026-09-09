@@ -301,9 +301,20 @@ public static class MegastructureLookCapture
             sleepers.Add(b);
         }
 
+        Camera main = MainCamera();
+
         Quaternion wasRotation = sun.transform.rotation;
         float wasIntensity = sun.intensity;
         Color wasColor = sun.color;
+
+        // <b>바꾼 것은 전부 되돌립니다.</b> 해와 하늘과 시계는 되돌리면서 파클립과
+        // 안개는 빠뜨리고 있었습니다. 배치모드는 씬을 저장하지 않아 티가 안 났지만,
+        // 에디터에서 부르면 본 카메라의 파클립이 482 로 남습니다.
+        float wasFar = main != null ? main.farClipPlane : 0f;
+        bool wasFog = RenderSettings.fog;
+        FogMode wasFogMode = RenderSettings.fogMode;
+        float wasFogStart = RenderSettings.fogStartDistance;
+        float wasFogEnd = RenderSettings.fogEndDistance;
 
         sun.transform.rotation = Quaternion.Euler(SunAngleDegrees, 170f, 0f);
         sun.intensity = 1.25f * Daylight;
@@ -317,7 +328,6 @@ public static class MegastructureLookCapture
         // <b>안개 거리를 여기 적어 두면 안 됩니다.</b> 처음에는 166.6 / 280 을
         // 상수로 베껴 왔는데, 그 값은 사다리가 <b>어느 시점에 내던 값</b>을 옮겨 적은
         // 것이라 설정이 바뀌면 조용히 거짓말이 됩니다. 런타임이 읽는 곳에서 읽습니다.
-        Camera main = MainCamera();
         if (main != null) ViewDistances.SetViewBase(main.farClipPlane);
 
         ViewDistances.Ladder ladder = ViewDistances.Current;
@@ -344,6 +354,13 @@ public static class MegastructureLookCapture
             sky.nightSkyMaterial = nightAsset;
             RenderSettings.skybox = skyboxAsset;
             clockField.SetValue(sky, wasClock);
+
+            if (main != null) main.farClipPlane = wasFar;
+
+            RenderSettings.fog = wasFog;
+            RenderSettings.fogMode = wasFogMode;
+            RenderSettings.fogStartDistance = wasFogStart;
+            RenderSettings.fogEndDistance = wasFogEnd;
 
             if (dayClone != null) UnityEngine.Object.DestroyImmediate(dayClone);
             if (nightClone != null) UnityEngine.Object.DestroyImmediate(nightClone);

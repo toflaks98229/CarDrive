@@ -153,24 +153,7 @@ public static class MegastructureSetup
             // 둘을 다른 규칙으로 놓습니다 - 뼈대는 베이마다, 부품은 프리셋마다.
             Dictionary<string, GameObject> made = new Dictionary<string, GameObject>();
 
-            // <b>거친 판본은 따로 붙입니다.</b> 그냥 돌리면 그것도 프리팹 하나가
-            // 되어 스파인에 <b>두 번째 시타델</b>로 끼어듭니다.
-            foreach (string model in models)
-            {
-                Configure(model, materials);
-
-                if (model.EndsWith(LodSuffix + ".fbx")) continue;
-
-                GameObject piece = BuildBay(model);
-                made[piece.name] = piece;
-            }
-
-            foreach (string model in models)
-            {
-                if (!model.EndsWith(LodSuffix + ".fbx")) continue;
-
-                AttachLod(model);
-            }
+            BuildParts(models, materials, made);
 
             if (!made.TryGetValue(manifest.core, out GameObject core))
             {
@@ -384,6 +367,38 @@ public static class MegastructureSetup
         }
 
         importer.SaveAndReimport();
+    }
+
+    /// <summary>
+    /// 부품 프리팹을 만들고 <b>그다음에</b> 거친 판본을 붙입니다.
+    ///
+    /// <b>순서가 전부입니다.</b> LOD 는 이미 저장된 프리팹에 붙이는 것이므로 부품이
+    /// 먼저 있어야 하고, 스파인은 <b>LOD 가 붙은 뒤</b>에 그 프리팹을 심어야 합니다.
+    /// 두 반복문이 Run() 안에 흩어져 있을 때는 누가 <c>BuildSpine</c> 을 위로 옮기면
+    /// <b>조용히</b> LOD 없는 스파인이 나왔습니다. 한 함수에 묶어 두면 그 사이에
+    /// 다른 것을 끼워 넣기 어렵습니다.
+    /// </summary>
+    private static void BuildParts(string[] models, Dictionary<string, Material> materials,
+                                   Dictionary<string, GameObject> made)
+    {
+        // <b>거친 판본은 프리팹으로 만들지 않습니다.</b> 만들면 그것도 부품 하나가
+        // 되어 스파인에 <b>두 번째 시타델</b>로 끼어듭니다.
+        foreach (string model in models)
+        {
+            Configure(model, materials);
+
+            if (model.EndsWith(LodSuffix + ".fbx")) continue;
+
+            GameObject piece = BuildBay(model);
+            made[piece.name] = piece;
+        }
+
+        foreach (string model in models)
+        {
+            if (!model.EndsWith(LodSuffix + ".fbx")) continue;
+
+            AttachLod(model);
+        }
     }
 
     /// <summary>

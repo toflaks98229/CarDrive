@@ -17,7 +17,12 @@ using UnityEngine.SceneManagement;
 /// 재는 법은 한 프리셋 인스턴스마다 두 번 묻는 것입니다:
 ///   · 합쳐 두었다면 — 자식 전부를 감싸는 상자 하나가 화면에 걸리는가. 걸리면
 ///     그 프리셋의 삼각형 <b>전부</b>가 그려집니다.
-///   · 나눈 지금 — 파츠 상자를 하나씩 물어, 걸리는 것의 삼각형만 셉니다.
+///   · 지금 — 파츠 상자를 하나씩 물어, <b>살아 있는 LOD 단계</b>의 것만 셉니다.
+///
+/// 그러므로 "덜 그림" 은 <b>나눈 것과 LOD 를 합친 결과</b>입니다. 기준(합쳤다면)은
+/// 늘 LOD 0 입니다 — 나누기 전에는 LOD 도 없었으므로, 거친 판본을 기준에 더하면
+/// 없던 것과 비교하게 됩니다. 어느 쪽이 얼마나 기여했는지는 줄 끝의
+/// <c>Citadel=LOD1</c> 표시로 갈라 볼 수 있습니다.
 ///
 /// 시점은 <b>실제로 서게 될 자리</b>에서 잡습니다. 하늘에서 내려다보면 어차피 다
 /// 보이므로 아무것도 증명하지 못합니다.
@@ -34,6 +39,9 @@ public static class MegastructureCullCheck
     /// <see cref="MegastructurePlacer"/> 가 붙이는 이름입니다.
     /// </summary>
     private const string SpineName = "Megastructure";
+
+    /// <summary>배치기가 다리 밑동에 뿌린 파편을 담는 자식의 이름입니다.</summary>
+    private const string RubbleName = "Rubble";
 
     /// <summary>씬 카메라의 화각과 원거리 클립입니다. 실제 값을 못 찾으면 이것을 씁니다.</summary>
     private const float FallbackFov = 60f;
@@ -72,6 +80,14 @@ public static class MegastructureCullCheck
             int parts = groups.Sum(g => g.Parts.Count);
             int tris = groups.Sum(g => g.Tris);
 
+            // <b>LOD 가 씬까지 닿았는지</b>는 프리팹 파일을 grep 해서는 알 수 없습니다.
+            // 중첩 프리팹이라 부모 파일에는 아무것도 안 적히기 때문입니다.
+            LODGroup[] lods = spine.GetComponentsInChildren<LODGroup>(true);
+
+            Debug.Log($"MegastructureCullCheck: LODGroup {lods.Length} 개 · " + string.Join(", ",
+                lods.Select(l => $"{l.transform.name} size {l.size:F0} · " +
+                                 $"단계 {l.lodCount}")));
+
             Debug.Log($"MegastructureCullCheck: 프리셋 {groups.Count} 개 · 파츠 {parts} 개 · " +
                       $"삼각형 {tris:N0} · 카메라 {(camera != null ? camera.name : "(없음)")} · " +
                       $"화각 {fov:F0}° · 원거리 {far:F0} m");
@@ -97,9 +113,27 @@ public static class MegastructureCullCheck
     {
         public string Name;
         public Bounds Merged;                       // 합쳐 두었다면 이랬을 상자
-        public List<(Bounds box, int tris, int draws)> Parts =
-            new List<(Bounds, int, int)>();
+        /// <summary>
+        /// <c>level</c> 은 <b>이 파츠가 속한 LOD 단계</b>입니다. LODGroup 이 없으면
+        /// 전부 0 입니다.
+        ///
+        /// 이것이 없을 때 LOD 0 과 LOD 1 을 <b>함께 셌습니다.</b> 둘은 절대 같이
+        /// 그려지지 않는데 삼각형에 둘 다 더해, 시타델에 LOD 를 단 뒤로 이 도구의
+        /// 숫자가 부풀려지고 <b>이전 실행과 비교할 수 없게</b> 되었습니다.
+        /// </summary>
+        public List<(Bounds box, int tris, int draws, int level)> Parts =
+            new List<(Bounds, int, int, int)>();
+
+        /// <summary>LOD 0 의 삼각형입니다. <b>합쳤다면</b>의 기준입니다.</summary>
         public int Tris;
+
+        /// <summary>단계마다 갈아타는 화면 높이 비율. LODGroup 이 없으면 비어 있습니다.</summary>
+        public float[] Steps = new float[0];
+
+        /// <summary>LODGroup 이 판단 기준으로 쓰는 크기(m)입니다.</summary>
+        public float LodSize;
+
+        public Vector3 At;
 
         /// <summary>
         /// 프리셋 전체가 <b>쓰는</b> 머티리얼 자리들입니다.
@@ -122,10 +156,32 @@ public static class MegastructureCullCheck
 
         foreach (Transform child in spine)
         {
+            // <b>파편은 프리셋이 아닙니다.</b> 배치기가 다리 밑동에 뿌린 바위인데,
+            // 스파인의 직계 자식이라 프리셋 하나로 세어져 파츠 수를 39 개 부풀렸습니다.
+            if (child.name == RubbleName) continue;
+
             Renderer[] renderers = child.GetComponentsInChildren<Renderer>(true);
             if (renderers.Length == 0) continue;
 
-            Group group = new Group { Name = child.name };
+            Group group = new Group { Name = child.name, At = child.position };
+
+            LODGroup lod = child.GetComponent<LODGroup>();
+            Dictionary<Renderer, int> level = new Dictionary<Renderer, int>();
+
+            if (lod != null)
+            {
+                LOD[] steps = lod.GetLODs();
+                group.Steps = steps.Select(l => l.screenRelativeTransitionHeight).ToArray();
+                group.LodSize = lod.size;
+
+                for (int i = 0; i < steps.Length; i++)
+                {
+                    foreach (Renderer r in steps[i].renderers)
+                    {
+                        if (r != null) level[r] = i;
+                    }
+                }
+            }
 
             foreach (Renderer r in renderers)
             {
@@ -133,19 +189,26 @@ public static class MegastructureCullCheck
                 if (filter == null || filter.sharedMesh == null) continue;
 
                 int count = filter.sharedMesh.triangles.Length / 3;
+                int step = level.TryGetValue(r, out int found) ? found : 0;
 
                 // <b>드로우의 단위는 렌더러가 아니라 서브메시</b>입니다. 합친 메시는
                 // 늘 머티리얼 셋을 다 쓰므로 늘 3 번 그리지만, 나눈 파츠는 저마다
                 // 한두 개만 씁니다 — 렌더러가 늘어도 드로우는 안 늘 수 있습니다.
                 int mask = Used(filter.sharedMesh);
 
-                group.Parts.Add((r.bounds, count, Bits(mask)));
-                group.Tris += count;
-                group.Mask |= mask;
+                group.Parts.Add((r.bounds, count, Bits(mask), step));
 
-                group.Merged = group.Parts.Count == 1
-                    ? r.bounds
-                    : Encapsulated(group.Merged, r.bounds);
+                // <b>합쳤다면</b>의 기준은 LOD 0 입니다. 나누기 전에는 LOD 도
+                // 없었으므로, 거친 판본을 여기 더하면 없던 것과 비교하게 됩니다.
+                if (step == 0)
+                {
+                    group.Tris += count;
+                    group.Mask |= mask;
+
+                    group.Merged = group.Merged.size == Vector3.zero
+                        ? r.bounds
+                        : Encapsulated(group.Merged, r.bounds);
+                }
             }
 
             if (group.Parts.Count > 0) made.Add(group);
@@ -257,10 +320,15 @@ public static class MegastructureCullCheck
                 wholeDraws += Bits(group.Mask);
             }
 
+            // <b>지금 어느 단계가 살아 있는가.</b> 유니티와 같은 식입니다 -
+            // 화면 높이 비율 = size / (거리 x 2 tan(화각/2)).
+            int active = Active(group, eye, fov);
+
             int mine = 0;
 
-            foreach ((Bounds box, int tris, int draws) in group.Parts)
+            foreach ((Bounds box, int tris, int draws, int level) in group.Parts)
             {
+                if (level != active) continue;
                 if (!GeometryUtility.TestPlanesAABB(planes, box)) continue;
 
                 splitTris += tris;
@@ -276,8 +344,39 @@ public static class MegastructureCullCheck
         string worst = string.Join(" ", heavy.OrderByDescending(h => h.tris).Take(3)
             .Select(h => $"{h.name.Replace("SM_Mega_", "")} {h.tris:N0}"));
 
+        string lods = string.Join(" ", groups
+            .Where(g => g.Steps.Length > 0)
+            .Select(g => $"{g.Name.Replace("SM_Mega_", "")}=LOD{Active(g, eye, fov)}"));
+
         Debug.Log($"  {eye.Name,-16} : 합쳤다면 {wholeTris,7:N0} 삼각형 / 드로우 {wholeDraws,3} · " +
-                  $"나눈 지금 {splitTris,7:N0} / {splitDraws,3} · {saved,5:F1}% 덜 그림 · 무거운 것 {worst}");
+                  $"지금 {splitTris,7:N0} / {splitDraws,3} · {saved,5:F1}% 덜 그림 · " +
+                  $"무거운 것 {worst}{(lods.Length > 0 ? " · " + lods : "")}");
+    }
+
+    /// <summary>
+    /// 이 시점에서 <b>살아 있는 LOD 단계</b>입니다. LODGroup 이 없으면 늘 0 입니다.
+    ///
+    /// 유니티와 같은 식을 씁니다: 화면 높이 비율 = <c>size / (거리 x 2 tan(화각/2))</c>.
+    /// 그 비율보다 임계값이 작은 <b>첫 단계</b>가 그려집니다.
+    /// </summary>
+    private static int Active(Group group, Eye eye, float fov)
+    {
+        if (group.Steps.Length == 0) return 0;
+
+        float distance = Vector3.Distance(eye.At, group.At);
+        if (distance < 0.01f) return 0;
+
+        float height = group.LodSize
+                       / (distance * 2f * Mathf.Tan(fov * 0.5f * Mathf.Deg2Rad));
+
+        for (int i = 0; i < group.Steps.Length; i++)
+        {
+            if (height >= group.Steps[i]) return i;
+        }
+
+        // 마지막 임계값보다도 작으면 아무것도 안 그립니다. 여기서는 <b>없는 단계</b>를
+        // 돌려 아무 파츠도 세어지지 않게 합니다.
+        return group.Steps.Length;
     }
 
     private static Transform Find(Scene scene, string name)
