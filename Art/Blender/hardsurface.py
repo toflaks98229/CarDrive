@@ -124,6 +124,50 @@ class Mass:
         ]
         self.slots += [mat] * 6
 
+    def strut(self, a, b, thick, mat=0):
+        """
+        두 점을 잇는 <b>기울어진 각재</b>입니다. 상자만으로는 못 만드는 유일한 것입니다.
+
+        <b>왜 필요한가.</b> 이 언어에는 축에 정렬된 상자밖에 없어서 다리를 세로로
+        세우고 인방을 가로로 걸 수는 있어도 <b>사재를 넣을 수 없었습니다.</b> 그래서
+        다리가 그냥 서 있기만 하고 <b>버티는 것으로 보이지 않았습니다</b> - 참조한
+        게임들의 고가 구조물은 전부 대각이 걸려 있고, 그 대각이 하중을 보여 줍니다.
+
+        방향을 축으로 삼고 그에 수직인 두 축을 만들어 8 꼭짓점을 놓습니다. 굵기는
+        정사각 단면입니다 - 각재이지 판이 아닙니다.
+        """
+        d = Vector(b) - Vector(a)
+        length = d.length
+
+        if length < 1e-5:
+            return
+
+        d = d / length
+
+        # 축과 가장 덜 나란한 기준으로 수직축을 뽑습니다. 나란한 것을 고르면
+        # 외적이 0 이 되어 각재가 납작하게 찌그러집니다.
+        guide = Vector((0.0, 0.0, 1.0))
+        if abs(d.dot(guide)) > 0.94:
+            guide = Vector((1.0, 0.0, 0.0))
+
+        u = d.cross(guide).normalized() * (thick * 0.5)
+        v = d.cross(u).normalized() * (thick * 0.5)
+
+        base = Vector(a)
+        tip = Vector(b)
+
+        i = len(self.verts)
+        for origin in (base, tip):
+            for su, sv in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+                self.verts.append(tuple(origin + u * su + v * sv))
+
+        self.faces += [
+            (i + 0, i + 3, i + 2, i + 1), (i + 4, i + 5, i + 6, i + 7),
+            (i + 0, i + 1, i + 5, i + 4), (i + 1, i + 2, i + 6, i + 5),
+            (i + 2, i + 3, i + 7, i + 6), (i + 3, i + 0, i + 4, i + 7),
+        ]
+        self.slots += [mat] * 6
+
     def slope(self, center, size, rise, mat=0, axis=0):
         """
         한쪽 끝이 들린 상자입니다. <c>rise</c> 만큼 <c>axis</c> 방향으로 올라갑니다.

@@ -32,6 +32,9 @@ Material:
     m_Floats:
     - _BaseMapStrength: 0.45
     - _FogScale: 0.55
+    - _HeightBottom: 66.212074
+    - _HeightStrength: 0.5
+    - _HeightTop: 17.212074
     - _SplatOn: 0
     - _UseGrain: 1
     - _UseHatching: 0
@@ -40,5 +43,6 @@ Material:
     - _BaseMapGain: {r: 1.7974765, g: 1.9084169, b: 2.267771, a: 1}
     - _Color: {r: 0.66, g: 0.65, b: 0.61, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 0}
+    - _HeightColor: {r: 0.3, g: 0.33, b: 0.27, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

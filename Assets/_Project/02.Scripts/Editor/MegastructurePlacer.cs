@@ -128,6 +128,10 @@ public static class MegastructurePlacer
         Debug.Log($"MegastructurePlacer: 각 {best.angle:F0}° · 옆으로 {best.offset:F0} m · " +
                   $"바닥 {best.high:F1} m · 기복 {best.relief:F1} m · 출발점에서 {best.reach:F0} m");
 
+        // 얼룩이 걸리는 높이는 <b>여기서만</b> 알 수 있습니다. 구조물이 지형의
+        // 어느 높이에 앉을지는 재 봐야 나오고, 재는 것이 이 스크립트입니다.
+        BrutalistTextureSetup.Ground(spine.transform.position.y);
+
         if (Application.isBatchMode) EditorApplication.Exit(0);
     }
 

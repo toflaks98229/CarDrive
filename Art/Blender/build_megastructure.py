@@ -142,12 +142,12 @@ PRESETS = {
 
     # 설비. 탱크와 굴뚝, 데크 위를 건너는 컨베이어 갠트리.
     "Industry": dict(bays=1, tiers=2, upper=15.0, fill=0.35, tanks=True, weight=3,
-                    busy=1.6,
+                    busy=1.6, hang=True,
                     levels=(0, 1)),
 
     # 분기. 스파인에서 직각으로 갈라지는 두 번째 데크와 큰 코어.
     "Junction": dict(bays=2, tiers=3, upper=30.0, fill=0.5, branch=True, weight=2,
-                    levels=(1,)),
+                    levels=(1,), hang=True),
 
     # <b>초거대.</b> 스파인이 뚫고 지나가는 덩어리. 세 베이에 걸치고 170 m 를 올라갑니다.
     # <b>지표는 나머지보다 확실히 커야 합니다.</b> 층이 셋으로 늘고 수직 프리셋이
@@ -238,6 +238,26 @@ def core(m, length, bays):
             m.box((x, (rows[i] + rows[i + 1]) * 0.5, gate + truss * 0.34),
                   (lx + 1.4, span - ly + 2.4, truss * 0.68), CONCRETE)
 
+        # <b>사재.</b> 다리가 그냥 서 있기만 하고 버티는 것으로 보이지 않았습니다 -
+        # 하중은 세로 기둥이 아니라 <b>대각</b>이 보여 줍니다.
+        #
+        # <b>가운데 칸은 비웁니다.</b> 여기가 차가 지나가는 문이고, 폭 32.6 m 짜리
+        # 그 칸에 사재를 걸면 통로가 막혀 "밑으로 지나간다" 는 뜻이 통째로 사라집니다.
+        # 바깥 두 칸만 걸어도 다리는 버티는 것으로 읽힙니다.
+        for i in (0, 2):
+            lo, hi = rows[i], rows[i + 1]
+            foot, head = 3.0, gate - 2.6
+
+            # <b>두 부재를 앞뒤로 어긋냅니다.</b> 같은 x 에 겹쳐 놓았더니 각재의
+            # 옆면 둘이 같은 평면에서 같은 쪽을 봐 2,204 m2 가 깜빡였습니다.
+            # 실제 X 브레이스도 두 부재가 한 평면에 있지 않습니다 - 하나가 앞으로
+            # 지나가고 하나가 뒤로 지나가며 가운데서 볼트로 물립니다.
+            m.strut((x - 0.9, lo, foot), (x - 0.9, hi, head), 1.5, STEEL)
+            m.strut((x + 0.9, hi, foot), (x + 0.9, lo, head), 1.5, STEEL)
+
+            # 두 부재가 만나는 자리의 거싯.
+            m.box((x, (lo + hi) * 0.5, (foot + head) * 0.5), (2.6, 2.2, 2.2), STEEL)
+
     # ---- 층마다 트러스·덕트·데크 ------------------------------------------
     for level in range(LEVELS):
         base = DECKS[level] - SOCKET["deck"] - truss
@@ -265,6 +285,17 @@ def core(m, length, bays):
             for x in (-length * 0.25, length * 0.25):
                 m.box((x, 0.0, base - duct * 1.15), (1.6, W * 0.6, 0.5), STEEL)
                 m.box((x, 0.0, base - duct * 1.36), (1.15, W * 0.58, 0.22), SIGNAL)
+
+            # <b>가로보.</b> 차로 지나갈 때 가장 오래 보는 면인데 가장 비어 있었습니다 -
+            # 덕트 두 줄 말고는 매끈한 판이라 <b>얼마나 두꺼운지</b>가 안 읽혔습니다.
+            # 7 m 마다 리브를 걸면 그 간격이 곧 자가 되고, 밑면에 그림자가 생깁니다.
+            for i in range(6):
+                m.box((-length * 0.5 + (i + 0.5) * (length / 6.0), 0.0, base - 0.55),
+                      (1.1, W - 2.0, 1.1), CONCRETE)
+
+            # 배관 두 줄. 리브를 가로질러 흐르며 <b>이 밑이 설비 공간</b>임을 말합니다.
+            for y in (-W * 0.30, W * 0.30):
+                m.box((0.0, y, base - 1.5), (length, 0.55, 0.55), STEEL)
 
         m.box((0.0, 0.0, top - SOCKET["deck"] * 0.5),
               (length, W + 0.5, SOCKET["deck"]), CONCRETE)
@@ -784,6 +815,45 @@ def ramp(m, s, length, rng):
           (span * 0.9, 1.2, 0.12), SIGNAL)
 
 
+def hang(m, s, length, rng):
+    """
+    윗층 바닥에 <b>매달려 아래층을 가로지르는 것</b>입니다.
+
+    층이 셋인데 데크에 서면 위층은 그냥 천장이었습니다. 층이 있다는 것은 위를
+    올려다봐서 아는 것이 아니라 <b>위의 것이 내려와 지나갈 때</b> 압니다 - 참조한
+    게임의 광장 화면 맨 위를 가로지르던 매달린 포드가 그 한 장으로 "위에 층이
+    하나 더 있다" 를 말했습니다.
+
+    <b>노면 위 높이를 지킵니다.</b> 데크가 35.2 이고 윗층 밑면이 78.0 이므로 그
+    사이에 답니다. 너무 높이 달면 화면에 안 들어오고, 너무 내리면 차가 부딪힙니다.
+    """
+    if not s.get("hang"):
+        return
+
+    W = SOCKET["width"]
+    inner = length - SOCKET["inset"] * 2.0
+    roof = DECKS[1] - SOCKET["deck"] - 9.0      # 윗층 트러스 밑면
+    rail = roof - 3.4
+
+    for x in (-inner * 0.24, inner * 0.24):
+        # 매다는 기둥 넷. 윗층 바닥에서 레일까지.
+        for y in (-W * 0.34, W * 0.34):
+            m.box((x, y, (roof + rail) * 0.5), (0.9, 0.9, roof - rail), STEEL)
+
+        # 가로지르는 레일. <b>스파인을 가로질러</b> 놓입니다 - 나란히 놓으면
+        # 데크와 같은 방향이라 층이 갈린 것이 안 보입니다.
+        m.box((x, 0.0, rail), (2.2, W * 0.86, 1.4), STEEL)
+        m.box((x, 0.0, rail - 0.9), (2.4, W * 0.88, 0.35), DARK)
+
+    # 매달린 포드 하나. 레일 위를 <b>가로질러 가는 중</b>인 것으로 둡니다.
+    px = -inner * 0.24
+    py = W * 0.16
+
+    m.box((px, py, rail - 2.6), (1.0, 1.0, 3.0), STEEL)
+    m.box((px, py, rail - 6.4), (5.2, 8.4, 4.6), DARK)
+    m.box((px, py + 4.3, rail - 6.0), (3.4, 0.3, 1.8), SIGNAL)
+
+
 def crane(m, s, length, rng):
     """
     데크를 걸터앉은 갠트리 크레인과 쌓아 둔 캡슐입니다.
@@ -821,10 +891,33 @@ def crane(m, s, length, rng):
     m.box((inner * 0.14, W * 0.22, rail - 10.0), (6.4, 5.0, 4.4), DARK)
 
     # 데크에 쌓아 둔 캡슐
+    deck = DECKS[s.get('levels', (0,))[-1]]
+
     for i in range(3):
-        m.box((-inner * 0.28 + i * 7.2, -W * 0.2, DECKS[s.get('levels', (0,))[-1]] + 2.3), (6.4, 5.0, 4.4), DARK)
+        m.box((-inner * 0.28 + i * 7.2, -W * 0.2, deck + 2.3), (6.4, 5.0, 4.4), DARK)
     for i in range(2):
-        m.box((-inner * 0.28 + i * 7.2, -W * 0.2, DECKS[s.get('levels', (0,))[-1]] + 6.8), (6.4, 5.0, 4.4), DARK)
+        m.box((-inner * 0.28 + i * 7.2, -W * 0.2, deck + 6.8), (6.4, 5.0, 4.4), DARK)
+
+    # <b>기계가 사건이어야 합니다.</b> 크레인만 서 있으면 배경이고, 그 발밑에
+    # 일하던 흔적이 있어야 <b>짓다 만 것</b>으로 읽힙니다 - 자재 더미, 세워 둔
+    # 운반차, 바닥에 그은 작업 구역.
+    for i in range(4):
+        m.box((inner * 0.30, -W * 0.32 + i * 2.6, deck + 0.55 + (i % 2) * 0.9),
+              (5.6, 2.2, 1.1), STEEL)
+
+    # 운반차. 사람이 아니라 <b>기계의 크기</b>로 스케일을 잽니다.
+    hx = -inner * 0.34
+    m.box((hx, W * 0.16, deck + 1.5), (8.4, 3.4, 2.2), SIGNAL)
+    m.box((hx + 2.6, W * 0.16, deck + 3.3), (2.8, 3.0, 1.8), DARK)
+
+    for i in (-1, 1):
+        for j in (-1, 1):
+            m.box((hx + i * 3.0, W * 0.16 + j * 1.8, deck + 0.7),
+                  (1.8, 0.8, 1.4), DARK)
+
+    # 작업 구역을 그은 바닥 띠.
+    m.box((inner * 0.30, -W * 0.26, deck + 0.06), (9.0, 9.0, 0.1), SIGNAL)
+    m.box((inner * 0.30, -W * 0.26, deck + 0.09), (8.0, 8.0, 0.1), DARK)
 
 
 def breach(m, s, length, rng):
@@ -1346,7 +1439,7 @@ def build(name):
     # 나머지는 <b>함수 하나가 파츠 하나</b>입니다. 각각이 한 자리에 뭉친 물건이라
     # 그대로 공간 덩어리가 됩니다 - 탱크, 가지, 경사로, 크레인, 수직 코어.
     for tag, fn in (("Industry", industry), ("Branch", branch), ("Citadel", citadel),
-                    ("Ramp", ramp), ("Crane", crane), ("Breach", breach),
+                    ("Ramp", ramp), ("Crane", crane), ("Hang", hang), ("Breach", breach),
                     ("Overpass", overpass), ("Spur", spur), ("Shaft", shaft),
                     ("Tower", tower)):
         m.group(tag)

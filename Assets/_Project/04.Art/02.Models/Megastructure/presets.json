@@ -5,7 +5,7 @@
  "deckTop": 35.2,
  "gate": 24.0,
  "core": "SM_Mega_Core",
- "coreTris": 1728,
+ "coreTris": 1896,
  "seamPoints": 24,
  "presets": [
   {
@@ -35,7 +35,7 @@
    "length": 42.0,
    "weight": 3,
    "top": 115.8,
-   "tris": 2268,
+   "tris": 2400,
    "parts": 1
   },
   {
@@ -45,7 +45,7 @@
    "length": 84.0,
    "weight": 2,
    "top": 122.4,
-   "tris": 3252,
+   "tris": 3384,
    "parts": 1
   },
   {
@@ -75,7 +75,7 @@
    "length": 42.0,
    "weight": 3,
    "top": 172.3,
-   "tris": 1428,
+   "tris": 1572,
    "parts": 1
   },
   {

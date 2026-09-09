@@ -166,6 +166,12 @@ public static class MegastructureSetup
     /// 골조와 캡슐이 갈려 보이는지는 여기서만 확인됩니다.
     ///
     /// ⚠ 렌더가 필요하므로 <c>-nographics</c> 를 붙이면 안 됩니다.
+    ///
+    /// ⚠ <b>얼룩(높이 그라디언트)은 여기서 틀리게 보입니다.</b> 얼룩이 걸리는 높이는
+    /// 월드 좌표라 <see cref="MegastructurePlacer"/> 가 구조물을 앉힌 높이(지금
+    /// 20.2 m)에 맞춰져 있는데, 이 씬은 원점에 세우므로 20 m 어긋납니다. 여기서
+    /// 판단할 것은 <b>무엇이 어디에 있는가</b>이고, 색과 밝기는
+    /// <see cref="MegastructureLookCapture"/> 가 답합니다.
     /// </summary>
     public static void Preview()
     {

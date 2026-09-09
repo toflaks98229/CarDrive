@@ -123,8 +123,21 @@ public static class BrutalistTextureSetup
         /// </summary>
         public readonly float Tile;
 
+        /// <summary>
+        /// <b>밑에서 올라오는 얼룩</b>의 색입니다. 검으면 끕니다.
+        ///
+        /// 콘크리트의 풍화는 늘 아래가 심합니다 - 빗물이 흘러내린 자국이라 그렇습니다.
+        /// 같은 재질인데 높이에 따라 색이 다르면 그 차이가 <b>높이를 읽게</b> 합니다.
+        /// 438 m 를 재 줄 것이 화면에 하나도 없던 문제의 가장 싼 답입니다.
+        /// </summary>
+        public readonly Color Grime;
+
+        /// <summary>얼룩이 <b>사라지는 높이</b>(구조물 밑동에서 몇 m 위)입니다.</summary>
+        public readonly float GrimeSpan;
+
         public Surface(string fbx, string asset, Color? value, string texture,
-                       Color glow = default, float fogScale = 1f, float tile = 1f)
+                       Color glow = default, float fogScale = 1f, float tile = 1f,
+                       Color grime = default, float grimeSpan = 0f)
         {
             Fbx = fbx;
             Asset = asset;
@@ -133,6 +146,8 @@ public static class BrutalistTextureSetup
             Glow = glow;
             FogScale = fogScale;
             Tile = tile;
+            Grime = grime;
+            GrimeSpan = grimeSpan;
         }
     }
 
@@ -158,9 +173,11 @@ public static class BrutalistTextureSetup
         // 콘크리트 사진은 실제로 폭 2 m 남짓한 벽입니다. 0.5 로 깔면 그 크기로
         // 앉아, 거푸집 자국 하나가 곧 <b>사람 키의 절반</b>이 됩니다.
         new Surface("M_Mega_Concrete", "MegaConcrete", new Color(0.66f, 0.65f, 0.61f),
-                    PhotoConcrete, default, MegaFog, 0.5f),
+                    PhotoConcrete, default, MegaFog, 0.5f,
+                    new Color(0.30f, 0.33f, 0.27f), 46f),
         new Surface("M_Mega_Steel", "MegaSteel", new Color(0.22f, 0.235f, 0.26f),
-                    PhotoMetal, default, MegaFog),
+                    PhotoMetal, default, MegaFog, 1f,
+                    new Color(0.17f, 0.14f, 0.11f), 34f),
         new Surface("M_Mega_Dark", "MegaDark", new Color(0.052f, 0.058f, 0.064f),
                     PhotoMetal, default, MegaFog),
         new Surface("M_Mega_Signal", "MegaSignal", new Color(0.86f, 0.36f, 0.09f),
@@ -202,6 +219,13 @@ public static class BrutalistTextureSetup
         target.SetFloat("_FogScale", surface.FogScale);
 
         // <b>발광은 키워드가 켜져야 합니다.</b> 색만 넣으면 조용히 무시됩니다.
+        // 얼룩의 <b>색과 세기</b>는 여기서, <b>높이</b>는 구조물을 앉히는 쪽에서
+        // 정합니다(<see cref="Ground"/>). 높이는 월드 좌표라 어디에 앉혔는지
+        // 알아야 하고, 그것을 아는 것은 배치기뿐입니다.
+        target.SetColor("_HeightColor", surface.Grime);
+        target.SetFloat("_HeightStrength",
+            surface.Grime.maxColorComponent > 0.001f ? 0.5f : 0f);
+
         target.SetColor("_EmissionColor", surface.Glow);
         target.globalIlluminationFlags = MaterialGlobalIlluminationFlags.EmissiveIsBlack;
 
@@ -210,6 +234,43 @@ public static class BrutalistTextureSetup
 
         target.enableInstancing = true;
         EditorUtility.SetDirty(target);
+    }
+
+    /// <summary>
+    /// 얼룩이 걸리는 <b>월드 높이</b>를 씁니다. 구조물을 앉힌 쪽이 부릅니다.
+    ///
+    /// 색과 세기는 팔레트가 갖지만 높이는 못 갖습니다 - 구조물이 어느 높이에
+    /// 앉을지는 지형을 재 봐야 알고, 그것을 아는 것은 배치기뿐입니다. 여기에
+    /// 숫자를 적어 두면 구조물을 옮기는 순간 얼룩이 허공에 뜹니다.
+    ///
+    /// 셰이더는 <c>bottom</c> 에서 0, <c>top</c> 에서 1 로 섞으므로, <b>아래를</b>
+    /// 물들이려면 둘을 거꾸로 줍니다.
+    /// </summary>
+    /// <param name="baseY">구조물 밑동의 월드 높이(m)</param>
+    public static void Ground(float baseY)
+    {
+        int done = 0;
+
+        foreach (Surface surface in Palette)
+        {
+            if (surface.Grime.maxColorComponent <= 0.001f) continue;
+
+            Material target = AssetDatabase.LoadAssetAtPath<Material>(
+                MaterialDir + "/" + surface.Asset + ".mat");
+
+            if (target == null) continue;
+
+            target.SetFloat("_HeightBottom", baseY + surface.GrimeSpan);
+            target.SetFloat("_HeightTop", baseY - 3f);
+
+            EditorUtility.SetDirty(target);
+            done++;
+        }
+
+        AssetDatabase.SaveAssets();
+
+        Debug.Log($"BrutalistTextureSetup: 얼룩 높이 {done} 개 · " +
+                  $"밑동 {baseY:F1} m 기준");
     }
 
     /// <summary>결 텍스처와 그 이득을 읽어 옵니다. 없으면 둘 다 <c>null</c>/흰색입니다.</summary>

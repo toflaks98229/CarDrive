@@ -322,7 +322,12 @@ half3 ApplyHeightGradient(half3 color, float heightWS, ToonParams p)
 {
     if (p.heightStrength <= 0.001h) return color;
 
-    half span = max(1e-4h, p.heightTop - p.heightBottom);
+    // <b>거꾸로도 됩니다.</b> max() 로 잘라 두었더니 끝 높이를 시작보다 낮게 줄 수
+    // 없었고, 그래서 <b>아래쪽을 물들이는 것</b>이 불가능했습니다. 콘크리트의 풍화는
+    // 늘 밑에서 올라옵니다 - 빗물이 흘러내린 자국이지 하늘에서 내려온 것이 아닙니다.
+    half span = p.heightTop - p.heightBottom;
+    span = abs(span) < 1e-4h ? 1e-4h : span;
+
     half t = saturate((heightWS - p.heightBottom) / span);
 
     return lerp(color, p.heightColor, t * p.heightStrength);
