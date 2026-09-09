@@ -25,10 +25,11 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
-    - _Desaturate: 0
-    - _DitherStrength: 0.8
-    - _Levels: 14
-    - _Strength: 0.85
+    - _Desaturate: 0.3
+    - _DitherPixel: 2
+    - _DitherStrength: 1
+    - _Levels: 6
+    - _Strength: 1
     m_Colors: []
   m_BuildTextureStacks: []
   m_AllowLocking: 1

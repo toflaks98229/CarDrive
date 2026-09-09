@@ -126,16 +126,33 @@ public static class PaletteFeatureSetup
             return;
         }
 
+        // ⚠ <b>셰이더부터 확인합니다.</b> 재질이 어느 시점에 서드파티
+        // <c>PixelizePalette</c> 로 바뀌어 있었는데, 그쪽은 <c>multi_compile</c> 의
+        // 방법 키워드가 재질에 안 걸려 있어 <b>디더 분기가 아예 컴파일되지
+        // 않았습니다</b> — <c>_DitherStrength 0.8</c> 이 적혀 있는데 그 값을 읽는
+        // 코드가 없는 상태였습니다. 게다가 자기 베이어 행렬을 따로 써서, 켜졌더라도
+        // 화면의 무늬가 메시들의 <c>CarDriveDither.hlsl</c> 과 두 종류로 갈립니다.
+        Shader want = Shader.Find("CarDrive/Post/Palette");
+
+        if (want != null && material.shader != want)
+        {
+            Debug.Log("PaletteFeatureSetup: 셰이더를 되돌립니다 — " +
+                      material.shader.name + " → " + want.name);
+            material.shader = want;
+        }
+
         material.SetFloat("_Levels", Knob("PALETTE_LEVELS", material.GetFloat("_Levels")));
         material.SetFloat("_Strength", Knob("PALETTE_STRENGTH", material.GetFloat("_Strength")));
         material.SetFloat("_DitherStrength", Knob("PALETTE_DITHER", material.GetFloat("_DitherStrength")));
         material.SetFloat("_Desaturate", Knob("PALETTE_DESAT", material.GetFloat("_Desaturate")));
+        material.SetFloat("_DitherPixel", Knob("PALETTE_PIXEL", material.GetFloat("_DitherPixel")));
 
         EditorUtility.SetDirty(material);
         AssetDatabase.SaveAssets();
 
         Debug.Log($"PaletteFeatureSetup: 단계 {material.GetFloat("_Levels"):F0} · 세기 {material.GetFloat("_Strength"):F2} · " +
-                  $"디더 {material.GetFloat("_DitherStrength"):F2} · 채도빼기 {material.GetFloat("_Desaturate"):F2}");
+                  $"디더 {material.GetFloat("_DitherStrength"):F2} · 채도빼기 {material.GetFloat("_Desaturate"):F2} · " +
+                  $"디더칸 {material.GetFloat("_DitherPixel"):F0} px · 셰이더 {material.shader.name}");
 
         Finish(0);
     }

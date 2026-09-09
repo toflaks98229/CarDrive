@@ -19,6 +19,7 @@ Shader "CarDrive/Post/Palette"
         _Strength ("세기 (0이면 원래 화면)", Range(0, 1)) = 1
         _DitherStrength ("디더 세기", Range(0, 1)) = 1
         _Desaturate ("채도 빼기", Range(0, 1)) = 0
+        _DitherPixel ("디더 한 칸의 화면 화소 수", Range(1, 6)) = 1
     }
 
     SubShader
@@ -47,6 +48,7 @@ Shader "CarDrive/Post/Palette"
             half  _Strength;
             half  _DitherStrength;
             half  _Desaturate;
+            half  _DitherPixel;
 
             half4 Fragment(Varyings input) : SV_Target
             {
@@ -64,7 +66,14 @@ Shader "CarDrive/Post/Palette"
                 half3 encoded = sqrt(max(colour, 0.0h));
 
                 half steps = max(_Levels - 1.0h, 1.0h);
-                half threshold = (CarDriveDitherThreshold(input.positionCS.xy) - 0.5h) * _DitherStrength;
+                // ⚠ <b>한 칸이 화면 화소 하나면 1080p 에서 안 보입니다.</b> 참조 화면
+                // (White Knuckle)의 가로 자기상관 최소가 k=2,3 에 있어 디더 한 칸이
+                // 화면 화소 두셋을 덮습니다. 그쪽은 내부 해상도를 낮춰 그리고 확대해서
+                // 그렇게 되는데, 이 게임은 주행 게임이라 해상도를 내리면 노면 차선과
+                // 먼 지표가 함께 뭉개집니다. 기하는 또렷이 두고 <b>디더 칸만</b> 키워
+                // 같은 인상을 냅니다.
+                float2 cell = floor(input.positionCS.xy / max(_DitherPixel, 1.0h));
+                half threshold = (CarDriveDitherThreshold(cell) - 0.5h) * _DitherStrength;
 
                 half3 quantised = floor(encoded * steps + 0.5h + threshold) / steps;
                 quantised = quantised * quantised;
