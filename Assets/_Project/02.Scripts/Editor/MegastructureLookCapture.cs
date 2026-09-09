@@ -211,6 +211,46 @@ public static class MegastructureLookCapture
                     Shoot(camera, target, eye, turned, "angle_edge");
                 }
 
+                // <b>하늘을 올려다봅니다.</b> 이 세계에는 하늘 대신 위층의 밑면이
+                // 있고, 그것이 보이지 않으면 스카이박스가 안 물린 것입니다.
+                //
+                // ⚠ <b>데크 위에서 올려다보면 안 됩니다.</b> 처음에 노면과 같은 자리를
+                // 썼더니 54 m 위의 <b>윗단 밑면</b>이 화면을 가득 채워, 균일한 갈색
+                // 판 한 장이 나왔습니다. 하늘을 본 것이 아니었습니다. 구조물에서
+                // 떨어진 들판에서 올려다봐야 합니다.
+                Vector3 skyEye = middle + Vector3.up * (spine.position.y + 26f) + side * 250f;
+                Vector3 skyLook = (-side + Vector3.up * 1.5f).normalized;
+
+                Shoot(camera, target, skyEye, skyLook, "sky_up");
+
+                // 하늘이 무엇으로 그려지고 있는지 한 줄 남깁니다. 파노라마를
+                // 다시 구워도 화면이 안 바뀌면, 먼저 의심할 곳이 여기입니다.
+                Material sky = RenderSettings.skybox;
+
+                Debug.Log($"  하늘 {sky?.name} · 노출 " +
+                          $"{(sky != null && sky.HasProperty("_Exposure") ? sky.GetFloat("_Exposure") : -1f):F3}");
+
+                // <b>지반의 가장자리.</b> 대지가 자연 지형이 아니라 건축물의 한 조각
+                // 이라면, 끝까지 가면 땅이 아니라 <b>바닥이 안 보이는 구름</b>이
+                // 나와야 합니다. 지형의 모서리에 서서 밖을 봅니다.
+                Terrain ground = Terrain.activeTerrain;
+
+                if (ground != null)
+                {
+                    Vector3 corner = ground.transform.position;
+                    Vector3 size = ground.terrainData.size;
+
+                    // 모서리에서 안쪽으로 조금 들어와 섭니다. 정확히 경계에 서면
+                    // 지형 콜라이더 밖이라 높이를 못 읽습니다.
+                    Vector3 at = corner + new Vector3(size.x * 0.02f, 0f, size.z * 0.5f);
+                    at.y = ground.SampleHeight(at) + corner.y + 12f;
+
+                    Shoot(camera, target, at, new Vector3(-1f, -0.18f, 0f).normalized,
+                          "edge_out");
+                    Shoot(camera, target, at, new Vector3(-1f, 0.9f, 0f).normalized,
+                          "edge_up");
+                }
+
                 // <b>안개가 완전히 닫힌 뒤</b>. 안개는 257 m 에서 100% 인데 파클립은
                 // 482 m 라, 이 자리는 <b>그리는데 안 보이는</b> 구간입니다. 438 m 짜리
                 // 지표가 여기서 읽히지 않으면 그것은 지표가 아닙니다.

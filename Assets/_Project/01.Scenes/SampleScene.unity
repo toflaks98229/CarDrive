@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1
   m_AmbientMode: 1
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 2100000, guid: 61a2f1d5ed2f3764ba5629f2274445ea, type: 2}
+  m_SkyboxMaterial: {fileID: 2100000, guid: f117876afa9b6ff47bc6c9096ede0819, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -28849,14 +28849,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e778784b6d8d31649be73db7e35d70be, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SkyController
-  skyMaterial: {fileID: 2100000, guid: 61a2f1d5ed2f3764ba5629f2274445ea, type: 2}
+  skyMaterial: {fileID: 2100000, guid: f117876afa9b6ff47bc6c9096ede0819, type: 2}
   sun: {fileID: 410087040}
   cloudsHideStars: 1
   dayExposure: 0.5
   nightExposure: 0.06
   nightSkyTint: {r: 0.86, g: 0.58, b: 0.42, a: 1}
-  nightSkyMaterial: {fileID: 2100000, guid: 634140d921a24c16b021fa875618aa17, type: 2}
-  nightSkyExposure: 0.04
+  nightSkyMaterial: {fileID: 2100000, guid: cdb1e047658844d4daa3970175ec1366, type: 2}
+  nightSkyExposure: 0.08
   swapDaylight: 0.05
   driveAmbient: 1
   dayAmbientSky: {r: 0.55, g: 0.6, b: 0.7, a: 1}
