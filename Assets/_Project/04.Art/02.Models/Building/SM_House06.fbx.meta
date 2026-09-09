@@ -17,6 +17,16 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: M_Mega_Road
+    second: {fileID: 2100000, guid: 76bc6206176bb724ea691bee8a383ae0, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Mega_Signal
+    second: {fileID: 2100000, guid: ff1ff33c5c3fdcd40aa4c085f7c726b7, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: M_Mega_Steel
     second: {fileID: 2100000, guid: 7e9e54d7a97698648ba8052d2b4acc41, type: 2}
   - first:

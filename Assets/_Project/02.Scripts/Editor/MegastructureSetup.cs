@@ -86,30 +86,20 @@ public static class MegastructureSetup
     /// 로봇과 같은 표에서 물립니다 — 같은 콘크리트여야 같은 세계로 보입니다.
     /// </summary>
     /// <summary>
-    /// 이 구조물이 <b>안개를 얼마나 먹는가</b>. 1 이면 남들과 똑같습니다.
+    /// 색·결·발광·안개는 <see cref="BrutalistTextureSetup.Palette"/> 가 정합니다.
     ///
-    /// 실측: 안개는 128 m 에서 시작해 <b>257 m 에서 완전히 닫히고</b>, 파클립은
-    /// 482 m 입니다. 그 사이 225 m 는 <b>그리는데 안 보이는</b> 구간입니다. 나무
-    /// 한 그루는 거기서 사라져도 되지만 - 안개는 애초에 나무가 사라지는 자리와
-    /// 지형 타일 경계를 감추려고 그 거리에 맞춰져 있습니다 - 438 m 짜리 지표는
-    /// 안 됩니다. 250 m 밖에서 이미 하늘값으로 씻겨 실루엣만 남았습니다.
-    ///
-    /// <b>안개를 전역으로 늘리면 안 됩니다.</b> 늘리는 순간 안개가 감추려던 것이
-    /// 드러납니다 - 231 m 의 나무 팝과 252 m 의 지형 경계입니다. 그래서 이 구조물
-    /// 에만 덜 먹입니다. 실제 대기도 그렇습니다: 400 m 짜리 덩어리는 아지랑이
-    /// 위로 솟아 있고, 그 앞의 나무는 아지랑이 속에 있습니다.
+    /// 여기에도 같은 표가 있었습니다. 그리고 <see cref="PropMeshSetup"/> 에도 또
+    /// 있었는데 그쪽만 옛 값에 멈춰 있어서, 그것을 마지막에 돌린 날에는 <b>건물 안
+    /// 방만 옛 콘크리트 색</b>이 되었습니다. 표를 지우고 읽기만 합니다.
     /// </summary>
-    private const float FogScale = 0.55f;
-
-    private static readonly (string fbx, string asset, Color value, Color glow)[] Materials =
+    private static IEnumerable<BrutalistTextureSetup.Surface> Surfaces
     {
-        ("M_Mega_Concrete", "MegaConcrete", new Color(0.66f, 0.65f, 0.61f), default),
-        ("M_Mega_Steel", "MegaSteel", new Color(0.22f, 0.235f, 0.26f), default),
-        ("M_Mega_Dark", "MegaDark", new Color(0.052f, 0.058f, 0.064f), default),
-        ("M_Mega_Signal", "MegaSignal", new Color(0.86f, 0.36f, 0.09f),
-            new Color(0.52f, 0.19f, 0.035f)),
-        ("M_Mega_Road", "MegaRoad", new Color(0.135f, 0.140f, 0.150f), default),
-    };
+        get
+        {
+            return BrutalistTextureSetup.Palette
+                .Where(s => s.Fbx != null && s.Fbx.StartsWith("M_Mega_"));
+        }
+    }
 
     // --- Public Methods ---
 
@@ -303,9 +293,9 @@ public static class MegastructureSetup
 
         Dictionary<string, Material> map = new Dictionary<string, Material>();
 
-        foreach ((string fbx, string asset, Color value, Color glow) in Materials)
+        foreach (BrutalistTextureSetup.Surface surface in Surfaces)
         {
-            string path = MaterialDir + "/" + asset + ".mat";
+            string path = MaterialDir + "/" + surface.Asset + ".mat";
             Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
 
             if (material == null)
@@ -315,24 +305,12 @@ public static class MegastructureSetup
             }
 
             material.parent = parent;
-            material.SetColor("_BaseColor", value);
-            material.SetColor("_Color", value);
-            material.SetFloat("_FogScale", FogScale);
-            material.enableInstancing = true;
 
-            // <b>발광은 키워드가 켜져야 합니다.</b> 색만 넣으면 조용히 무시됩니다 -
-            // URP/Lit 은 _EMISSION 이 꺼져 있으면 셰이더 변형 자체가 발광을 안 씁니다.
-            // 빌드에서 셰이더가 걷히던 것과 같은 종류의 함정입니다.
-            bool lit = glow.maxColorComponent > 0.001f;
+            // <b>칠하는 것은 팔레트가 합니다.</b> 여기서 색을 쓰면 표가 둘이 됩니다.
+            BrutalistTextureSetup.LoadMap(surface.Texture, out Texture2D grain, out Color gain);
+            BrutalistTextureSetup.Paint(material, surface, grain, gain);
 
-            material.SetColor("_EmissionColor", glow);
-            material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.EmissiveIsBlack;
-
-            if (lit) material.EnableKeyword("_EMISSION");
-            else material.DisableKeyword("_EMISSION");
-
-            EditorUtility.SetDirty(material);
-            map[fbx] = material;
+            map[surface.Fbx] = material;
         }
 
         return map;

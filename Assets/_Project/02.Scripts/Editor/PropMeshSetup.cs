@@ -84,13 +84,17 @@ public static class PropMeshSetup
     /// 이미 조정된 값을 갖고 있으므로 <b>덮어쓰지 않고 물리기만</b> 합니다 — 메시를
     /// 바꿔 달라는 것이지 바위 색을 바꿔 달라는 것이 아니었습니다.
     /// </summary>
-    private static readonly (string fbx, string asset, Color? value)[] Materials =
+    /// <summary>
+    /// 색은 <see cref="BrutalistTextureSetup.Palette"/> 가 정합니다.
+    ///
+    /// 여기에 같은 표를 따로 두고 있었는데 <b>1군 이전 값에 멈춰</b> 있었습니다.
+    /// 셋 다 머티리얼에 색을 쓰므로 나중에 도는 쪽이 이기고, 이것을 마지막에
+    /// 돌린 날에는 건물 안 방만 옛 콘크리트가 되었습니다.
+    /// </summary>
+    private static IEnumerable<BrutalistTextureSetup.Surface> Surfaces
     {
-        ("M_Mega_Concrete", "MegaConcrete", new Color(0.58f, 0.57f, 0.53f)),
-        ("M_Mega_Steel", "MegaSteel", new Color(0.26f, 0.28f, 0.31f)),
-        ("M_Mega_Dark", "MegaDark", new Color(0.09f, 0.10f, 0.11f)),
-        ("M_Rock", "RockLowPoly", null),
-    };
+        get { return BrutalistTextureSetup.Palette.Where(s => s.Fbx != null); }
+    }
 
     // --- Public Methods ---
 
@@ -237,18 +241,18 @@ public static class PropMeshSetup
 
         Dictionary<string, Material> map = new Dictionary<string, Material>();
 
-        foreach ((string fbx, string asset, Color? value) in Materials)
+        foreach (BrutalistTextureSetup.Surface surface in Surfaces)
         {
-            string path = MaterialDir + "/" + asset + ".mat";
+            string path = MaterialDir + "/" + surface.Asset + ".mat";
             Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
 
-            if (value == null)
+            if (surface.Value == null)
             {
                 // 빌려 쓰는 것. 없으면 만들지 않고 멈춥니다 — 조용히 새로 만들면
                 // 조정해 둔 값이 사라진 것을 아무도 모릅니다.
                 if (material == null) throw new Exception("머티리얼이 없습니다: " + path);
 
-                map[fbx] = material;
+                map[surface.Fbx] = material;
                 continue;
             }
 
@@ -259,12 +263,11 @@ public static class PropMeshSetup
             }
 
             material.parent = parent;
-            material.SetColor("_BaseColor", value.Value);
-            material.SetColor("_Color", value.Value);
-            material.enableInstancing = true;
 
-            EditorUtility.SetDirty(material);
-            map[fbx] = material;
+            BrutalistTextureSetup.LoadMap(surface.Texture, out Texture2D grain, out Color gain);
+            BrutalistTextureSetup.Paint(material, surface, grain, gain);
+
+            map[surface.Fbx] = material;
         }
 
         return map;
