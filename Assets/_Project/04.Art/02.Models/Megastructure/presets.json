@@ -79,16 +79,6 @@
    "parts": 1
   },
   {
-   "name": "Breach",
-   "mesh": "SM_Mega_Breach",
-   "bays": 1,
-   "length": 42.0,
-   "weight": 2,
-   "top": 166.6,
-   "tris": 2340,
-   "parts": 1
-  },
-  {
    "name": "Overpass",
    "mesh": "SM_Mega_Overpass",
    "bays": 2,

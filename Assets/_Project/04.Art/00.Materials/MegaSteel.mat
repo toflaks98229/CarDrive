@@ -32,9 +32,9 @@ Material:
     m_Floats:
     - _BaseMapStrength: 0.45
     - _FogScale: 0.55
-    - _HeightBottom: 54.212074
+    - _HeightBottom: 54.639465
     - _HeightStrength: 0.5
-    - _HeightTop: 17.212074
+    - _HeightTop: 17.639465
     - _SplatOn: 0
     - _UseGrain: 1
     - _UseHatching: 0

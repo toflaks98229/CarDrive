@@ -167,12 +167,6 @@ PRESETS = {
     "Crane": dict(bays=1, tiers=1, upper=0.0, fill=0.3, crane=True, weight=3, busy=1.8,
                  levels=(2,)),
 
-    # 무너진 구간. 캡슐은 뜯겨 나갔는데 <b>골조는 서 있습니다</b> — 4번 항목
-    # (골조가 담는 것보다 오래 산다)을 그림 하나로 말하는 자리입니다.
-    # 무너진 구간이므로 난간도 뜯겨 나갔습니다. 두 군데가 크게 비어 있습니다.
-    "Breach": dict(bays=1, tiers=4, upper=8.0, fill=0.16, breach=True, weight=2, levels=(1, 2),
-                   gaps=((1.0, -9.0, 13.0), (-1.0, 8.0, 11.0))),
-
     # 위를 직각으로 건너가는 두 번째 스파인. 한 줄이면 다리이고, 교차가 있어야 <b>망</b>입니다.
     "Overpass": dict(bays=2, tiers=0, upper=0.0, over=True, weight=2),
 
@@ -914,37 +908,6 @@ def crane(m, s, length, rng):
     m.box((inner * 0.30, -W * 0.26, deck + 0.09), (8.0, 8.0, 0.1), ROAD)
 
 
-def breach(m, s, length, rng):
-    """
-    무너진 구간입니다. <b>캡슐은 뜯겨 나갔는데 골조는 서 있습니다.</b>
-
-    Wilcoxon 의 4번(골조가 담는 것보다 오래 산다)을 그림 하나로 말하는 자리입니다.
-    골조를 부수면 그 말이 사라지므로 <b>뼈대는 손대지 않습니다</b> - 사라진 것은
-    꽂혀 있던 것뿐이고, 남은 것은 슬롯과 잘린 철근입니다.
-    """
-    if not s.get("breach"):
-        return
-
-    W = SOCKET["width"]
-    inner = length - SOCKET["inset"] * 2.0
-
-    # 잘린 철근. 캡슐이 있던 자리에서 삐져나옵니다.
-    for i in range(9):
-        x = -inner * 0.42 + i * (inner * 0.84 / 8.0)
-        for sign in (-1.0, 1.0):
-            if rng.random() < 0.45:
-                continue
-            m.box((x, sign * (W * 0.5 + 1.6), DECK_TOP + 3.0 + rng.random() * 12.0),
-                  (0.3, 2.4, 0.3), STEEL)
-
-    # 떨어진 판. 지면에 비스듬히 박혀 있습니다.
-    m.slope((-inner * 0.2, W * 0.5 + 12.0, 3.4), (14.0, 9.0, 1.6), 5.0, CONCRETE)
-    m.slope((-inner * 0.2, W * 0.5 + 12.0, 4.4), (14.0, 9.0, 0.4), 5.0, DARK)
-
-    # 임시 가림막. 사람이 아직 쓰고 있다는 표시입니다.
-    m.box((inner * 0.3, -(W * 0.5 + 2.2), DECK_TOP + 6.0), (7.0, 0.4, 9.0), STEEL)
-
-
 def overpass(m, s, length, rng):
     """
     위를 <b>직각으로</b> 건너가는 두 번째 스파인입니다.
@@ -1390,7 +1353,7 @@ def build(name):
     # 나머지는 <b>함수 하나가 파츠 하나</b>입니다. 각각이 한 자리에 뭉친 물건이라
     # 그대로 공간 덩어리가 됩니다 - 탱크, 가지, 경사로, 크레인, 수직 코어.
     for tag, fn in (("Industry", industry), ("Branch", branch), ("Citadel", citadel),
-                    ("Ramp", ramp), ("Crane", crane), ("Hang", hang), ("Breach", breach),
+                    ("Ramp", ramp), ("Crane", crane), ("Hang", hang),
                     ("Overpass", overpass), ("Spur", spur), ("Shaft", shaft),
                     ("Tower", tower)):
         m.group(tag)
