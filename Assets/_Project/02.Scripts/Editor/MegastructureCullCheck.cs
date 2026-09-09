@@ -350,6 +350,7 @@ public static class MegastructureCullCheck
 
         int wholeTris = 0, wholeDraws = 0;
         int splitTris = 0, splitDraws = 0;
+        int coreDraws = 0, presetDraws = 0;
 
         List<(string name, int tris)> heavy = new List<(string, int)>();
 
@@ -368,6 +369,7 @@ public static class MegastructureCullCheck
             int active = Active(group, eye, fov);
 
             int mine = 0;
+            int mineDraws = 0;
 
             foreach ((Bounds box, int tris, int draws, int level) in group.Parts)
             {
@@ -377,9 +379,15 @@ public static class MegastructureCullCheck
                 splitTris += tris;
                 splitDraws += draws;
                 mine += tris;
+                mineDraws += draws;
             }
 
             if (mine > 0) heavy.Add((group.Name, mine));
+
+            // <b>드로우가 어디서 나오는지</b>는 삼각형과 전혀 다른 그림입니다.
+            // 뼈대는 삼각형으로는 가볍지만 <b>베이마다 한 벌</b>이라 개수로 이깁니다.
+            if (group.Name.Contains("Core")) coreDraws += mineDraws;
+            else presetDraws += mineDraws;
         }
 
         float saved = wholeTris > 0 ? 100f * (1f - (float)splitTris / wholeTris) : 0f;
@@ -394,6 +402,9 @@ public static class MegastructureCullCheck
         Debug.Log($"  {eye.Name,-16} : 합쳤다면 {wholeTris,7:N0} 삼각형 / 드로우 {wholeDraws,3} · " +
                   $"지금 {splitTris,7:N0} / {splitDraws,3} · {saved,5:F1}% 덜 그림 · " +
                   $"무거운 것 {worst}{(lods.Length > 0 ? " · " + lods : "")}");
+
+        Debug.Log($"  {"",-16}   드로우 출처 — 뼈대 {coreDraws,3} · 프리셋 {presetDraws,3}" +
+                  $" (뼈대가 {(splitDraws > 0 ? 100f * coreDraws / splitDraws : 0f):F0}%)");
     }
 
     /// <summary>

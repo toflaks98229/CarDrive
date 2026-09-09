@@ -717,8 +717,11 @@ def branch(m, s, length, rng):
     m.box((0.0, side * (W * 0.5 + reach), (DECK_Z - SOCKET["burial"]) * 0.5),
           (14.0, 12.0, DECK_Z + SOCKET["burial"]), CONCRETE, taper=0.22)
 
+          # 어두운 것을 강철로. <b>이 한 상자 때문에 슬롯이 하나 더 생기고</b>
+          # 그 슬롯이 곧 드로우 하나입니다 - 12 삼각형이 파츠 전체 삼각형의
+          # 0.5~1.4% 인데 제출 비용은 다른 슬롯과 똑같습니다.
     m.box((0.0, side * (W * 0.5 + reach * 0.5), DECK_TOP + 0.1),
-          (14.0, reach, 0.2), DARK)
+          (14.0, reach, 0.2), STEEL)
 
 
 def ramp(m, s, length, rng):
@@ -963,8 +966,11 @@ def spur(m, s, length, rng):
         m.box((-7.0 + i * 3.5, side * (W * 0.5 + reach + 0.8),
                DECK_Z + SOCKET["deck"] + 0.3), (0.3, 1.8, 0.3), STEEL)
 
+          # 어두운 것을 강철로. <b>이 한 상자 때문에 슬롯이 하나 더 생기고</b>
+          # 그 슬롯이 곧 드로우 하나입니다 - 12 삼각형이 파츠 전체 삼각형의
+          # 0.5~1.4% 인데 제출 비용은 다른 슬롯과 똑같습니다.
     m.box((0.0, side * (W * 0.5 + reach - 0.4), DECK_Z + SOCKET["deck"] + 0.9),
-          (18.0, 0.8, 1.8), DARK)
+          (18.0, 0.8, 1.8), STEEL)
 
 
 def shaft(m, s, length, rng):
@@ -1287,7 +1293,10 @@ def citadel(m, s, length, rng, coarse=False):
 
     # 꼭대기 띠도 마찬가지입니다. top + 0.9 에 두면 밑면이 top 에 떨어져 그 위에
     # 선 코어들의 밑면과 겹칩니다.
-    m.box((0.0, 0.0, top + 1.4), (peak_w + 2.0, peak_d + 2.0, 1.8), DARK)
+    # 어두운 것을 강철로. <b>이 한 상자 때문에 슬롯이 하나 더 생기고</b>
+    # 그 슬롯이 곧 드로우 하나입니다 - 12 삼각형이 파츠 전체 삼각형의
+    # 0.5~1.4% 인데 제출 비용은 다른 슬롯과 똑같습니다.
+    m.box((0.0, 0.0, top + 1.4), (peak_w + 2.0, peak_d + 2.0, 1.8), STEEL)
 
 
 # --- Build ------------------------------------------------------------------
