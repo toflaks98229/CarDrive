@@ -293,8 +293,7 @@ namespace CarDrive.Systems
 
             GUI.Label(new Rect(x, y, panelWidth, lineHeight),
                 "구름 " + weather.CloudCover.ToString("F2")
-                + "  비 " + weather.RainIntensity.ToString("F2")
-                + "  안개 " + weather.FogDensity.ToString("F2"), labelStyle);
+                + "  비 " + weather.RainIntensity.ToString("F2"), labelStyle);
             y += lineHeight;
 
             GUI.Label(new Rect(x, y, panelWidth, lineHeight),

@@ -34,18 +34,6 @@ namespace CarDrive.Systems
     {
         // --- Constants ---
 
-        /// <summary>
-        /// 지수 제곱 안개가 <b>거의 다 덮는</b> 지점을 정하는 계수입니다.
-        ///
-        /// 가려짐은 1 - exp(-(거리 × 짙기)²) 이고, (거리 × 짙기)가 1.73 이면 약 95% 입니다.
-        /// 100% 를 기다리면 짙기가 지나치게 올라가 가까운 곳까지 뿌예집니다.
-        ///
-        /// <b>1.73 에서 1.5 로 낮췄습니다.</b> 시야 끝에서 89% 를 덮어 그리는 거리를 가리는 일은
-        /// 그대로 하면서, 중간 거리의 뿌연 기를 덜어 냅니다. 1.73 일 때는 100m 앞 나무가
-        /// 이미 안개색에 씻겨 숲이 평평한 판처럼 보였습니다. 시야 거리와 나무 수는 그대로라
-        /// 그리기 비용은 변하지 않습니다 — 짙기 값만 달라집니다.
-        /// </summary>
-        private const float FogReachFactor = 1.5f;
 
         /// <summary>나무 디더가 <b>시작</b>되는 지점입니다. 시야 거리에 대한 비율입니다.</summary>
         private const float FadeStartRatio = 0.70f;
@@ -104,19 +92,7 @@ namespace CarDrive.Systems
         /// </summary>
         private const float MinWeatherVisibility = 0.35f;
 
-        /// <summary>
-        /// 날씨 안개 요청(짙기)을 <b>끝 거리를 당기는 정도</b>로 옮길 때 쓰는 상한입니다.
-        /// <see cref="WeatherRig"/> 의 maxFogDensity 와 같아야 합니다.
-        ///
-        /// <b>왜 환산이 필요한가.</b> 안개를 Linear 로 바꾸면 <c>RenderSettings.fogDensity</c> 는
-        /// 아예 무시됩니다. 날씨가 계산한 안개를 그대로 두면 <b>계산만 하고 버려집니다</b> —
-        /// WeatherRig 가 예전에 정확히 그 상태였고, 그래서 안개 날씨와 맑음이 화면에서
-        /// 구분되지 않았습니다. 같은 실수를 되풀이하지 않으려고 짙기를 거리로 옮깁니다.
-        /// </summary>
-        private const float MaxWeatherFogDensity = 0.05f;
 
-        /// <summary>날씨가 가장 짙을 때 안개가 끝나는 거리(m)입니다.</summary>
-        private const float ThickestWeatherFogEnd = 45f;
 
         // --- Public Types ---
 
@@ -180,21 +156,9 @@ namespace CarDrive.Systems
             /// <summary>안개가 거의 다 덮는 거리(m)입니다. 시야 거리와 같습니다.</summary>
             public readonly float View;
 
-            /// <summary>그 거리에서 95% 를 덮는 지수 제곱 안개의 짙기입니다.</summary>
-            public readonly float FogDensity;
-
-            /// <summary>
-            /// 안개가 <b>시작되는</b> 거리(m)입니다. 이보다 가까우면 완전히 맑습니다.
-            /// 나무가 디더로 녹기 시작하는 자리에 맞춥니다 — 그 앞에는 가릴 것이 없습니다.
-            /// </summary>
-            public readonly float FogStart;
-
-            /// <summary>
-            /// 안개가 <b>완전히 덮는</b> 거리(m)입니다.
-            /// 지형 타일이 아직 안 켜져 지면이 끝나 있을 수 있는 자리라, 여기서는 100% 여야 합니다.
-            /// </summary>
-            public readonly float FogEnd;
-
+    
+    
+    
             /// <summary>지형의 나무를 잘라내는 거리(<c>Terrain.treeDistance</c>)입니다.</summary>
             public readonly float TreeCut;
 
@@ -239,11 +203,10 @@ namespace CarDrive.Systems
             /// <param name="baseView">기준 시야 거리(m). 보통 씬의 카메라 파클립입니다.</param>
             /// <param name="baseActive">기준 타일 활성 거리(m)</param>
             /// <param name="baseInstant">기준 즉시 활성 거리(m)</param>
-            /// <param name="weatherFog">날씨가 요청한 안개 짙기. 0이면 요청 없음입니다.</param>
             /// <param name="weatherView">날씨가 요청한 시야 배율(0~1). 1이면 요청 없음입니다.</param>
             /// <param name="grassSpeedScale">속도 단계가 풀 거리에 곱할 배율(0~1). 1이면 요청 없음입니다.</param>
             public Ladder(CarDriveWorldSettings settings, float baseView, float baseActive, float baseInstant,
-                          float weatherFog, float weatherView, float grassSpeedScale)
+                          float weatherView, float grassSpeedScale)
             {
                 Scale = Mathf.Clamp(settings.rangeScale, 0.05f, 1f);
 
@@ -252,7 +215,6 @@ namespace CarDrive.Systems
                 View = Mathf.Max(20f, baseView * Scale * Mathf.Clamp(weatherView, MinWeatherVisibility, 1f));
 
                 // 시야 거리를 덮는 데 필요한 짙기가 바닥이고, 날씨가 더 짙게 하려 하면 그것을 씁니다.
-                FogDensity = Mathf.Max(FogReachFactor / View, weatherFog);
 
                 // 속도 단계까지 <b>여기서</b> 곱합니다. 밖에서 곱하면 페이드 창이 이 값을
                 // 따라올 수 없고, 그것이 정확히 풀이 통짜로 잘리던 이유였습니다.
@@ -307,20 +269,6 @@ namespace CarDrive.Systems
                 // 그래서 나무가 녹기 시작하는 자리에서 열고, 지형 타일이 켜지는 자리에서 닫습니다.
                 // 둘 다 <b>사다리에서 유도합니다</b> — 상수로 박으면 날씨나 품질로 거리가 줄 때
                 // 안개만 제자리에 남아 아무것도 없는 허공을 가립니다.
-                float fogOpen = FadeStart;
-
-                // 닫는 자리는 <b>지형이 끝날 수 있는 가장 가까운 거리</b>입니다.
-                // 나무가 다 녹는 자리보다도 멀어야 하므로 둘 중 먼 쪽을 씁니다 —
-                // 날씨가 시야를 좁히면 FadeEnd 가 TerrainActive 보다 앞으로 오기 때문입니다.
-                float fogShut = Mathf.Max(TerrainActive, FadeEnd / 0.9f);
-
-                // 날씨 안개는 짙기로 옵니다. Linear 는 짙기를 안 보므로 <b>끝 거리를 당기는</b>
-                // 것으로 옮깁니다. 안 그러면 날씨가 계산한 안개가 통째로 버려집니다.
-                float weatherPull = Mathf.Clamp01(weatherFog / MaxWeatherFogDensity);
-                fogShut = Mathf.Lerp(fogShut, Mathf.Min(fogShut, ThickestWeatherFogEnd), weatherPull);
-
-                FogStart = Mathf.Min(fogOpen, fogShut * 0.5f);
-                FogEnd = fogShut;
 
                 // <b>꺼지지 않고 남아 있는</b> 타일의 먼 쪽 모서리까지 담아야 합니다.
                 // 여기에 TerrainActive 를 쓰면 히스테리시스 구간의 타일 뒤쪽이 잘려 하늘이 뚫립니다.
@@ -345,7 +293,6 @@ namespace CarDrive.Systems
         /// <b>요청이지 명령이 아닙니다.</b> 시야 거리를 덮는 데 필요한 짙기가 이보다 크면
         /// 그쪽이 이깁니다. 안개가 시야보다 옅으면 지형이 끝나는 자리가 그대로 보이기 때문입니다.
         /// </summary>
-        private static float weatherFogDensity;
 
         /// <summary>날씨가 요청한 시야 배율입니다. 1이면 요청이 없다는 뜻입니다.</summary>
         private static float weatherVisibility = 1f;
@@ -374,7 +321,6 @@ namespace CarDrive.Systems
                     baseView > 0f ? baseView : FallbackView,
                     baseActive > 0f ? baseActive : FallbackActive,
                     baseInstant > 0f ? baseInstant : FallbackActive,
-                    weatherFogDensity,
                     weatherVisibility,
                     grassSpeedScale);
             }
@@ -409,8 +355,8 @@ namespace CarDrive.Systems
         /// <summary>
         /// 날씨가 시야에 미칠 영향을 <b>요청합니다.</b> 매 프레임 불러도 됩니다.
         ///
-        /// <b>왜 요청인가.</b> 예전에는 <see cref="WeatherRig"/>가 <c>RenderSettings.fog*</c>와
-        /// <c>camera.farClipPlane</c>을 <b>직접</b> 썼습니다. 그런데 같은 값을
+        /// <b>왜 요청인가.</b> 예전에는 <see cref="WeatherRig"/>가 시야 거리를
+        /// <b>직접</b> 썼습니다. 그런데 같은 값을
         /// <see cref="ViewRangeScaler"/>도 매 프레임 썼고, 실행 순서가 각각 0과 200이라
         /// <b>늦게 도는 쪽이 언제나 이겼습니다.</b> 그래서 날씨의 시야 축소는 한 프레임도
         /// 화면에 남지 못했고, 그 사실이 어디에도 드러나지 않았습니다.
@@ -419,11 +365,9 @@ namespace CarDrive.Systems
         /// 날씨는 값을 여기에 맡기고, 두 요구의 조정은 <see cref="Ladder"/>의 읽을 수 있는
         /// 두 줄이 합니다. 순서를 다투던 것이 계산 한 줄로 바뀌었습니다.
         /// </summary>
-        /// <param name="fogDensity">날씨가 원하는 안개 짙기. 0이면 요청하지 않습니다.</param>
         /// <param name="visibility">날씨가 원하는 시야 배율(0~1). 1이면 요청하지 않습니다.</param>
-        public static void ReportWeather(float fogDensity, float visibility)
+        public static void ReportWeather(float visibility)
         {
-            weatherFogDensity = Mathf.Max(0f, fogDensity);
             weatherVisibility = Mathf.Clamp(visibility, 0f, 1f);
         }
 
@@ -453,7 +397,6 @@ namespace CarDrive.Systems
         /// </summary>
         public static void ClearWeather()
         {
-            weatherFogDensity = 0f;
             weatherVisibility = 1f;
         }
 
@@ -469,7 +412,6 @@ namespace CarDrive.Systems
             baseView = -1f;
             baseActive = -1f;
             baseInstant = -1f;
-            weatherFogDensity = 0f;
             weatherVisibility = 1f;
             grassSpeedScale = 1f;
         }

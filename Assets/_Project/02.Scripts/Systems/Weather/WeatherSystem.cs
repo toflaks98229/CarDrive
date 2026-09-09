@@ -162,7 +162,6 @@ namespace CarDrive.Systems
         public float RainIntensity { get { return _blender.RainIntensity; } }
 
         /// <summary>안개의 짙기(0~1)입니다.</summary>
-        public float FogDensity { get { return _blender.FogDensity; } }
 
         /// <summary>바람의 세기(0~1)입니다.</summary>
         public float WindStrength { get { return _blender.WindStrength; } }

@@ -42,8 +42,6 @@ public static class SceneLookCapture
     /// FogEnd = TerrainActive = max(340, 400) x 0.7 = 280m.
     /// (짙기가 아닙니다. 안개를 지수제곱에서 Linear 로 바꿨습니다.)
     /// </summary>
-    private const float RuntimeFogStart = 166.6f;
-    private const float RuntimeFogEnd = 280f;
 
     /// <summary>원하는 밝기를 그대로 돌려주는 가짜 시계입니다. 편집 중에는 진짜 시계가 없습니다.</summary>
     private sealed class FixedClock : IGameClock
@@ -166,10 +164,6 @@ public static class SceneLookCapture
             if (chosen != null) RenderSettings.skybox = chosen;
 
             // ViewRangeScaler 가 하는 일: 지수제곱 안개. 이건 SkyController 소관이 아닙니다.
-            RenderSettings.fog = true;
-            RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogStartDistance = RuntimeFogStart;
-            RenderSettings.fogEndDistance = RuntimeFogEnd;
 
             // 운전석 시점. 실제로 플레이어가 보는 화면이다.
             Texture2D shot = Grab(camera, target);

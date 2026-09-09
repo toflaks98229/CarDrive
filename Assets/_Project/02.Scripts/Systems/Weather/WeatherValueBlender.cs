@@ -25,7 +25,6 @@ namespace CarDrive.Systems
         public float RainIntensity { get; private set; }
 
         /// <summary>안개의 짙기(0~1)입니다.</summary>
-        public float FogDensity { get; private set; }
 
         /// <summary>바람의 세기(0~1)입니다.</summary>
         public float WindStrength { get; private set; }
@@ -115,7 +114,6 @@ namespace CarDrive.Systems
             CloudCover = Mathf.Lerp(from.cloudCover * fromIntensity, to.cloudCover * toIntensity, cloudT);
             Darkness = Mathf.Lerp(from.darkness * fromIntensity, to.darkness * toIntensity, cloudT);
             WindStrength = Mathf.Lerp(from.windStrength * fromIntensity, to.windStrength * toIntensity, cloudT);
-            FogDensity = Mathf.Lerp(from.fogDensity * fromIntensity, to.fogDensity * toIntensity, midT);
             RainIntensity = Mathf.Lerp(from.rainIntensity * fromIntensity, to.rainIntensity * toIntensity, rainT);
         }
 

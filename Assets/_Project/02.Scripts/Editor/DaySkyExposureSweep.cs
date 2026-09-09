@@ -45,8 +45,6 @@ public static class DaySkyExposureSweep
     /// 지금 사다리 값: FadeStart = 340 x 0.7 x 0.70 = 166.6m,
     /// TerrainActive = max(340, 400) x 0.7 = 280m.
     /// </summary>
-    private const float RuntimeFogStart = 166.6f;
-    private const float RuntimeFogEnd = 280f;
 
     /// <summary>훑어 볼 노출 값들입니다. 지금 값은 1.1 입니다.</summary>
     private static readonly float[] Exposures = { 1.1f, 0.85f, 0.7f, 0.55f, 0.45f, 0.35f };
@@ -132,10 +130,6 @@ public static class DaySkyExposureSweep
             Material chosen = activeSkyField.GetValue(sky) as Material;
             if (chosen != null) RenderSettings.skybox = chosen;
 
-            RenderSettings.fog = true;
-            RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogStartDistance = RuntimeFogStart;
-            RenderSettings.fogEndDistance = RuntimeFogEnd;
 
             Texture2D shot = Grab(camera, target);
             string name = "exp" + Exposures[i].ToString("0.00", CultureInfo.InvariantCulture);

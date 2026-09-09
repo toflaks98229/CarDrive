@@ -177,7 +177,7 @@ public static class MegastructureLookCapture
                 // 왔다가 가장자리로 갑니다.
                 //
                 // 대상은 <b>마을 집</b>입니다 - 메가스트럭처는 안개를 덜 먹게 해
-                // 두었으므로(_FogScale 0.55) 차이가 가려집니다.
+                // 두었으므로 차이가 가려집니다.
                 // <b>이름순으로 고릅니다.</b> FirstOrDefault 로 집었더니 실행마다
                 // 다른 집이 걸려 카메라 자리가 달라졌고, 그러면 두 실행을 비교할 수
                 // 없습니다. 카메라를 거울로 집던 것과 같은 함정입니다.
@@ -201,15 +201,17 @@ public static class MegastructureLookCapture
                     Vector3 turned = Quaternion.Euler(0f, 40f, 0f) * straight;
 
                     // <b>숫자로도 남깁니다.</b> 그림은 "달라 보인다" 까지만 말합니다.
+                    //
+                    // 원래 이 두 장은 <b>안개가 시선 각도에 따라 달라지는지</b>를
+                    // 보는 검사였습니다. 포그를 걷어낸 지금은 그 검사가 뜻이
+                    // 없어졌지만, <b>같은 자리에서 고개만 돌린 두 장</b>은 거리에
+                    // 따른 다른 변화(디더 페이드·지형 경계·컬링)를 잡는 데 그대로
+                    // 쓸모가 있어 남깁니다.
                     float radial = Vector3.Distance(eye, mark);
                     float planar = Vector3.Dot(mark - eye, turned);
-                    float start = RenderSettings.fogStartDistance;
-                    float end = RenderSettings.fogEndDistance;
 
-                    Debug.Log($"  안개 대상 {house.name} · 거리 {radial:F0} m · " +
-                              $"40° 틀었을 때 깊이 {planar:F0} m · 안개 {start:F0}~{end:F0} m · " +
-                              $"맑기 방사 {Mathf.Clamp01((end - radial) / (end - start)):F3} · " +
-                              $"깊이 {Mathf.Clamp01((end - planar) / (end - start)):F3}");
+                    Debug.Log($"  각도 대상 {house.name} · 거리 {radial:F0} m · " +
+                              $"40° 틀었을 때 깊이 {planar:F0} m");
 
                     Shoot(camera, target, eye, straight, "angle_center");
                     Shoot(camera, target, eye, turned, "angle_edge");
@@ -414,10 +416,6 @@ public static class MegastructureLookCapture
         // 에디터에서 부르면 본 카메라의 파클립이 482 로 남습니다.
         float wasFar = main != null ? main.farClipPlane : 0f;
         float[] wasCull = main != null ? main.layerCullDistances : null;
-        bool wasFog = RenderSettings.fog;
-        FogMode wasFogMode = RenderSettings.fogMode;
-        float wasFogStart = RenderSettings.fogStartDistance;
-        float wasFogEnd = RenderSettings.fogEndDistance;
 
         sun.transform.rotation = Quaternion.Euler(SunAngleDegrees, 170f, 0f);
         sun.intensity = 1.25f * Daylight;
@@ -435,10 +433,6 @@ public static class MegastructureLookCapture
 
         ViewDistances.Ladder ladder = ViewDistances.Current;
 
-        RenderSettings.fog = true;
-        RenderSettings.fogMode = FogMode.Linear;
-        RenderSettings.fogStartDistance = ladder.FogStart;
-        RenderSettings.fogEndDistance = ladder.FogEnd;
 
         if (main != null)
         {
@@ -461,8 +455,7 @@ public static class MegastructureLookCapture
             main.layerCullDistances = cull;
         }
 
-        Debug.Log($"MegastructureLookCapture: 사다리 — 안개 {ladder.FogStart:F0} ~ " +
-                  $"{ladder.FogEnd:F0} m · 파클립 {ladder.FarClip:F0} m · " +
+        Debug.Log($"MegastructureLookCapture: 사다리 — 파클립 {ladder.FarClip:F0} m · " +
                   $"나무 페이드 {ladder.FadeStart:F0} ~ {ladder.FadeEnd:F0} m · " +
                   $"터레인 {ladder.TerrainActive:F0} m · " +
                   $"랜드마크 사거리 {(main != null ? main.farClipPlane : 0f):F0} m");
@@ -484,10 +477,6 @@ public static class MegastructureLookCapture
                 main.layerCullDistances = wasCull;
             }
 
-            RenderSettings.fog = wasFog;
-            RenderSettings.fogMode = wasFogMode;
-            RenderSettings.fogStartDistance = wasFogStart;
-            RenderSettings.fogEndDistance = wasFogEnd;
 
             if (dayClone != null) UnityEngine.Object.DestroyImmediate(dayClone);
             if (nightClone != null) UnityEngine.Object.DestroyImmediate(nightClone);

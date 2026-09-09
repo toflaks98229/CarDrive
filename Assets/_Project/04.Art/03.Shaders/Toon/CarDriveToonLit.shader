@@ -26,8 +26,6 @@ Shader "CarDrive/Toon Lit"
         //
         // 그래서 안개를 전역으로 늘리는 대신(늘리면 감추려던 것이 드러납니다) 이
         // 물체만 덜 먹게 합니다.
-        _FogScale ("안개 먹는 정도 (1이 보통)", Range(0, 1)) = 1
-        _FogReach ("안개가 닫히는 거리 배수 (1이 보통)", Range(1, 12)) = 1
         _BaseColor ("바탕색", Color) = (1, 1, 1, 1)
         [Toggle(_GRAIN_ON)] _UseGrain ("바탕 텍스처를 결로 쓰기", Float) = 0
         [HDR] _BaseMapGain ("결 이득 (맵 평균을 1로 맞춤)", Color) = (1, 1, 1, 1)
@@ -134,8 +132,6 @@ Shader "CarDrive/Toon Lit"
 
         CBUFFER_START(UnityPerMaterial)
             float4 _BaseMap_ST;
-            half   _FogScale;
-            half   _FogReach;
             half4  _BaseColor;
             half4  _BaseMapGain;
             half   _BaseMapStrength;
@@ -309,63 +305,6 @@ Shader "CarDrive/Toon Lit"
             return p;
         }
         
-        /// <summary>
-        /// 안개를 <b>카메라에서의 실제 거리</b>로 잽니다.
-        ///
-        /// URP 기본은 <c>positionCS.z</c>, 곧 <b>카메라가 보는 방향으로의 깊이</b>를
-        /// 씁니다. 그러면 같은 자리에 있는 건물이 <b>고개를 돌리는 것만으로</b>
-        /// 나타났다 사라집니다 - 330 m 앞의 건물을 40° 옆에 두면 깊이가 253 m 라
-        /// 안개가 닫히는 257 m 안쪽이어서 보이고, 정면으로 돌리면 330 m 가 되어
-        /// 통째로 먹힙니다. 각도만 바뀌었는데 건물이 사라집니다.
-        ///
-        /// 디더 페이드는 이미 방사 거리를 씁니다. 둘이 다른 자를 쓰고 있었습니다.
-        ///
-        /// URP 의 <c>ComputeFogFactorZ0ToFar</c> 와 같은 식이고 넣는 값만 바꿉니다.
-        /// 방사 거리는 늘 깊이보다 크거나 같으므로 <b>안개는 더 짙어질 뿐</b>입니다 -
-        /// 안개가 감추던 것(나무 팝·지형 경계)이 드러날 걱정은 없습니다.
-        ///
-        /// <b>이 블록의 맨 끝에 있어야 합니다.</b> 인클루드 사이에 끼워 넣었더니
-        /// 조건부 블록 안에 들어가 어떤 변형에서는 정의되지 않았습니다.
-        /// </summary>
-        // <b>안개는 방사 거리로 잽니다.</b> URP 기본은 <c>positionCS.z</c>(평면 깊이)라
-        // 같은 건물이 화면 가운데 있을 때와 가장자리에 있을 때 안개를 다르게 먹습니다.
-        //
-        // <c>_FogReach</c> 는 안개가 <b>닫히는 거리</b>를 늘립니다. <c>_FogScale</c> 과는
-        // 다른 물건입니다 - 그쪽은 안개의 <b>세기</b>를 줄이므로 아무리 멀어도 제
-        // 색이 남아, 랜드마크가 2 km 밖에서도 또렷하게 서 있었습니다. 크기가 큰
-        // 것은 <b>더 멀리서 사라져야</b> 하는 것이지 <b>안 사라져야</b> 하는 것이
-        // 아닙니다. 거리를 나눠 두면 안개가 제대로 닫히되 그 자리가 멀어집니다.
-        //
-        // ⚠ 이것이 파클립을 지켜 주기도 합니다. 평면 깊이는 언제나 방사 거리
-        // 이하이므로, 안개가 방사 거리로 완전히 닫히면 <b>잘리는 자리는 반드시
-        // 안개 안</b>입니다 - 랜드마크 사거리를 안개가 닫히는 거리보다 멀게만
-        // 두면 잘린 단면이 드러날 수 없습니다.
-        // ⚠ <b>안개는 화소마다 재야 합니다.</b> 원래 꼭짓점에서 재어 보간했는데,
-        // 이 세계의 면은 데크 밑면처럼 <b>100 m 가 넘는 판 한 장</b>입니다. 머리
-        // 바로 위 39 m 인 자리가 <b>먼 모서리의 안개값</b>을 받아, 천장만 크림색으로
-        // 떠서 스카이맵의 어두운 천장과 나란히 놓이면 대번에 어긋나 보였습니다.
-        // (안개는 거리에 선형이 아니라 saturate 가 걸린 곡선이라, 큰 삼각형에서
-        // 선형 보간은 그냥 틀린 값입니다.)
-        //
-        // 화소마다 length() 하나가 더 늘지만, 이 프로젝트는 메인 스레드 바운드이고
-        // 렌더 스레드가 18~26% 라 감당할 자리가 있습니다.
-        half CarDriveFogFactor(float3 positionWS)
-        {
-            float d = length(GetCameraPositionWS() - positionWS) / max(_FogReach, 1.0h);
-
-            #if defined(FOG_LINEAR)
-                return half(saturate(d * unity_FogParams.z + unity_FogParams.w));
-            #elif defined(FOG_EXP) || defined(FOG_EXP2)
-                return half(unity_FogParams.x * d);
-            #else
-                return half(0.0);
-            #endif
-        }
-
-        half CarDriveFog(float3 positionWS)
-        {
-            return lerp(1.0h, CarDriveFogFactor(positionWS), _FogScale);
-        }
 
 ENDHLSL
 
@@ -380,7 +319,6 @@ ENDHLSL
             #pragma vertex vert
             #pragma fragment frag
             #pragma target 3.0
-            #pragma multi_compile_fog
 
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
             #pragma multi_compile_fragment _ _SHADOWS_SOFT
@@ -495,7 +433,6 @@ ENDHLSL
                 // <b>안개보다는 앞입니다.</b> 멀어지는 미등은 안개에 묻혀야 거리가 읽힙니다.
                 color += _EmissionColor.rgb;
 
-                color = MixFog(color, CarDriveFog(input.positionWS));
                 return half4(color, baseSample.a * _BaseColor.a);
             }
             ENDHLSL
@@ -514,7 +451,6 @@ ENDHLSL
             #pragma vertex outlineVert
             #pragma fragment outlineFrag
             #pragma target 3.0
-            #pragma multi_compile_fog
 
             #pragma shader_feature_local_fragment _DITHER_FADE
 
@@ -565,7 +501,7 @@ ENDHLSL
                 // 외곽선도 함께 성글어져야 합니다. 본체만 지우면 선만 남아 떠다닙니다.
                 CarDriveApplyDitherFade(input.positionWS, input.positionCS.xy);
 
-                half3 color = MixFog(_OutlineColor.rgb, CarDriveFog(input.positionWS));
+                half3 color = _OutlineColor.rgb;
                 return half4(color, 1);
             }
             ENDHLSL

@@ -39,15 +39,14 @@ namespace CarDrive.Tests
         /// 사다리 한 벌을 만듭니다. 씬의 기준값(파클립 340, 활성 360, 즉시 340)을 씁니다.
         /// </summary>
         /// <param name="scale">전체 거리 배율</param>
-        /// <param name="weatherFog">날씨가 요청한 안개 짙기</param>
         /// <param name="weatherView">날씨가 요청한 시야 배율</param>
         /// <param name="grassSpeedScale">속도에 따른 풀 거리 배율. 1이면 줄이지 않습니다.</param>
         /// <returns>계산된 사다리</returns>
-        private ViewDistances.Ladder Build(float scale, float weatherFog = 0f, float weatherView = 1f,
+        private ViewDistances.Ladder Build(float scale, float weatherView = 1f,
                                            float grassSpeedScale = 1f)
         {
             settings.rangeScale = scale;
-            return new ViewDistances.Ladder(settings, 340f, 360f, 340f, weatherFog, weatherView, grassSpeedScale);
+            return new ViewDistances.Ladder(settings, 340f, 360f, 340f, weatherView, grassSpeedScale);
         }
 
         /// <summary>
@@ -295,39 +294,6 @@ namespace CarDrive.Tests
             ViewDistances.Ladder l = Build(1f);
 
             Assert.AreEqual(55f, l.ShadowCasterMargin, 0.01f);
-        }
-
-        /// <summary>
-        /// 안개는 <b>어떤 경우에도</b> 맑은 날의 바닥값보다 옅어지지 않아야 합니다.
-        /// 날씨가 더 옅게 요청해도 그 요청이 이기면 지형이 끝나는 자리가 그대로 보입니다.
-        ///
-        /// <b>왜 숫자를 직접 적지 않는가.</b> 예전에는 <c>짙기 × 시야 &gt;= 1.7</c> 로 적어 두었는데,
-        /// 그 1.7 은 <c>FogReachFactor</c> 상수를 손으로 베낀 값이라 상수를 조정하는 순간
-        /// <b>의도는 그대로인데 테스트만 깨졌습니다.</b> 실제로 그렇게 한 번 깨졌습니다.
-        /// 이 테스트가 지키려던 것은 특정 숫자가 아니라 "날씨의 옅은 요청이 바닥을 밀어내지 못한다"
-        /// 는 규칙이므로, 맑은 날과 비교하는 쪽으로 바꿉니다. 상수를 바꿔도 규칙은 계속 지켜집니다.
-        /// </summary>
-        [Test]
-        public void 날씨가_옅게_요청해도_안개가_바닥값을_지킨다()
-        {
-            ViewDistances.Ladder clear = Build(1f);
-            ViewDistances.Ladder thin = Build(1f, weatherFog: 0.0001f);
-
-            Assert.AreEqual(clear.FogDensity, thin.FogDensity, 1e-6f,
-                "날씨의 옅은 안개 요청이 맑은 날의 최소 짙기를 밀어냈습니다.");
-        }
-
-        /// <summary>
-        /// 날씨가 더 짙게 요청하면 그쪽을 씁니다. 안개 날씨가 맑음과 같아 보이면 안 됩니다.
-        /// </summary>
-        [Test]
-        public void 날씨가_짙게_요청하면_그것을_쓴다()
-        {
-            ViewDistances.Ladder clear = Build(1f);
-            ViewDistances.Ladder foggy = Build(1f, weatherFog: clear.FogDensity * 3f);
-
-            Assert.Greater(foggy.FogDensity, clear.FogDensity,
-                "날씨의 짙은 안개 요청이 반영되지 않았습니다.");
         }
 
         /// <summary>

@@ -113,20 +113,7 @@ namespace CarDrive.Systems
         [Range(1f, 10f)]
         public float maxParticleScale = 5f;
 
-        /// <summary>
-        /// 켜면 날씨의 안개 짙기를 시야 사다리(<see cref="ViewDistances"/>)에 요청합니다.
-        /// <c>RenderSettings</c>에 실제로 쓰는 것은 <c>ViewRangeScaler</c> 한 곳입니다.
-        /// 끄면 안개는 시야 거리를 덮는 최소 짙기만 유지되어 날씨와 무관해집니다.
-        /// </summary>
-        [Header("안개")]
-        [Tooltip("체크하면 날씨의 안개 짙기를 시야 사다리(ViewDistances)에 요청합니다. " +
-                 "RenderSettings 에 실제로 쓰는 것은 ViewRangeScaler 한 곳입니다. " +
-                 "끄면 안개는 시야 거리를 덮는 최소 짙기만 유지되어 날씨와 무관해집니다.")]
-        public bool controlRenderFog = false;
 
-        /// <summary>날씨의 안개 짙기가 1일 때 요청할 안개 밀도입니다.</summary>
-        [Tooltip("FogDensity가 1일 때의 안개 밀도")]
-        public float maxFogDensity = 0.05f;
 
         // 안개 색 필드는 없앴습니다. SkyController가 시간대에 맞춰 정합니다.
 
@@ -219,14 +206,6 @@ namespace CarDrive.Systems
         /// <summary>마지막으로 적용한 시야 배율입니다. 값이 그대로면 다시 적용하지 않습니다.</summary>
         private float appliedVisibility = -1f;
 
-        /// <summary>
-        /// 이번 프레임에 날씨가 <b>요청한</b> 안개 짙기입니다. 0이면 요청 없음입니다.
-        ///
-        /// <c>controlRenderFog</c> 가 꺼져 있으면 계속 0이라 날씨가 안개에 관여하지 않습니다.
-        /// 켜면 <see cref="ViewDistances"/> 가 시야 거리를 덮는 데 필요한 짙기와 비교해
-        /// <b>더 짙은 쪽</b>을 씁니다.
-        /// </summary>
-        private float requestedFogDensity;
 
         /// <summary>
         /// 이번 프레임에 날씨가 <b>요청한</b> 시야 배율입니다. 1이면 요청 없음입니다.
@@ -326,7 +305,6 @@ namespace CarDrive.Systems
             if (weatherSystem == null) return;
 
             UpdateRain(weatherSystem.RainIntensity);
-            if (controlRenderFog) UpdateFog(weatherSystem.FogDensity);
             if (controlAmbient) UpdateAmbient(weatherSystem.Darkness);
             if (controlVisibility) UpdateVisibility(weatherSystem.VisibilityMultiplier);
 
@@ -336,7 +314,7 @@ namespace CarDrive.Systems
             // 계산 한 줄로 바꾼 자리입니다.
             //
             // 꺼져 있는 축은 중립값(0 · 1)이 그대로 넘어가 아무 영향도 주지 않습니다.
-            ViewDistances.ReportWeather(requestedFogDensity, requestedVisibility);
+            ViewDistances.ReportWeather(requestedVisibility);
         }
 
         // --- Private Methods ---
@@ -520,33 +498,6 @@ namespace CarDrive.Systems
             RenderSettings.ambientLight = baseAmbientColor * factor;
         }
 
-        /// <summary>
-        /// 원하는 안개 짙기를 <b>요청합니다.</b> 직접 쓰지 않습니다.
-        ///
-        /// <b>왜 바뀌었는가.</b> 예전에는 여기서 <c>RenderSettings.fog*</c>를 직접 썼습니다.
-        /// 그런데 같은 값을 <see cref="ViewRangeScaler"/>도 매 프레임 쓰고 있었고,
-        /// 실행 순서가 각각 0과 200이라 <b>이쪽이 언제나 졌습니다.</b>
-        /// 게다가 이 메서드는 <c>controlRenderFog</c>가 꺼져 있으면 아예 돌지 않아,
-        /// 날씨가 계산한 안개 수치가 <b>계산만 되고 버려지고</b> 있었습니다.
-        ///
-        /// 이제 값을 <see cref="ViewDistances"/>에 맡기고, 쓰는 일은 한 곳이 합니다.
-        /// 시야 거리를 덮는 데 필요한 짙기보다 옅게 요청하면 그쪽이 이깁니다 —
-        /// 안개가 시야보다 옅으면 지형이 끝나는 자리가 그대로 보이기 때문입니다.
-        /// </summary>
-        /// <param name="density">날씨가 정한 안개 짙기(0~1). maxFogDensity에 곱해집니다.</param>
-        private void UpdateFog(float density)
-        {
-            requestedFogDensity = maxFogDensity * density;
-
-            // 안개 '색'은 SkyController가 정합니다.
-            //
-            // 여기서 고정색을 쓰면 밤에도 밝은 회색 안개가 떠서, 밤하늘보다 안개가 밝은
-            // 이상한 그림이 됩니다. 안개는 먼 곳이 하늘에 녹아드는 현상이므로
-            // 지평선 색을 따라가야 합니다.
-            //
-            // 두 컴포넌트 모두 LateUpdate에서 도는데 실행 순서는 보장되지 않습니다.
-            // 그래서 <b>밀도는 날씨가, 색은 하늘이</b> 갖도록 나눴습니다.
-        }
 
         /// <summary>
         /// 날씨의 시야 배율에 맞춰 카메라 시야 거리와 헤드라이트 범위를 줄입니다.

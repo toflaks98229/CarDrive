@@ -101,7 +101,6 @@ Shader "CarDrive/LowPoly Grass"
             #pragma vertex vert
             #pragma fragment frag
             #pragma target 4.5
-            #pragma multi_compile_fog
             #pragma multi_compile_instancing
 
             // GPU 구동 경로. 이 변형에서만 아래 Setup 이 컴파일됩니다.
@@ -304,7 +303,6 @@ Shader "CarDrive/LowPoly Grass"
                 // 샘플됐고, 풀 한 포기의 몇 안 되는 정점 사이를 보간하니 사실상 그림자가
                 // 들어오지 않았습니다. 이제 재료를 넘기고 픽셀에서 빛을 계산합니다.
                 half3  albedo     : COLOR;
-                float  fogFactor  : TEXCOORD0;
                 float3 positionWS : TEXCOORD1;
                 float3 normalWS   : TEXCOORD2;
             };
@@ -416,7 +414,6 @@ Shader "CarDrive/LowPoly Grass"
                 positionWS.xz += sway * bend * bend * sink * (1.0 - pressed);
 
                 output.positionCS = TransformWorldToHClip(positionWS);
-                output.fogFactor = ComputeFogFactor(output.positionCS.z);
 
                 // --- 여기서부터 색 ---
 
@@ -498,7 +495,7 @@ Shader "CarDrive/LowPoly Grass"
                 float4 shadowCoord = TransformWorldToShadowCoord(input.positionWS);
                 half3 color = ToonShade(s, BuildGrassToonParams(), shadowCoord);
 
-                return half4(MixFog(color, input.fogFactor), 1);
+                return half4(color, 1);
             }
             ENDHLSL
         }

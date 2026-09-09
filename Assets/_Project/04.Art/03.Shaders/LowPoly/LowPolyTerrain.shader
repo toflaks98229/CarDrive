@@ -118,7 +118,6 @@ Shader "CarDrive/LowPoly Terrain"
             #pragma vertex vert
             #pragma fragment frag
             #pragma target 3.0
-            #pragma multi_compile_fog
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
             #pragma multi_compile_fragment _ _SHADOWS_SOFT
 
@@ -135,7 +134,6 @@ Shader "CarDrive/LowPoly Terrain"
                 float2 uv         : TEXCOORD0;
                 float3 positionWS : TEXCOORD1;
                 float3 normalWS   : TEXCOORD2;
-                float  fogFactor  : TEXCOORD3;
             };
 
             Varyings vert(Attributes input)
@@ -148,7 +146,6 @@ Shader "CarDrive/LowPoly Terrain"
                 output.positionWS = pos.positionWS;
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 output.uv = input.texcoord;
-                output.fogFactor = ComputeFogFactor(pos.positionCS.z);
 
                 return output;
             }
@@ -186,7 +183,7 @@ Shader "CarDrive/LowPoly Terrain"
                 half3 color = CozyShade(albedo, normalWS, shadowCoord,
                                         _ShadeSteps, _ShadowColor.rgb, _AmbientBoost);
 
-                color = MixFog(color, input.fogFactor);
+                color = color;
                 return half4(color, 1);
             }
             ENDHLSL

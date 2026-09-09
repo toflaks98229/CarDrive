@@ -110,15 +110,7 @@ public static class BrutalistTextureSetup
         /// <summary>발광색. 검으면 발광하지 않습니다.</summary>
         public readonly Color Glow;
 
-        /// <summary>안개를 먹는 정도(1 이 보통)입니다.</summary>
-        public readonly float FogScale;
 
-        /// <summary>
-        /// 안개가 <b>닫히는 거리</b>의 배수입니다. <see cref="FogScale"/> 과 다릅니다 —
-        /// 그쪽은 안개의 세기를 깎아 아무리 멀어도 제 색을 남기므로, 큰 것이
-        /// <b>영영 안 사라집니다.</b> 이쪽은 안개가 제대로 닫히되 그 자리가 멉니다.
-        /// </summary>
-        public readonly float FogReach;
 
         /// <summary>
         /// 결 한 장이 <b>몇 미터를 덮는가</b>의 역수입니다. 1 이면 1 m 마다 한 장.
@@ -143,57 +135,21 @@ public static class BrutalistTextureSetup
         public readonly float GrimeSpan;
 
         public Surface(string fbx, string asset, Color? value, string texture,
-                       Color glow = default, float fogScale = 1f, float tile = 1f,
-                       Color grime = default, float grimeSpan = 0f, float fogReach = 1f)
+                       Color glow = default, float tile = 1f,
+                       Color grime = default, float grimeSpan = 0f)
         {
-            FogReach = fogReach;
             Fbx = fbx;
             Asset = asset;
             Value = value;
             Texture = texture;
             Glow = glow;
-            FogScale = fogScale;
             Tile = tile;
             Grime = grime;
             GrimeSpan = grimeSpan;
         }
     }
 
-    /// <summary>
-    /// <b>메가스트럭처의 안개가 닫히는 거리</b>의 배수입니다.
-    ///
-    /// ⚠ 예전에는 안개의 <b>세기</b>를 깎았습니다(0.55, 그 다음 0.35). 그러면 아무리
-    /// 멀어도 제 색이 남으므로 <b>영영 사라지지 않습니다</b> — 랜드마크 사거리를
-    /// 2 km 로 늘리자 1.6 km 짜리 구조물이 끝까지 또렷하게 서서, 천장의 등이
-    /// 지평선까지 촘촘히 박힌 그림이 됐습니다. 큰 것은 <b>더 멀리서 사라져야</b>
-    /// 하는 것이지 안 사라져야 하는 것이 아닙니다.
-    ///
-    /// 지금은 거리를 나눕니다. 안개가 257 m 에서 닫히므로 3.5 배면 <b>900 m 에서
-    /// 완전히</b> 닫힙니다. 그 사이는 제대로 옅어집니다.
-    ///
-    /// 실측 사다리: 안개 128~257 m · 파클립 482 m · 나무 페이드 167~231 m ·
-    /// 터레인 252 m. 안개를 전역으로 늘리면 안개가 감추던 것이 드러나므로
-    /// 큰 구조물에만 이 배수를 줍니다.
-    /// </summary>
-    private const float MegaReach = 3.5f;
 
-    /// <summary>
-    /// <b>기둥의 안개가 닫히는 거리</b>의 배수입니다. 메가스트럭처보다 멉니다.
-    ///
-    /// 이유는 하늘입니다. 하늘을 덮은 천장은 스카이맵이고 그 안의 기둥들은 1~10 km
-    /// 밖인데도 어두운 실루엣으로 또렷합니다 — 파노라마의 연무가 600 m 에서 40 km
-    /// 에 걸쳐 아주 천천히 끼기 때문입니다. 씬 안개가 257 m 에서 닫히면 같은
-    /// 기둥인데 진짜 기하 쪽만 크림색으로 뭉개져, 하늘의 기둥은 검고 땅의 기둥은
-    /// 흰 이질감이 생깁니다.
-    ///
-    /// 5 배면 <b>1,285 m 에서</b> 닫힙니다. 세계가 1100 x 1200 m 이므로 어지간한
-    /// 거리에서는 살아 있고, 그 너머에서는 제대로 사라집니다.
-    ///
-    /// ⚠ <see cref="ViewRangeScaler"/> 의 랜드마크 사거리는 이 거리보다 <b>멀어야</b>
-    /// 합니다. 평면 깊이는 언제나 방사 거리 이하이므로, 안개가 방사 거리로 닫힌
-    /// 뒤에 잘리면 잘린 자리가 안 보입니다. 가까우면 지평선에 단면이 그어집니다.
-    /// </summary>
-    private const float ColumnReach = 5.0f;
 
     /// <summary>이 세계의 표면 전부입니다. 로봇도 건물도 방도 같은 콘크리트를 씁니다.</summary>
     public static readonly Surface[] Palette =
@@ -209,28 +165,28 @@ public static class BrutalistTextureSetup
         // 콘크리트 사진은 실제로 폭 2 m 남짓한 벽입니다. 0.5 로 깔면 그 크기로
         // 앉아, 거푸집 자국 하나가 곧 <b>사람 키의 절반</b>이 됩니다.
         new Surface("M_Mega_Concrete", "MegaConcrete", new Color(0.42f, 0.415f, 0.395f),
-                    PhotoConcrete, default, 1f, 0.5f,
-                    new Color(0.30f, 0.33f, 0.27f), 46f, MegaReach),
+                    PhotoConcrete, default, 0.5f,
+                    new Color(0.30f, 0.33f, 0.27f), 46f),
         new Surface("M_Mega_Steel", "MegaSteel", new Color(0.22f, 0.235f, 0.26f),
-                    PhotoMetal, default, 1f, 1f,
-                    new Color(0.17f, 0.14f, 0.11f), 34f, MegaReach),
+                    PhotoMetal, default, 1f,
+                    new Color(0.17f, 0.14f, 0.11f), 34f),
         new Surface("M_Mega_Dark", "MegaDark", new Color(0.052f, 0.058f, 0.064f),
-                    PhotoMetal, default, 1f, 1f, default, 0f, MegaReach),
+                    PhotoMetal, default),
         new Surface("M_Mega_Signal", "MegaSignal", new Color(0.86f, 0.36f, 0.09f),
-                    PhotoMetal, new Color(0.52f, 0.19f, 0.035f), 1f, 1f, default, 0f, MegaReach),
+                    PhotoMetal, new Color(0.52f, 0.19f, 0.035f)),
         // 아스팔트도 2 m. 차선 파선이 4 m 이므로 그 절반이 결의 단위가 됩니다.
         new Surface("M_Mega_Road", "MegaRoad", new Color(0.135f, 0.140f, 0.150f),
-                    PhotoAsphalt, default, 1f, 0.5f, default, 0f, MegaReach),
+                    PhotoAsphalt, default, 0.5f),
 
         // 대기권을 뚫는 기둥. 메가스트럭처와 <b>일부러 다른 값</b>을 씁니다 —
         // 콘크리트 0.66 은 안개를 먹기도 전에 이미 밝아, 하늘에 그려 둔 검은
         // 기둥들과 나란히 두면 다른 물건으로 보입니다.
         new Surface("M_Column_Concrete", "ColumnConcrete", new Color(0.30f, 0.30f, 0.29f),
-                    PhotoConcrete, default, 1f, 0.5f, default, 0f, ColumnReach),
+                    PhotoConcrete, default, 0.5f),
         new Surface("M_Column_Dark", "ColumnDark", new Color(0.105f, 0.108f, 0.115f),
-                    PhotoMetal, default, 1f, 1f, default, 0f, ColumnReach),
+                    PhotoMetal, default),
         new Surface("M_Column_Signal", "ColumnSignal", new Color(0.86f, 0.36f, 0.09f),
-                    PhotoMetal, new Color(0.52f, 0.19f, 0.035f), 1f, 1f, default, 0f, ColumnReach),
+                    PhotoMetal, new Color(0.52f, 0.19f, 0.035f)),
 
         // 빌려 쓰는 것. 색을 여기서 정하지 않습니다.
         new Surface("M_Rock", "RockLowPoly", null, null),
@@ -262,8 +218,6 @@ public static class BrutalistTextureSetup
         // 설계한 명도 그대로. 이득이 맵의 평균을 1 로 만들어 두므로 나눌 것이 없습니다.
         target.SetColor("_BaseColor", surface.Value.Value);
         target.SetColor("_Color", surface.Value.Value);
-        target.SetFloat("_FogScale", surface.FogScale);
-        target.SetFloat("_FogReach", surface.FogReach);
 
         // <b>발광은 키워드가 켜져야 합니다.</b> 색만 넣으면 조용히 무시됩니다.
         // 얼룩의 <b>색과 세기</b>는 여기서, <b>높이</b>는 구조물을 앉히는 쪽에서
@@ -368,8 +322,7 @@ public static class BrutalistTextureSetup
             wired++;
 
             Debug.Log($"BrutalistTextureSetup: {surface.Asset} ← {surface.Texture ?? "(결 없음)"} · " +
-                      $"이득 {gain.r:F2} · 세기 {Strength:F2} · 안개 {surface.FogScale:F2} " +
-                      $"· 닫히는 거리 x{surface.FogReach:F1}");
+                      $"이득 {gain.r:F2} · 세기 {Strength:F2}");
         }
 
         AssetDatabase.SaveAssets();

@@ -85,7 +85,6 @@ Shader "CarDrive/Toon Glass"
             #pragma vertex vert
             #pragma fragment frag
             #pragma target 3.0
-            #pragma multi_compile_fog
 
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
             #pragma multi_compile_fragment _ _SHADOWS_SOFT
@@ -124,7 +123,6 @@ Shader "CarDrive/Toon Glass"
                 float4 positionCS : SV_POSITION;
                 float3 positionWS : TEXCOORD0;
                 float3 normalWS   : TEXCOORD1;
-                float  fogFactor  : TEXCOORD2;
             };
 
             Varyings vert(Attributes input)
@@ -136,7 +134,6 @@ Shader "CarDrive/Toon Glass"
                 output.positionCS = pos.positionCS;
                 output.positionWS = pos.positionWS;
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
-                output.fogFactor = ComputeFogFactor(pos.positionCS.z);
 
                 return output;
             }
@@ -188,7 +185,7 @@ Shader "CarDrive/Toon Glass"
                 // 허공에 뜬 빛으로 보입니다.
                 half alpha = saturate(_BaseColor.a + fresnel * _FresnelOpacity);
 
-                color = MixFog(color, input.fogFactor);
+                color = color;
                 return half4(color, alpha);
             }
             ENDHLSL

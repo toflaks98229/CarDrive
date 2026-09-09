@@ -92,7 +92,6 @@ Shader "CarDrive/PSX Terrain"
             #pragma vertex vert
             #pragma fragment frag
             #pragma target 4.5
-            #pragma multi_compile_fog
 
             struct Attributes
             {
@@ -112,7 +111,6 @@ Shader "CarDrive/PSX Terrain"
                 float2 uvCorrect              : TEXCOORD1;
 
                 half3 lighting  : TEXCOORD2;
-                float fogFactor : TEXCOORD3;
             };
 
             Varyings vert(Attributes input)
@@ -133,7 +131,6 @@ Shader "CarDrive/PSX Terrain"
                 lit += SampleSH(normalWS) * _AmbientBoost;
 
                 output.lighting = lit;
-                output.fogFactor = ComputeFogFactor(output.positionCS.z);
 
                 return output;
             }
@@ -161,7 +158,7 @@ Shader "CarDrive/PSX Terrain"
                 float levels = max(_ColorLevels, 2.0);
                 color = floor(color * levels + 0.5) / levels;
 
-                color = MixFog(color, input.fogFactor);
+                color = color;
                 return half4(color, 1);
             }
             ENDHLSL
