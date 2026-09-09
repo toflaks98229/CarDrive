@@ -340,6 +340,15 @@ Shader "CarDrive/Toon Lit"
         // 이하이므로, 안개가 방사 거리로 완전히 닫히면 <b>잘리는 자리는 반드시
         // 안개 안</b>입니다 - 랜드마크 사거리를 안개가 닫히는 거리보다 멀게만
         // 두면 잘린 단면이 드러날 수 없습니다.
+        // ⚠ <b>안개는 화소마다 재야 합니다.</b> 원래 꼭짓점에서 재어 보간했는데,
+        // 이 세계의 면은 데크 밑면처럼 <b>100 m 가 넘는 판 한 장</b>입니다. 머리
+        // 바로 위 39 m 인 자리가 <b>먼 모서리의 안개값</b>을 받아, 천장만 크림색으로
+        // 떠서 스카이맵의 어두운 천장과 나란히 놓이면 대번에 어긋나 보였습니다.
+        // (안개는 거리에 선형이 아니라 saturate 가 걸린 곡선이라, 큰 삼각형에서
+        // 선형 보간은 그냥 틀린 값입니다.)
+        //
+        // 화소마다 length() 하나가 더 늘지만, 이 프로젝트는 메인 스레드 바운드이고
+        // 렌더 스레드가 18~26% 라 감당할 자리가 있습니다.
         half CarDriveFogFactor(float3 positionWS)
         {
             float d = length(GetCameraPositionWS() - positionWS) / max(_FogReach, 1.0h);
@@ -351,6 +360,11 @@ Shader "CarDrive/Toon Lit"
             #else
                 return half(0.0);
             #endif
+        }
+
+        half CarDriveFog(float3 positionWS)
+        {
+            return lerp(1.0h, CarDriveFogFactor(positionWS), _FogScale);
         }
 
 ENDHLSL
@@ -394,7 +408,6 @@ ENDHLSL
                 float2 uv         : TEXCOORD0;
                 float3 positionWS : TEXCOORD1;
                 float3 normalWS   : TEXCOORD2;
-                float  fogFactor  : TEXCOORD3;
             };
 
             Varyings vert(Attributes input)
@@ -407,8 +420,6 @@ ENDHLSL
                 output.positionWS = pos.positionWS;
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
-                // fogFactor 는 <b>1 이 맑음</b>입니다. 1 쪽으로 당기면 덜 먹습니다.
-                output.fogFactor = lerp(1.0, CarDriveFogFactor(pos.positionWS), _FogScale);
 
                 return output;
             }
@@ -484,7 +495,7 @@ ENDHLSL
                 // <b>안개보다는 앞입니다.</b> 멀어지는 미등은 안개에 묻혀야 거리가 읽힙니다.
                 color += _EmissionColor.rgb;
 
-                color = MixFog(color, input.fogFactor);
+                color = MixFog(color, CarDriveFog(input.positionWS));
                 return half4(color, baseSample.a * _BaseColor.a);
             }
             ENDHLSL
@@ -517,7 +528,6 @@ ENDHLSL
             {
                 float4 positionCS : SV_POSITION;
                 float3 positionWS : TEXCOORD1;
-                float  fogFactor  : TEXCOORD0;
             };
 
             OutlineVaryings outlineVert(OutlineAttributes input)
@@ -546,7 +556,6 @@ ENDHLSL
                 output.positionCS = TransformWorldToHClip(positionWS);
                 output.positionWS = positionWS;
                 // 외곽선도 같이 당깁니다. 본체만 당기면 멀리서 <b>윤곽만 뿌옇게</b> 남습니다.
-                output.fogFactor = lerp(1.0, CarDriveFogFactor(output.positionWS), _FogScale);
 
                 return output;
             }
@@ -556,7 +565,7 @@ ENDHLSL
                 // 외곽선도 함께 성글어져야 합니다. 본체만 지우면 선만 남아 떠다닙니다.
                 CarDriveApplyDitherFade(input.positionWS, input.positionCS.xy);
 
-                half3 color = MixFog(_OutlineColor.rgb, input.fogFactor);
+                half3 color = MixFog(_OutlineColor.rgb, CarDriveFog(input.positionWS));
                 return half4(color, 1);
             }
             ENDHLSL
