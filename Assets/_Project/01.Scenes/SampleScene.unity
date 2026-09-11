@@ -42183,6 +42183,37 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 610643070}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &614338782
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 689918192}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a9d629e554851c643afb907686aada53, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Gameplay::CarDrive.Gameplay.RobotAwareness
+  noticeRadius: 26
+  noticeAngle: 75
+  patience: 3.5
+  stuckSpeed: 0.25
+  blameRadius: 14
+  grudgeSeconds: 8
+  sightMask:
+    serializedVersion: 2
+    m_Bits: 2560
+  eyeHeight: 6
+  onNoticed:
+    m_PersistentCalls:
+      m_Calls: []
+  onProtested:
+    m_PersistentCalls:
+      m_Calls: []
+  onCalmed:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1001 &617673196
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -46459,8 +46490,18 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 7566892938161010536, guid: 6a3f39b5ca7fce9418fc1f8d76a5f6fa,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 614338782}
   m_SourcePrefab: {fileID: 100100000, guid: 6a3f39b5ca7fce9418fc1f8d76a5f6fa, type: 3}
+--- !u!1 &689918192 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7566892938161010536, guid: 6a3f39b5ca7fce9418fc1f8d76a5f6fa,
+    type: 3}
+  m_PrefabInstance: {fileID: 689918191}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &696221391
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -59705,6 +59746,10 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 1683276153}
+    - targetCorrespondingSourceObject: {fileID: 7585455745858112564, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1026892489}
   m_SourcePrefab: {fileID: 100100000, guid: 3a77bbadc2a8afb4d825b02083f6dc4b, type: 3}
 --- !u!1 &829240150 stripped
 GameObject:
@@ -76095,6 +76140,37 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 1024366215}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1026892489
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 829240150}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a9d629e554851c643afb907686aada53, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Gameplay::CarDrive.Gameplay.RobotAwareness
+  noticeRadius: 26
+  noticeAngle: 75
+  patience: 3.5
+  stuckSpeed: 0.25
+  blameRadius: 14
+  grudgeSeconds: 8
+  sightMask:
+    serializedVersion: 2
+    m_Bits: 2560
+  eyeHeight: 6
+  onNoticed:
+    m_PersistentCalls:
+      m_Calls: []
+  onProtested:
+    m_PersistentCalls:
+      m_Calls: []
+  onCalmed:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1001 &1027323382
 PrefabInstance:
   m_ObjectHideFlags: 0

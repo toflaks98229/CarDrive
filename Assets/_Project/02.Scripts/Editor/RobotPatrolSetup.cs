@@ -46,13 +46,33 @@ public static class RobotPatrolSetup
             made += Give(driver) ? 1 : 0;
         }
 
-        if (made > 0)
+        // ⚠ <b>지각은 둘 다 답니다.</b> 순찰기에게는 "길을 막았다" 를 말할 입이 되고,
+        // 파수꾼에게는 싸움 앞 단계가 됩니다 — 기획의 "지킴이와 순찰기에 필요합니다".
+        int eyes = 0;
+
+        foreach (RobotDriver driver in Object.FindObjectsByType<RobotDriver>(
+                     FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (driver.GetComponent<RobotAwareness>() != null) continue;
+
+            RobotAwareness aware = driver.gameObject.AddComponent<RobotAwareness>();
+            aware.sightMask = driver.groundMask;
+            EditorUtility.SetDirty(aware);
+            eyes++;
+
+            Debug.Log("PATROL 지각을 달았습니다 — " + driver.name);
+        }
+
+        // ⚠ 길과 눈은 <b>따로 셉니다.</b> 한 숫자로 합치면 길을 안 놓은 날에도
+        // "길을 놓았다" 고 말합니다.
+
+        if (made + eyes > 0)
         {
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
             EditorSceneManager.SaveOpenScenes();
         }
 
-        Debug.Log("PATROL 길을 놓은 로봇 " + made + " 마리");
+        Debug.Log("PATROL 길을 놓은 로봇 " + made + " 마리 · 지각을 단 로봇 " + eyes + " 마리");
         EditorApplication.Exit(0);
     }
 

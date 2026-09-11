@@ -91,6 +91,17 @@ namespace CarDrive.Gameplay
         /// <summary>지금 향하고 있는 자리의 번호입니다.</summary>
         public int StopIndex { get; private set; }
 
+        /// <summary>
+        /// 참이면 <b>길을 잠시 멈춥니다.</b>
+        ///
+        /// <see cref="RobotAwareness"/> 가 항의하는 동안 켭니다. 안 멈추면 항의하면서
+        /// 걸어가 "비켜 달라" 가 "밀고 지나간다" 가 됩니다.
+        ///
+        /// ⚠ <b>자리 번호와 쉬는 시간은 그대로 둡니다.</b> 퇴근과 달리 이것은 잠깐
+        /// 서는 것이므로, 풀리면 <b>가던 자리로 이어서</b> 갑니다.
+        /// </summary>
+        public bool Paused { get; set; }
+
         // --- Private Member Variables ---
 
         private IGameClock clock = NullGameClock.Instance;
@@ -151,6 +162,9 @@ namespace CarDrive.Gameplay
         {
             destination = here;
             OnDuty = IsOnDuty(hour);
+
+            // 잠시 멈춤. 자리도 쉬는 시간도 건드리지 않고 그 자리에 섭니다.
+            if (Paused) return false;
 
             if (!OnDuty)
             {
