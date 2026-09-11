@@ -73,6 +73,15 @@ namespace CarDrive.Systems
         public const int Items = 55;
 
         /// <summary>
+        /// 길가 등이 죽었는지 살았는지입니다.
+        ///
+        /// <b>아무 것에도 기대지 않습니다.</b> 등은 자리도 켜짐도 스스로 정하고,
+        /// 담기는 것은 죽었는가 하나뿐이라 순서가 어디든 결과가 같습니다.
+        /// 지갑 다음에 둔 것은 그저 <b>씬에 놓인 것들</b>보다 앞이라는 뜻입니다.
+        /// </summary>
+        public const int Lamps = 45;
+
+        /// <summary>
         /// 플레이어의 위치·체력·탑승 상태입니다. 차량이 제자리에 놓인 뒤에 옵니다.
         /// </summary>
         public const int Player = 60;

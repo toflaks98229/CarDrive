@@ -56,6 +56,17 @@ namespace CarDrive.Systems
         /// </summary>
         [Tooltip("월드·손·차에 있던 물건들. 놓인 것은 하루가 지나면 사라지므로 목록이 무한히 늘지 않습니다.")]
         public List<ItemSave> items = new List<ItemSave>();
+
+        /// <summary>
+        /// 길가 등이 죽었는지 살았는지입니다.
+        ///
+        /// <b>왜 담는가.</b> 등은 시드로 배치되므로 <b>자리</b>는 담을 필요가 없습니다.
+        /// 담아야 하는 것은 <b>점등기가 한 일</b>입니다 — 밤새 걸어 다니며 되살린 등이
+        /// 불러오기 한 번에 도로 죽으면, 그 기계가 한 일이 없던 일이 됩니다.
+        /// 지형을 담지 않는 것과 같은 이유로 자리는 빼고 <b>상태만</b> 담습니다.
+        /// </summary>
+        [Tooltip("길가 등이 죽었는지 살았는지. 자리는 시드로 고정되므로 담지 않습니다.")]
+        public List<LampSave> lamps = new List<LampSave>();
     }
 
     /// <summary>물건 하나의 상태입니다.</summary>
@@ -196,6 +207,29 @@ namespace CarDrive.Systems
 
         /// <summary>플레이어의 남은 체력입니다.</summary>
         public float health = 100f;
+    }
+
+    /// <summary>
+    /// 등 하나의 상태입니다.
+    ///
+    /// 자리도 켜짐도 담지 않습니다 — 자리는 시드가 정하고, 켜짐은 시각이 정합니다.
+    /// 담을 것은 <b>죽었는가</b> 하나뿐입니다.
+    /// </summary>
+    [System.Serializable]
+    public class LampSave
+    {
+        /// <summary>
+        /// 등을 구분할 이름입니다. 씬에 놓인 오브젝트 이름을 씁니다.
+        ///
+        /// ⚠ <b>배치 시드를 바꾸면 이름이 어긋납니다.</b> 그때는 못 찾은 등이
+        /// 배치된 상태 그대로 남습니다 — 차량이 <c>displayName</c> 으로 짝을 맞추는
+        /// 것과 같은 거래입니다.
+        /// </summary>
+        [Tooltip("등을 구분할 이름. 씬 오브젝트의 이름입니다.")]
+        public string name = "";
+
+        /// <summary>죽은 등인가.</summary>
+        public bool broken;
     }
 
     /// <summary>차량 한 대의 상태입니다.</summary>

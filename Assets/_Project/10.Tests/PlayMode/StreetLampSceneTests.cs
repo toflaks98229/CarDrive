@@ -144,6 +144,37 @@ namespace CarDrive.Tests
             Debug.Log("LAMPSHOT 찍었습니다 — Logs/Lamp/night.png · 등 " + at.ToString("F0"));
         }
 
+        /// <summary>
+        /// 세이브에 등이 <b>실제로 담기는지</b> 봅니다.
+        ///
+        /// ⚠ <b>참여자는 씬에 없습니다.</b> <c>GameBootstrap</c> 이 기동할 때 만듭니다.
+        /// 그 배선이 빠지면 저장은 성공하는데 등만 조용히 빠집니다 — 알아채기 가장
+        /// 어려운 종류의 고장이라, 격리 검사 말고 <b>진짜 씬에서</b> 한 번 더 봅니다.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator 세이브에_길의_등이_담긴다()
+        {
+            SceneManager.LoadScene("SampleScene", LoadSceneMode.Single);
+            for (int i = 0; i < 12; i++) yield return null;
+
+            LampSaveParticipant keeper = Object.FindAnyObjectByType<LampSaveParticipant>(
+                FindObjectsInactive.Include);
+
+            Assert.That(keeper, Is.Not.Null,
+                        "등 세이브 참여자가 없습니다 — GameBootstrap 의 배선을 보십시오");
+
+            SaveData data = new SaveData();
+            keeper.CaptureInto(data);
+
+            Debug.Log("LAMPSAVE 담긴 등 " + data.lamps.Count + " 개 · 세계의 등 "
+                      + StreetLamp.All.Count + " 개");
+
+            Assert.That(data.lamps.Count, Is.EqualTo(StreetLamp.All.Count),
+                        "세계의 등과 담긴 등의 수가 다릅니다");
+
+            Assert.That(data.lamps.Count, Is.GreaterThan(0), "담긴 등이 하나도 없습니다");
+        }
+
         [UnityTearDown]
         public IEnumerator TearDown()
         {
