@@ -173,6 +173,16 @@ public static class GhostVisibilityCheck
 
                 report.AppendLine();
 
+                // ── 색을 바꿔 가며 ──
+                //
+                // 붉은 것과 보라색 것은 휘도가 흰 것의 3 분의 1 이라 색으로만 읽힙니다.
+                // 어느 색이면 밝기로도 읽히는지 <b>재서</b> 고릅니다.
+                if (daylight <= 0.01f)
+                {
+                    Sweep(eye, mask, target, withGhost, without, silhouette, report);
+                    report.AppendLine();
+                }
+
                 // ── 진짜 나타나는 자리 ──
                 //
                 // 위의 거리들은 <b>정면</b>입니다. 실제로 귀신이 서는 자리는 스포너가
@@ -205,6 +215,83 @@ public static class GhostVisibilityCheck
     }
 
     // --- Private Methods ---
+
+    /// <summary>
+    /// 귀신의 색을 바꿔 가며 대비를 잽니다.
+    ///
+    /// ⚠ <b>재질을 건드리지 않습니다.</b> 배치 에디터는 나갈 때 더러워진 에셋을
+    /// 디스크에 씁니다. 시험값이 재질에 남으면 다음 사람이 왜 그 색인지 알 수 없게
+    /// 되므로, <see cref="MaterialPropertyBlock"/> 으로 그 인스턴스에만 씌웁니다.
+    /// </summary>
+    private static void Sweep(Camera eye, Camera mask, RenderTexture target,
+                              Texture2D withGhost, Texture2D without, Texture2D silhouette,
+                              StringBuilder report)
+    {
+        report.AppendLine("  [색을 바꿔 가며 · 정면 12 m]");
+
+        Try(eye, mask, target, withGhost, without, silhouette, report,
+            "Monster_1", "지금(붉음)", new Color(2.868f, 0.095f, 0.095f));
+        Try(eye, mask, target, withGhost, without, silhouette, report,
+            "Monster_1", "붉되 밝게", new Color(2.868f, 0.95f, 0.95f));
+        Try(eye, mask, target, withGhost, without, silhouette, report,
+            "Monster_1", "더 밝게", new Color(3.2f, 1.6f, 1.6f));
+
+        Try(eye, mask, target, withGhost, without, silhouette, report,
+            "Monster_3", "지금(보라)", new Color(1.428f, 0.105f, 2.868f));
+        Try(eye, mask, target, withGhost, without, silhouette, report,
+            "Monster_3", "보라되 밝게", new Color(1.9f, 1.0f, 2.868f));
+        Try(eye, mask, target, withGhost, without, silhouette, report,
+            "Monster_3", "더 밝게", new Color(2.2f, 1.7f, 3.1f));
+    }
+
+    /// <summary>색 하나를 씌워 보고 잽니다.</summary>
+    /// <param name="eye">본 카메라</param>
+    /// <param name="mask">실루엣 카메라</param>
+    /// <param name="target">그릴 곳</param>
+    /// <param name="withGhost">귀신이 선 화면</param>
+    /// <param name="without">귀신을 치운 화면</param>
+    /// <param name="silhouette">실루엣</param>
+    /// <param name="report">적을 곳</param>
+    /// <param name="which">귀신 프리팹 이름</param>
+    /// <param name="label">색 이름</param>
+    /// <param name="colour">씌울 색</param>
+    private static void Try(Camera eye, Camera mask, RenderTexture target,
+                            Texture2D withGhost, Texture2D without, Texture2D silhouette,
+                            StringBuilder report, string which, string label, Color colour)
+    {
+        string path = "Assets/_Project/05.Prefabs/Monster/" + which + ".prefab";
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+        if (prefab == null) return;
+
+        GameObject ghost = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+        ghost.transform.position = eye.transform.position + eye.transform.forward * 12f;
+        ghost.transform.rotation = Quaternion.LookRotation(-eye.transform.forward, Vector3.up);
+
+        MaterialPropertyBlock paint = new MaterialPropertyBlock();
+
+        foreach (Transform t in ghost.GetComponentsInChildren<Transform>(true))
+        {
+            t.gameObject.layer = MaskLayer;
+
+            Renderer skin = t.GetComponent<Renderer>();
+            if (skin == null) continue;
+
+            skin.GetPropertyBlock(paint);
+            paint.SetColor("_Color", colour);
+            skin.SetPropertyBlock(paint);
+        }
+
+        Grab(eye, target, withGhost);
+        Grab(mask, target, silhouette);
+        Object.DestroyImmediate(ghost);
+
+        File.WriteAllBytes(Path.Combine(OutputDirectory, which + "_" + label + ".png"),
+                           withGhost.EncodeToPNG());
+
+        report.Append("    " + which + " " + label + " : ");
+        Measure(which, 0f, withGhost, without, silhouette, report);
+    }
+
 
     /// <summary>
     /// <b>스포너가 실제로 쓰는 자리</b>에 세워 놓고 잽니다.
