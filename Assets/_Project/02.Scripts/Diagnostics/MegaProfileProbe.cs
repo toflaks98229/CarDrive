@@ -49,6 +49,7 @@ namespace CarDrive.Diagnostics
         private const string OutFlag = "-megaprofile-out";
         private const string DeckFlag = "-megaprofile-deck";
         private const string PostFlag = "-megaprofile-post";
+        private const string SplitFlag = "-megaprofile-split";
 
         /// <summary>렌더러에 붙어 있는 팔레트 기능의 이름입니다.</summary>
         private const string PaletteFeature = "CarDrive Palette";
@@ -67,6 +68,7 @@ namespace CarDrive.Diagnostics
             runner.DeckTop = float.TryParse(Argument(args, DeckFlag),
                 NumberStyles.Float, CultureInfo.InvariantCulture, out float deck) ? deck : 35.2f;
             runner.PostAb = args.Contains(PostFlag);
+            runner.PostSplit = args.Contains(SplitFlag);
         }
 
         private static string Argument(string[] args, string name)
@@ -95,6 +97,7 @@ namespace CarDrive.Diagnostics
             public string Output;
             public float DeckTop;
             public bool PostAb;
+            public bool PostSplit;
 
             private Rigidbody driving;
             private Vector3 heading;
@@ -126,11 +129,19 @@ namespace CarDrive.Diagnostics
                 Transform spine = GameObject.Find("Megastructure")?.transform;
                 Transform player = GameObject.FindWithTag("Player")?.transform;
 
+                // ⚠ <b>층을 나눌 때는 정지 자리만 씁니다.</b> 주행 중에는 두 번 재는
+                // 사이에 타일이 들고 나서 장면이 달라집니다. 0.5 ms 를 넷으로 쪼개는
+                // 마당에 드로우가 100 개씩 흔들리면 아무것도 못 봅니다 — 실제로 한
+                // 짝은 끈 쪽 드로우가 141 개 더 많아 값이 거꾸로 나왔습니다.
                 List<Spot> spots = new List<Spot>
                 {
                     new Spot { Name = "출발 지점 · 정지", Move = false },
-                    new Spot { Name = "출발 지점 · 주행", Move = false, Drive = true },
                 };
+
+                if (!PostSplit)
+                {
+                    spots.Add(new Spot { Name = "출발 지점 · 주행", Move = false, Drive = true });
+                }
 
                 if (spine != null)
                 {
@@ -143,13 +154,16 @@ namespace CarDrive.Diagnostics
                         Move = true,
                     });
 
-                    spots.Add(new Spot
+                    if (!PostSplit)
                     {
-                        Name = "데크 위 · 주행",
-                        At = spine.position + Vector3.up * (DeckTop + 1.2f) - along * 300f,
-                        Move = true,
-                        Drive = true,
-                    });
+                        spots.Add(new Spot
+                        {
+                            Name = "데크 위 · 주행",
+                            At = spine.position + Vector3.up * (DeckTop + 1.2f) - along * 300f,
+                            Move = true,
+                            Drive = true,
+                        });
+                    }
 
                     spots.Add(new Spot
                     {
@@ -188,7 +202,25 @@ namespace CarDrive.Diagnostics
 
                     bool last = i == spots.Count - 1;
 
-                    if (PostAb)
+                    if (PostSplit)
+                    {
+                        // 층을 <b>쌓아 올리며</b> 잽니다. 한 층 더할 때의 증가분이 곧
+                        // 그 층의 값입니다. 빼는 순서가 아니라 더하는 순서인 이유는,
+                        // 껐다 켜면 꺼진 층이 남긴 캐시 덕을 보는지 알 수 없어서입니다.
+                        Palette(false);
+                        yield return Measure(spot.Name + " · 후처리 없음", report, false);
+
+                        Palette(true);
+                        Layers(false, false);
+                        yield return Measure(spot.Name + " · 팔레트만", report, false);
+
+                        Layers(true, false);
+                        yield return Measure(spot.Name + " · 팔레트+빗금", report, false);
+
+                        Layers(true, true);
+                        yield return Measure(spot.Name + " · 전부", report, last);
+                    }
+                    else if (PostAb)
                     {
                         // 같은 자리에서 두 번. 켠 것을 먼저 재야 끈 쪽이 캐시 덕을
                         // 보는 일이 없습니다.
@@ -208,6 +240,8 @@ namespace CarDrive.Diagnostics
                     driving = null;
                 }
 
+                Restore();
+
                 report.Append("  ]\n}\n");
 
                 try
@@ -221,6 +255,69 @@ namespace CarDrive.Diagnostics
                 }
 
                 Application.Quit();
+            }
+
+            /// <summary>
+            /// 후처리 <b>안의 층</b>을 켜고 끕니다.
+            ///
+            /// 재질의 값을 직접 만집니다. ⚠ <b>플레이어에서만 안전합니다</b> —
+            /// 에디터에서 이러면 에셋 파일이 바뀌어 남습니다. 이 클래스는
+            /// <c>-megaprofile</c> 인자가 있을 때만 깨어나 에디터에서는 돌지 않지만,
+            /// 그래도 원래 값을 적어 두고 마지막에 되돌립니다.
+            /// </summary>
+            /// <param name="hatch">빗금을 그릴 것인가</param>
+            /// <param name="paper">종이를 얹을 것인가</param>
+            private void Layers(bool hatch, bool paper)
+            {
+                Material m = PaletteMaterial();
+                if (m == null) return;
+
+                if (!saved)
+                {
+                    wasInk = m.GetFloat("_HatchInk");
+                    wasDither = m.GetFloat("_HatchDither");
+                    wasGrain = m.GetFloat("_PaperGrain");
+                    wasEdge = m.GetFloat("_PaperEdge");
+                    saved = true;
+                }
+
+                m.SetFloat("_HatchInk", hatch ? wasInk : 0f);
+                m.SetFloat("_HatchDither", hatch ? wasDither : 0f);
+                m.SetFloat("_PaperGrain", paper ? wasGrain : 0f);
+                m.SetFloat("_PaperEdge", paper ? wasEdge : 0f);
+            }
+
+            /// <summary>만졌던 값을 되돌립니다.</summary>
+            private void Restore()
+            {
+                if (!saved) return;
+
+                Material m = PaletteMaterial();
+                if (m == null) return;
+
+                m.SetFloat("_HatchInk", wasInk);
+                m.SetFloat("_HatchDither", wasDither);
+                m.SetFloat("_PaperGrain", wasGrain);
+                m.SetFloat("_PaperEdge", wasEdge);
+            }
+
+            private bool saved;
+            private float wasInk, wasDither, wasGrain, wasEdge;
+
+            /// <summary>팔레트 기능이 쓰는 재질입니다.</summary>
+            private static Material PaletteMaterial()
+            {
+                ScriptableRendererFeature[] all =
+                    Resources.FindObjectsOfTypeAll<ScriptableRendererFeature>();
+
+                for (int i = 0; i < all.Length; i++)
+                {
+                    FullScreenPassRendererFeature full = all[i] as FullScreenPassRendererFeature;
+                    if (full != null && full.name == PaletteFeature) return full.passMaterial;
+                }
+
+                Debug.LogWarning("MegaProfileProbe: 팔레트 재질을 못 찾았습니다 — 층이 안 갈립니다");
+                return null;
             }
 
             /// <summary>
