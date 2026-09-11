@@ -320,6 +320,7 @@ public static class GhostVisibilityCheck
               "뒤에 붙는 것", spawner.rearGhostPrefab, spawner.rearSpawnAnchor);
 
         Mirrors(spawner.rearGhostPrefab, spawner.rearSpawnAnchor, report);
+        Panes(eye, report);
 
         Place(eye, mask, target, withGhost, without, silhouette, report,
               "왼쪽 8 m", spawner.sideGhostPrefab, spawner.sideSpawnAnchor1);
@@ -428,6 +429,104 @@ public static class GhostVisibilityCheck
                                  ? "안 비침"
                                  : "거울의 " + (moved * 100f / (w * h)).ToString("F2") + "%"));
         }
+    }
+
+    /// <summary>
+    /// <b>거울 판이 화면에서 얼마나 큰가.</b>
+    ///
+    /// 뒷거울이 귀신으로 70% 차 있어도 그 거울이 화면에서 손톱만 하면 못 봅니다.
+    /// 판의 화면 면적과 그림의 해상도를 같이 적습니다 — 둘 중 어느 쪽이 모자란지에
+    /// 따라 고칠 곳이 다릅니다.
+    ///
+    /// ⚠ <b>판은 이름으로 못 찾습니다.</b> 거울 <b>카메라</b>가 Back_Mirror 이고
+    /// 그림을 띄우는 판은 그냥 Quad 입니다. 재질이 <b>렌더 텍스처</b>를 물고 있는지로
+    /// 찾습니다.
+    /// </summary>
+    /// <param name="eye">운전석 카메라</param>
+    /// <param name="report">적을 곳</param>
+    private static void Panes(Camera eye, StringBuilder report)
+    {
+        // ⚠ <b><see cref="Vehicle.FindNearest"/> 를 쓰면 안 됩니다.</b> 그 등록부는
+        // <c>OnEnable</c> 이 채우는데 편집 모드에서는 그것이 돌지 않아 <b>늘 비어</b>
+        // 있습니다. 여기서 두 번 헛짚었습니다 — 판을 못 찾은 것이 아니라 차를 못
+        // 찾고 있었습니다.
+        Vehicle car = null;
+        float best = float.MaxValue;
+
+        foreach (Vehicle one in Object.FindObjectsByType<Vehicle>(FindObjectsInactive.Include,
+                                                                   FindObjectsSortMode.None))
+        {
+            float away = Vector3.Distance(one.transform.position, eye.transform.position);
+            if (away >= best) continue;
+
+            best = away;
+            car = one;
+        }
+
+        if (car == null) return;
+
+        report.AppendLine("    (거울 판은 " + car.name + " 의 것입니다)");
+
+        foreach (Renderer pane in car.GetComponentsInChildren<Renderer>(true))
+        {
+            RenderTexture glass = Mirrored(pane);
+            if (glass == null) continue;
+
+            Bounds box = pane.bounds;
+
+            float minX = 1f, minY = 1f, maxX = 0f, maxY = 0f;
+            bool front = false;
+
+            for (int i = 0; i < 8; i++)
+            {
+                Vector3 corner = box.center + new Vector3(
+                    ((i & 1) == 0 ? -1f : 1f) * box.extents.x,
+                    ((i & 2) == 0 ? -1f : 1f) * box.extents.y,
+                    ((i & 4) == 0 ? -1f : 1f) * box.extents.z);
+
+                Vector3 view = eye.WorldToViewportPoint(corner);
+                if (view.z <= 0f) continue;
+
+                front = true;
+                minX = Mathf.Min(minX, view.x);
+                minY = Mathf.Min(minY, view.y);
+                maxX = Mathf.Max(maxX, view.x);
+                maxY = Mathf.Max(maxY, view.y);
+            }
+
+            string where = pane.transform.parent != null ? pane.transform.parent.name : pane.name;
+
+            if (!front)
+            {
+                report.AppendLine("    거울 판 " + where + " : 앞을 볼 때 화면 밖");
+                continue;
+            }
+
+            float w = Mathf.Clamp01(maxX - minX) * Width;
+            float h = Mathf.Clamp01(maxY - minY) * Height;
+
+            report.AppendLine("    거울 판 " + where + " : 화면에서 "
+                              + w.ToString("F0") + "x" + h.ToString("F0") + " 화소 ("
+                              + (w * h * 100f / (Width * Height)).ToString("F2") + "%) · 그림 "
+                              + glass.width + "x" + glass.height);
+        }
+    }
+
+    /// <summary>그 조각이 띄우는 거울 그림입니다. 거울이 아니면 null 입니다.</summary>
+    /// <param name="pane">볼 조각</param>
+    private static RenderTexture Mirrored(Renderer pane)
+    {
+        Material skin = pane.sharedMaterial;
+        if (skin == null) return null;
+
+        if (skin.mainTexture is RenderTexture main) return main;
+
+        if (skin.HasProperty("_BaseMap") && skin.GetTexture("_BaseMap") is RenderTexture baseMap)
+        {
+            return baseMap;
+        }
+
+        return null;
     }
 
     /// <summary>거울 하나를 그려 읽습니다.</summary>

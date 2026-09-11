@@ -2313,6 +2313,7 @@ MonoBehaviour:
   maxSpawnInterval: 3
   useWeatherActivity: 1
   maxActivityMultiplier: 3
+  lampCalm: 2.5
 --- !u!114 &7177942464343344012
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2575,7 +2576,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 77766aaf5adff80499b1f2e5df9402f4, type: 2}
+  - {fileID: 2100000, guid: 47ebb3228da4fce4fb49b9432b86fef8, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
