@@ -24844,8 +24844,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   target: {fileID: 446511180}
-  positionSmoothSpeed: 100
-  rotationSmoothSpeed: 100
 --- !u!1001 &345014889
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -82530,6 +82528,37 @@ Transform:
   - {fileID: 2001536022}
   m_Father: {fileID: 1990000006}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1106337605
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1106337606}
+  m_Layer: 0
+  m_Name: TowYard
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1106337606
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1106337605}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 32.821404, y: 19.440786, z: -7.2495728}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2052030056}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1108375047
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -98207,6 +98236,146 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 1387921184}
   m_PrefabAsset: {fileID: 0}
+--- !u!1001 &1387959807
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2052030056}
+    m_Modifications:
+    - target: {fileID: 808915957830756541, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -42
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 19.596838
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 16.800001
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.5606288
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.8280673
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7585455745858112564, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_Name
+      value: TowRig
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 7585455745858112564, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1387959812}
+  m_SourcePrefab: {fileID: 100100000, guid: 3a77bbadc2a8afb4d825b02083f6dc4b, type: 3}
+--- !u!4 &1387959808 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+    type: 3}
+  m_PrefabInstance: {fileID: 1387959807}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1387959809 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5895820977467752223, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+    type: 3}
+  m_PrefabInstance: {fileID: 1387959807}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ec565b2d6569b9428e285d2f615012e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Gameplay::CarDrive.Gameplay.WeaponWinch
+--- !u!1 &1387959810 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7585455745858112564, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+    type: 3}
+  m_PrefabInstance: {fileID: 1387959807}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1387959811 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2781099867538994771, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+    type: 3}
+  m_PrefabInstance: {fileID: 1387959807}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1387959810}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c26751f304f744f599258942fc6c3184, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Gameplay::CarDrive.Gameplay.RobotDriver
+--- !u!114 &1387959812
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1387959810}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4193eb207c7c11d419caab6297f7b09b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Gameplay::CarDrive.Gameplay.TowRig
+  driver: {fileID: 1387959811}
+  winch: {fileID: 1387959809}
+  yard: {fileID: 1106337606}
+  notice: 400
+  hookRange: 5
+  callOut: 40
+  pricePerHundredMetres: 6
+  hookSeconds: 3
+  towDistance: 5
+  onHooked:
+    m_PersistentCalls:
+      m_Calls: []
+  onDelivered:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1001 &1388058714
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -149386,6 +149555,8 @@ Transform:
   m_Children:
   - {fileID: 281174974}
   - {fileID: 24006925}
+  - {fileID: 1106337606}
+  - {fileID: 1387959808}
   m_Father: {fileID: 1990000006}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &2057726453
