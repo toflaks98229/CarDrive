@@ -129,43 +129,45 @@ namespace CarDrive.Systems
         public float nightHeightScale = 0.15f;
 
         /// <summary>
-        /// 밤빛이 <b>온전히 서는</b> 깊이입니다. 해가 지평선 아래로 이만큼 내려가야
-        /// 밤빛이 제 세기가 됩니다(도).
-        ///
-        /// <b>무엇을 막는 값인가.</b> 이 씬의 빛은 방향광 <b>하나뿐</b>이라 낮과 밤이
-        /// 그것을 나눠 씁니다. 자리가 <b>한 번에</b> 바뀌면 그림자가 세계를 휩씁니다.
-        /// 그래서 지평선 근처에서는 밤빛의 <b>세기도 방향도</b> 함께 물러섭니다.
-        ///
-        /// 하루가 24시간이므로 1도는 게임 시간 4분입니다. 12도면 해 뜨기 48분
-        /// 전부터 밤빛이 물러섭니다.
-        /// </summary>
-        [Tooltip("밤빛이 제 세기가 되는 깊이(도). 지평선 근처에서는 세기도 방향도 물러섭니다")]
-        [Range(0f, 45f)]
-        public float nightHandoverDegrees = 12f;
-
-        /// <summary>
-        /// 밤빛이 <b>내려오는 각도</b>입니다(도). 90 이면 정수리에서 수직입니다.
+        /// 빛이 <b>내려오는 각도</b>입니다(도). 90 이면 정수리에서 수직입니다.
         ///
         /// ⚠ <b>이 세계에는 하늘이 없습니다.</b> 머리 위를 덮은 것은 거대구조물이고,
-        /// 하늘처럼 보이는 것은 그 천장을 구운 파노라마입니다. 그러니 밤에 남는 빛은
-        /// <b>달이 아니라 천장</b>입니다 — 밤 화면에 보이는 그 등불들입니다.
-        /// 해의 반대편에서 비추게 두면 <b>있지도 않은 달</b>을 그리게 됩니다.
+        /// 하늘처럼 보이는 것은 그 천장을 구운 파노라마입니다. 그러니 빛의 근원은
+        /// <b>해도 달도 아니라 천장</b>입니다 — 화면에 보이는 그 등불들입니다.
+        ///
+        /// 천장은 하루 종일 같은 자리에 있습니다. 그래서 <b>그림자의 방향은
+        /// 시간이 가도 바뀌지 않습니다.</b>
         ///
         /// 90 도로 세우면 벽이 빛을 하나도 못 받아 통짜 실루엣이 됩니다.
         /// 조금 기울여 두면 벽에도 결이 남습니다.
         /// </summary>
-        [Tooltip("밤빛이 내려오는 각도(도). 90 이면 수직. 세울수록 벽이 어두워집니다")]
+        [Tooltip("빛이 내려오는 각도(도). 90 이면 수직. 세울수록 벽이 어두워집니다")]
         [Range(20f, 90f)]
         public float ceilingPitch = 65f;
 
         /// <summary>
-        /// 밤빛이 내려오는 <b>방위</b>입니다(도). 해와 같은 170 이 기본입니다.
+        /// 빛이 내려오는 <b>방위</b>입니다(도). 그림자가 어느 쪽으로 눕는지를 정합니다.
         ///
-        /// 낮과 밤의 그림자가 아주 다른 쪽으로 지면 같은 자리가 다른 장소처럼 보입니다.
+        /// ⚠ <b>이 값은 시간이 가도 바뀌지 않습니다.</b> 천장이 근원이므로 그림자의
+        /// 방향도 하루 종일 같습니다.
         /// </summary>
-        [Tooltip("밤빛의 방위(도). TimeSystem 의 해와 같은 170 이 기본")]
+        [Tooltip("빛의 방위(도). 그림자가 눕는 쪽. 시간이 가도 바뀌지 않습니다")]
         [Range(0f, 360f)]
         public float ceilingYaw = 170f;
+
+        /// <summary>
+        /// 하루 동안 기울기가 <b>숨 쉬는 폭</b>입니다(도). 한낮에 이만큼 더 서고
+        /// 한밤에 이만큼 더 눕습니다.
+        ///
+        /// <b>왜 0 이 아닌가.</b> 완전히 고정하면 하루가 <b>한 장의 그림</b>이 됩니다.
+        /// 그림자의 <b>방향</b>은 그대로 두고 <b>길이만</b> 조금 움직이면, 시간이
+        /// 흐른다는 것이 읽히면서도 아침 해처럼 길게 눕지는 않습니다.
+        ///
+        /// 0 으로 두면 완전히 고정됩니다.
+        /// </summary>
+        [Tooltip("하루 동안 기울기가 숨 쉬는 폭(도). 방향은 안 바뀌고 길이만 움직입니다")]
+        [Range(0f, 20f)]
+        public float ceilingSway = 6f;
 
         /// <summary>가장 궂은 날씨에서 주변광이 낮아지는 하한 배율입니다.</summary>
         [Tooltip("가장 궂은 날씨일 때 주변광에 곱할 배율. 0.5면 절반까지 어두워집니다.")]
@@ -236,11 +238,7 @@ namespace CarDrive.Systems
         /// <summary>높이 그라데이션의 세기입니다. 툰 셰이더가 읽습니다.</summary>
         private static readonly int HeightScaleId = Shader.PropertyToID("_CarDriveHeightScale");
 
-        /// <summary>TimeSystem 이 준 <b>진짜</b> 해의 자리입니다. 달로 접기 전의 것입니다.</summary>
-        private Quaternion sunBase = Quaternion.identity;
 
-        /// <summary>우리가 마지막으로 써 넣은 자리입니다. 자기 값을 다시 읽지 않으려고 둡니다.</summary>
-        private Quaternion sunWritten = Quaternion.identity;
         private static readonly int TintId = Shader.PropertyToID("_Tint");
 
         // --- Injection ---
@@ -504,101 +502,48 @@ namespace CarDrive.Systems
             // 날씨가 없으면 Darkness 가 0 이라 weather 는 1 로 남습니다.
             float weather = Mathf.Lerp(1f, weatherSunFloor, Mathf.Clamp01(skyConditions.Darkness));
 
-            // ⚠ <b>우리가 쓴 자리인지 먼저 봅니다.</b> 아래에서 해를 돌려 달로 쓰는데,
-            // 그 결과를 다시 읽어 또 돌리면 값이 <b>프레임마다 밀립니다.</b> 시간이
-            // 멈춰 TimeSystem 이 자리를 안 써 주는 동안 특히 그렇습니다.
-            // 우리가 마지막으로 쓴 것과 같으면, 진짜 해의 자리는 기억해 둔 쪽입니다.
-            if (sun.transform.rotation != sunWritten) sunBase = sun.transform.rotation;
-
             // 밤에 완전히 꺼 버리면 헤드라이트 밖이 아무것도 보이지 않습니다.
-            // 약한 달빛만 남깁니다. ⚠ <b>지평선 근처에서는 그 하한도 물러섭니다</b> —
-            // 아래에서 방향을 접을 때 세기가 남아 있으면 그림자가 휩쓸립니다.
+            // 약한 등불만 남깁니다.
             float max = sunSource != null ? sunSource.SunMaxIntensity : 1f;
-            float up = (sunBase * Vector3.forward).y;
-            float sunLevel = max * daylight * weather;
-            float night = moonIntensity * NightShare(up, nightHandoverDegrees);
 
-            sun.intensity = Mathf.Max(sunLevel, night);
+            sun.intensity = Mathf.Max(max * daylight * weather, moonIntensity);
             sun.enabled = true;
 
-            // ⚠ <b>지평선 아래로 내려간 해를 그 자리에서 비추게 두면 안 됩니다.</b>
+            // ⚠ <b>해의 자리를 쓰지 않습니다.</b>
             //
-            // 이 씬의 빛은 하루를 한 바퀴 도는 방향광 <b>하나뿐</b>입니다(TimeSystem 이
-            // <c>Euler(분/하루 × 360 − 90, 170, 0)</c> 로 돌립니다). 밤에는 그 빛이
-            // <b>땅 밑에서 위로</b> 올라옵니다. 그러면 바닥은 N·L 이 음수라 통째로
-            // 그늘이 되고 <b>벽면만</b> 낮은 해처럼 밝게 섭니다 — 밤인데 새벽 볕이
-            // 든 것처럼 보이는 이유가 이것이었습니다.
+            // <see cref="TimeSystem"/> 은 방향광을 하루에 한 바퀴 돌립니다
+            // (<c>Euler(분/하루 × 360 − 90, 170, 0)</c>). 하늘이 있는 세계의 방법입니다.
+            // <b>이 세계의 머리 위는 거대구조물</b>이고, 하늘처럼 보이는 것은 그 천장을
+            // 구운 파노라마입니다. 빛의 근원은 그 <b>천장의 등불</b>이므로 자리가
+            // 하루 종일 같아야 하고, 그러면 <b>그림자의 방향도 바뀌지 않습니다.</b>
             //
-            // 실측(2026-09-11, 02시): 건물 벽이 한낮의 <b>61%</b> 인데 땅은 8%,
-            // 나무는 10%, 하늘은 8% 였습니다. 벽만 낮에 남아 있었습니다.
+            // 실측(2026-09-11): 게임은 08시에 시작하는데 그때 해는 지평선 <b>30도
+            // 위</b>였습니다. 대낮인데 그림자가 길게 눕던 것이 그래서였습니다 —
+            // 구워 둔 그림자가 아니라 <b>아침 해</b>였습니다.
             //
-            // ⚠ <b>해의 반대편으로 돌리지 않습니다.</b> 그것은 달을 그리는 방법인데
-            // <b>이 세계에는 하늘이 없습니다</b> — 머리 위는 거대구조물이고 하늘처럼
-            // 보이는 것은 그 천장을 구운 파노라마입니다. 밤에 남는 빛은 그 <b>천장의
-            // 등불</b>이므로, 위에서 내려오는 <b>고정된 자리</b>가 맞습니다.
-            //
-            // ⚠ <b>한 번에 옮기지 않습니다.</b> 지평선에서 자리가 튀면 그림자가 세계를
-            // 휩씁니다. <see cref="NightFold"/> 가 정하는 만큼 천천히 건너갑니다 —
-            // 해가 아직 밝으면 해의 자리, 다 잦아들면 천장의 자리입니다.
-            float fold = NightFold(up, nightHandoverDegrees, sunLevel, moonIntensity);
-
-            Quaternion ceiling = Quaternion.Euler(ceilingPitch, ceilingYaw, 0f);
-
-            sun.transform.rotation = fold <= 0f
-                ? sunBase
-                : Quaternion.Slerp(sunBase, ceiling, fold);
-
-            sunWritten = sun.transform.rotation;
+            // 기울기만 조금 숨 쉽니다. 완전히 고정하면 하루가 한 장의 그림이 됩니다.
+            sun.transform.rotation =
+                Quaternion.Euler(CeilingPitch(daylight, ceilingPitch, ceilingSway),
+                                 ceilingYaw, 0f);
         }
 
         /// <summary>
-        /// 밤빛이 <b>얼마나 섰는가</b>입니다. 0 이면 해가 지평선 위에 있거나 막 그 언저리라
-        /// 밤빛이 없는 것과 같고, 1 이면 온전한 밤빛입니다.
+        /// 그 시각에 빛이 내려오는 <b>기울기</b>입니다(도).
         ///
-        /// <b>왜 갈라 두는가.</b> 이 값 하나가 밤빛의 <b>세기와 방향을 함께</b> 정합니다.
-        /// 둘이 어긋나면 세기가 남은 채 자리만 옮겨 그림자가 휩쓸립니다. 씬도 빛도 없이
-        /// 확인할 수 있어야 하는 규칙이라 밖으로 꺼내 둡니다.
+        /// 방향(방위)은 건드리지 않습니다. 한낮에 조금 더 서고 한밤에 조금 더 누울
+        /// 뿐이라 <b>그림자는 길이만</b> 움직입니다.
         /// </summary>
-        /// <param name="forwardUp">빛이 나아가는 방향의 y 성분. 양수면 해가 지평선 아래입니다</param>
-        /// <param name="riseDegrees">밤빛이 온전해지는 깊이(도). 0 이하면 지평선에서 바로 섭니다</param>
-        /// <returns>0~1</returns>
-        public static float NightShare(float forwardUp, float riseDegrees)
+        /// <param name="daylight">0이면 한밤, 1이면 한낮</param>
+        /// <param name="pitch">기준 기울기(도)</param>
+        /// <param name="sway">숨 쉬는 폭(도)</param>
+        /// <returns>10~90도로 잘라 낸 기울기</returns>
+        public static float CeilingPitch(float daylight, float pitch, float sway)
         {
-            // 해가 지평선 위에 있으면(빛이 내려오면) 밤빛은 없습니다.
-            if (forwardUp <= 0f) return 0f;
+            float want = pitch + sway * (Mathf.Clamp01(daylight) * 2f - 1f);
 
-            float dip = Mathf.Asin(Mathf.Clamp01(forwardUp)) * Mathf.Rad2Deg;
-
-            if (riseDegrees <= 0f) return 1f;
-
-            return Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(dip / riseDegrees));
-        }
-
-        /// <summary>
-        /// 빛의 자리를 <b>천장 쪽으로 얼마나 옮길지</b>입니다. 0 이면 해가 있는 그대로,
-        /// 1 이면 온전히 천장의 자리입니다.
-        ///
-        /// <b>왜 세기까지 보는가.</b> 이 세계의 밝기 곡선은 19시에도 0.3 인데 해는
-        /// 이미 지평선 <b>15도 아래</b>입니다. 기하만 보고 옮기면 노을이 진 쪽이 아니라
-        /// <b>천장에서</b> 빛이 들어옵니다. 해가 아직 밤빛보다 세면 해가 주인입니다.
-        ///
-        /// 둘 사이는 <b>이어집니다.</b> 해가 밤빛 세기까지 잦아드는 동안 자리가 천천히
-        /// 건너가고, 그 구간의 세기는 밤빛 하한 이하라 그림자가 휩쓸리지 않습니다.
-        /// </summary>
-        /// <param name="forwardUp">빛이 나아가는 방향의 y 성분. 양수면 해가 지평선 아래입니다</param>
-        /// <param name="riseDegrees">달빛이 온전해지는 깊이(도)</param>
-        /// <param name="sunLevel">지금 해가 내는 세기</param>
-        /// <param name="nightLevel">밤빛의 하한(<see cref="moonIntensity"/>)</param>
-        /// <returns>0~1</returns>
-        public static float NightFold(float forwardUp, float riseDegrees,
-                                      float sunLevel, float nightLevel)
-        {
-            float rise = NightShare(forwardUp, riseDegrees);
-            if (rise <= 0f || nightLevel <= 0f) return 0f;
-
-            float share = 1f - Mathf.Clamp01(sunLevel / nightLevel);
-
-            return rise * Mathf.SmoothStep(0f, 1f, share);
+            // ⚠ <b>90도를 넘기면 빛이 반대편에서 올라옵니다.</b> 10도 아래로 누우면
+            // 아침 해가 되어, 고치려던 그림자가 그대로 돌아옵니다.
+            return Mathf.Clamp(want, 10f, 90f);
         }
 
 

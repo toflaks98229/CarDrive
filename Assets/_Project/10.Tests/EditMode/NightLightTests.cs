@@ -5,103 +5,76 @@ using CarDrive.Systems;
 namespace CarDrive.Tests
 {
     /// <summary>
-    /// 밤빛이 <b>지평선 근처에서 물러서는지</b> 봅니다.
+    /// 빛이 <b>천장에서 내려오는지</b> 봅니다.
     ///
-    /// <b>왜 이 값 하나를 따로 재는가.</b> 이 씬의 빛은 방향광 하나뿐이라 낮과 밤이
-    /// 그것을 나눠 씁니다. 그 <b>세기와 자리를 같은 값</b>이 정해야 합니다 —
-    /// 어긋나면 세기가 남은 채 자리만 옮겨 그림자가 세계를 휩씁니다.
-    /// 씬도 빛도 없이 확인할 수 있어야 하는 규칙입니다.
+    /// ⚠ <b>이 세계에는 하늘이 없습니다.</b> 머리 위는 거대구조물이고 하늘처럼 보이는
+    /// 것은 그 천장을 구운 파노라마입니다. 그러니 빛의 근원은 해도 달도 아닌
+    /// <b>천장의 등불</b>이고, 천장은 하루 종일 같은 자리에 있습니다 —
+    /// <b>그림자의 방향은 시간이 가도 바뀌지 않아야 합니다.</b>
     ///
-    /// ⚠ <b>이 세계에는 하늘이 없습니다.</b> 밤빛은 달이 아니라 머리 위를 덮은
-    /// 거대구조물의 천장에서 내려옵니다.
+    /// 씬도 빛도 없이 확인할 수 있어야 하는 규칙이라 밖으로 꺼내 두고 여기서 잽니다.
     /// </summary>
     public class NightLightTests
     {
-        /// <summary>빛이 나아가는 방향의 y 성분입니다. 해가 지평선 아래 <paramref name="dip"/>도.</summary>
-        private static float Forward(float dip)
+        [Test]
+        public void 한낮이_가장_서고_한밤이_가장_눕는다()
         {
-            return Mathf.Sin(dip * Mathf.Deg2Rad);
+            float noon = SkyController.CeilingPitch(1f, 65f, 6f);
+            float night = SkyController.CeilingPitch(0f, 65f, 6f);
+
+            Assert.That(noon, Is.EqualTo(71f).Within(0.001f));
+            Assert.That(night, Is.EqualTo(59f).Within(0.001f));
         }
 
         [Test]
-        public void 해가_지평선_위면_밤빛은_없다()
+        public void 한낮과_한밤의_한가운데가_기준이다()
         {
-            // 빛이 내려오면(y 음수) 해가 하늘에 있다는 뜻입니다.
-            Assert.That(SkyController.NightShare(Forward(-30f), 12f), Is.EqualTo(0f));
-            Assert.That(SkyController.NightShare(0f, 12f), Is.EqualTo(0f));
+            Assert.That(SkyController.CeilingPitch(0.5f, 65f, 6f), Is.EqualTo(65f).Within(0.001f));
         }
 
         [Test]
-        public void 깊은_밤에는_온전한_밤빛이다()
+        public void 하루_내내_아침_해처럼_눕지_않는다()
         {
-            Assert.That(SkyController.NightShare(Forward(60f), 12f), Is.EqualTo(1f).Within(0.001f));
-            Assert.That(SkyController.NightShare(Forward(12f), 12f), Is.EqualTo(1f).Within(0.001f));
+            // 게임이 시작하는 08시의 해는 지평선 30도 위였고, 그것이 대낮에 그림자가
+            // 길게 눕던 원인이었습니다. 이제 어느 시각에도 그보다 훨씬 섭니다.
+            for (int i = 0; i <= 10; i++)
+            {
+                float pitch = SkyController.CeilingPitch(i / 10f, 65f, 6f);
+
+                Assert.That(pitch, Is.GreaterThan(45f),
+                            "밝기 " + (i / 10f).ToString("F1") + " 에서 " + pitch.ToString("F0")
+                            + "도까지 누웠습니다 — 아침 해가 돌아왔습니다");
+            }
         }
 
         [Test]
-        public void 지평선에_가까울수록_물러선다()
+        public void 숨_폭이_0_이면_하루가_고정이다()
         {
-            float near = SkyController.NightShare(Forward(1f), 12f);
-            float mid = SkyController.NightShare(Forward(6f), 12f);
-            float deep = SkyController.NightShare(Forward(11f), 12f);
-
-            Assert.That(near, Is.LessThan(mid), "지평선 바로 밑이 더 약해야 합니다");
-            Assert.That(mid, Is.LessThan(deep), "깊을수록 세야 합니다");
-
-            // <b>끝에서 기울기가 0 이어야 합니다.</b> 직선으로 빼면 달이 서는 순간과
-            // 다 빠지는 순간에 꺾임이 보입니다.
-            Assert.That(near, Is.LessThan(0.03f),
-                        "지평선 바로 밑에서는 거의 0 이어야 합니다 — 실제로는 " + near.ToString("F3"));
+            Assert.That(SkyController.CeilingPitch(0f, 65f, 0f), Is.EqualTo(65f));
+            Assert.That(SkyController.CeilingPitch(1f, 65f, 0f), Is.EqualTo(65f));
         }
 
         [Test]
-        public void 깊이를_0_으로_두면_지평선에서_바로_선다()
+        public void 지평선_아래로는_내려가지_않는다()
         {
-            Assert.That(SkyController.NightShare(Forward(0.5f), 0f), Is.EqualTo(1f));
-        }
-
-        // --- 방향을 누가 가지는가 ---
-
-        [Test]
-        public void 해가_더_세면_천장으로_옮기지_않는다()
-        {
-            // 19시. 해는 지평선 15도 아래인데 밝기 곡선은 아직 0.3 입니다.
-            // 여기서 옮기면 노을이 진 쪽이 아니라 천장에서 빛이 들어옵니다.
-            Assert.That(SkyController.NightFold(Forward(15f), 12f, 0.3f, 0.1f), Is.EqualTo(0f));
+            // ⚠ 90도를 넘기면 빛이 반대편에서 올라오고, 10도 아래로 누우면 아침 해가 됩니다.
+            Assert.That(SkyController.CeilingPitch(1f, 88f, 20f), Is.EqualTo(90f));
+            Assert.That(SkyController.CeilingPitch(0f, 12f, 20f), Is.EqualTo(10f));
         }
 
         [Test]
-        public void 해가_다_잦아들면_온전히_천장이_된다()
-        {
-            Assert.That(SkyController.NightFold(Forward(60f), 12f, 0f, 0.1f),
-                        Is.EqualTo(1f).Within(0.001f));
-        }
-
-        [Test]
-        public void 해에서_천장으로_건너가는_동안_이어진다()
+        public void 밝기가_올라가면_기울기도_같이_올라간다()
         {
             float previous = -1f;
 
-            // 해가 달빛 세기까지 잦아드는 동안, 접히는 정도가 뒤로 가지 않아야 합니다.
-            for (int i = 10; i >= 0; i--)
+            for (int i = 0; i <= 10; i++)
             {
-                float sunLevel = 0.1f * i / 10f;
-                float fold = SkyController.NightFold(Forward(60f), 12f, sunLevel, 0.1f);
+                float pitch = SkyController.CeilingPitch(i / 10f, 65f, 6f);
 
-                Assert.That(fold, Is.GreaterThanOrEqualTo(previous),
-                            "해가 잦아드는데 자리가 되돌아갔습니다 — 해 " + sunLevel.ToString("F3"));
-                previous = fold;
+                Assert.That(pitch, Is.GreaterThanOrEqualTo(previous),
+                            "밝아지는데 빛이 도로 누웠습니다 — 밝기 " + (i / 10f).ToString("F1"));
+                previous = pitch;
             }
-
-            Assert.That(previous, Is.EqualTo(1f).Within(0.001f));
-        }
-
-        [Test]
-        public void 지평선을_넘는_순간에는_옮김이_0_이다()
-        {
-            // 넘는 순간 둘이 같은 자리여야 그림자가 휩쓸리지 않습니다.
-            Assert.That(SkyController.NightFold(Forward(0f), 12f, 0f, 0.1f), Is.EqualTo(0f));
-            Assert.That(SkyController.NightFold(Forward(-1f), 12f, 0f, 0.1f), Is.EqualTo(0f));
         }
     }
 }
