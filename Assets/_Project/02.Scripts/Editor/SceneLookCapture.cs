@@ -451,7 +451,33 @@ public static class SceneLookCapture
 
         Shader.SetGlobalVector("_CarDriveHatchParams", new Vector4(0f, 0f, 0f, ready ? 1f : 0f));
 
-        Debug.Log("SCENELOOK 빗금 전역 — 유효 " + (ready ? 1 : 0));
+        // 상황이 미는 값입니다. 이 도구는 씬 컴포넌트를 재우므로 LookMood 가 안 돕니다.
+        // 예: CARDRIVE_MOOD=0.55,0.45 → 겨눔당하고 지친 화면.
+        string mood = System.Environment.GetEnvironmentVariable("CARDRIVE_MOOD");
+        Vector4 moodValue = Vector4.zero;
+
+        if (!string.IsNullOrEmpty(mood))
+        {
+            // ⚠ 칸 수를 고정해 두면 값이 하나 늘 때 <b>조용히 무시됩니다.</b>
+            // 실제로 세 번째 칸을 더한 날 그렇게 되어, 아무 변화도 없는 그림을
+            // 찍어 놓고 "계단이 안 듣는다" 고 할 뻔했습니다. 있는 만큼만 읽습니다.
+            string[] bits = mood.Split(',');
+
+            for (int i = 0; i < bits.Length && i < 3; i++)
+            {
+                if (float.TryParse(bits[i], System.Globalization.NumberStyles.Float,
+                                   System.Globalization.CultureInfo.InvariantCulture, out float v))
+                {
+                    moodValue[i] = v;
+                }
+            }
+        }
+
+        Shader.SetGlobalVector("_CarDriveLookMood", moodValue);
+
+        Debug.Log("SCENELOOK 빗금 전역 — 유효 " + (ready ? 1 : 0)
+                  + " · 기분 " + moodValue.x.ToString("F2") + "," + moodValue.y.ToString("F2")
+                  + "," + moodValue.z.ToString("F1"));
     }
 
     /// <summary>덮어썼던 팔레트 값을 원래대로 돌리고 디스크에 씁니다.</summary>

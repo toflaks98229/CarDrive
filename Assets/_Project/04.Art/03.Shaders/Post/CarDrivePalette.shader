@@ -234,6 +234,17 @@ Shader "CarDrive/Post/Palette"
             half  _HatchBoilJump;
             half  _HatchBoilBlend;
 
+            // ── 지금 벌어지는 일 ──
+            //
+            // <c>LookMood</c> 가 밀어 넣는 값입니다. x = 획에 곱할 덤,
+            // y = 채도 밀도에 더할 값. <b>0 이 중립</b>이라 그 컴포넌트가 씬에
+            // 없으면(또는 꺼져 있으면) 아무 일도 일어나지 않습니다.
+            //
+            // ⚠ <b>재질이 아니라 전역인 이유.</b> 재질은 에셋이라 에디터에서 값을 쓰면
+            // 파일이 바뀌어 남습니다. 재질에 적힌 값은 사람이 정한 기준선으로 두고,
+            // 상황에 따라 흔드는 것은 여기서만 합니다.
+            float4 _CarDriveLookMood;
+
             TEXTURE2D(_PaperTex);
             SAMPLER(sampler_LinearRepeat_PaperTex);
             half  _PaperGrain;
@@ -272,7 +283,9 @@ Shader "CarDrive/Post/Palette"
                 // 눈에 고르게 나뉘도록 감마 쪽으로 옮겨 자릅니다.
                 half3 encoded = sqrt(max(colour, 0.0h));
 
-                half steps = max(_Levels - 1.0h, 1.0h);
+                // 상황이 미는 만큼 계단 수를 줄입니다. 지치면 그림이 거칠어집니다.
+                // z 가 0 이면 재질에 적힌 그대로입니다.
+                half steps = max(_Levels - 1.0h - (half)_CarDriveLookMood.z, 1.0h);
                 // ⚠ <b>한 칸이 화면 화소 하나면 1080p 에서 안 보입니다.</b> 참조 화면
                 // (White Knuckle)의 가로 자기상관 최소가 k=2,3 에 있어 디더 한 칸이
                 // 화면 화소 두셋을 덮습니다. 그쪽은 내부 해상도를 낮춰 그리고 확대해서
@@ -333,8 +346,13 @@ Shader "CarDrive/Post/Palette"
                 //
                 // 한 번만 읽습니다 — 문턱과 잉크가 <b>같은 행렬</b>을 씁니다.
                 // 둘이 다른 무늬를 쓰면 같은 화면에 두 종류의 결이 겹칩니다.
+                // 상황이 미는 만큼 획을 더 긋습니다. 둘 다 0 이면 기준선 그대로입니다.
+                // <b>여기서 구합니다</b> — 아래 useHatch 가 이미 이 값을 봅니다.
+                half inkNow = _HatchInk * (1.0h + (half)_CarDriveLookMood.x);
+                half chromaNow = _HatchChroma + (half)_CarDriveLookMood.y;
+
                 half rank = 0.5h;
-                bool useHatch = (_HatchDither > 0.001h) || (_HatchInk > 0.001h);
+                bool useHatch = (_HatchDither > 0.001h) || (inkNow > 0.001h);
 
                 [branch] if (useHatch)
                 {
@@ -365,7 +383,7 @@ Shader "CarDrive/Post/Palette"
                 // 잉크는 종이 위에 얹히는 것이지 종이의 색을 고르는 것이 아닙니다.
                 bool drawn = false;
 
-                [branch] if (_HatchInk > 0.001h)
+                [branch] if (inkNow > 0.001h)
                 {
                     // 밝기를 어디서 뽑는가. 끊긴 값에서 뽑으면 획이 색 띠와 함께 움직이고,
                     // 원래 값에서 뽑으면 획이 단계 사이를 <b>연속으로</b> 건넙니다.
@@ -376,7 +394,7 @@ Shader "CarDrive/Post/Palette"
 
                     // 색이 빠진 만큼 획을 더 긋습니다. 이미 어두운 자리에서만
                     // 늘어나도록 <b>곱합니다</b> — 밝고 색 없는 하늘은 그대로 둡니다.
-                    dark = saturate(dark * (1.0h + _HatchChroma * colourless));
+                    dark = saturate(dark * (1.0h + chromaNow * colourless));
 
                     // ── 원본 방식 ──
                     //
@@ -397,7 +415,7 @@ Shader "CarDrive/Post/Palette"
                             ink = lerp(was, ink, settled);
                         }
 
-                        quantised *= lerp(1.0h, ink, _HatchInk);
+                        quantised *= lerp(1.0h, ink, saturate(inkNow));
                         drawn = true;
                     }
 
@@ -415,7 +433,7 @@ Shader "CarDrive/Post/Palette"
                     // 무관하게 같은 양을 가져가므로 그 뒤집힘이 없습니다.
                     [branch] if (!drawn)
                     {
-                        half amount = _HatchInk * _HatchDepth * (1.0h - bare);
+                        half amount = saturate(inkNow) * _HatchDepth * (1.0h - bare);
                         quantised = max(quantised - amount, 0.0h);
                     }
                 }

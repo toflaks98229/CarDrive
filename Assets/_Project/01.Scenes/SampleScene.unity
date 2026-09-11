@@ -43631,6 +43631,7 @@ GameObject:
   m_Component:
   - component: {fileID: 640989165}
   - component: {fileID: 640989166}
+  - component: {fileID: 640989167}
   m_Layer: 0
   m_Name: HatchingRig
   m_TagString: Untagged
@@ -43667,6 +43668,26 @@ MonoBehaviour:
   m_EditorClassIdentifier: CarDrive.Systems::CarDrive.Systems.HatchingRig
   tamBright: {fileID: 2800000, guid: 0f5309e2b3d808a45ac6c82d855952be, type: 3}
   tamDark: {fileID: 2800000, guid: 322412c1ebe08a34bade3971c03a78a5, type: 3}
+--- !u!114 &640989167
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 640989164}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e8714846a6570fd41b4e1702c7c46507, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Gameplay::CarDrive.Gameplay.LookMood
+  threatInk: 0.55
+  fatigueChroma: 0.45
+  rainInk: 0.25
+  response:
+    frequency: 1.1
+    damping: 1
+    response: 0
+  scanInterval: 0.4
 --- !u!1001 &641191265
 PrefabInstance:
   m_ObjectHideFlags: 0
