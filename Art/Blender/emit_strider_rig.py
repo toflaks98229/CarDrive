@@ -38,9 +38,65 @@ BODY_PARTS = [
     ("Neck", "SM_Strider_Neck", True, "Head_Yaw"),
     ("Head", "SM_Strider_Head", True, "Head_Pitch"),
     ("GunMount", "SM_Strider_GunMount", True, "Gun_Yaw"),
-    ("Gun", "SM_Gun_HeavyCannon", True, "Gun_Pitch"),
-    ("Gun_Alt", "SM_Gun_Autocannon", False, "Gun_Pitch"),
 ]
+
+# 무장은 <b>박아 두지 않고 씬에서 찾습니다.</b> 여기 두 줄로 적어 두었더니
+# 무장이 둘에서 여섯이 되는 순간 넷이 조용히 빠졌습니다 - FBX 에는 들어 있는데
+# json 에 없으면 유니티가 오브젝트를 안 만들고, 아무 오류도 안 납니다.
+# <c>build_strider_guns.py</c> 가 무엇을 내든 여기가 따라옵니다.
+GUN_PREFIX = "SM_Gun_"
+
+# 기본 무장입니다. 이것만 <c>active</c> 로 나갑니다.
+DEFAULT_GUN = "SM_Gun_HeavyCannon"
+
+
+def gun_node(obj_name):
+    """오브젝트 이름에서 유니티 노드 이름을 뽑습니다."""
+    return "Gun_" + obj_name[len(GUN_PREFIX):]
+
+
+def gun_parts():
+    """
+    씬의 무장을 <b>부모가 먼저 오도록</b> 늘어놓습니다.
+
+    이름이 규약입니다 - 토막 셋(<c>SM_Gun_Rotary</c>)이면 무장 본체이고,
+    넷(<c>SM_Gun_Rotary_Rotor</c>)이면 그 무장의 <b>움직이는 조각</b>입니다.
+    조각은 본체 노드 밑으로 들어가므로 <b>본체가 먼저 나와야</b> 합니다 -
+    유니티 쪽은 목록 순서대로 만들면서 부모를 찾습니다.
+
+    기본 무장만 <c>active</c> 이고, 그 조각들도 같이 켜집니다.
+    """
+    bases, kids = [], {}
+
+    for o in bpy.data.objects:
+        if o.type != 'MESH' or not o.name.startswith(GUN_PREFIX):
+            continue
+
+        bits = o.name.split("_")
+        assert len(bits) in (3, 4), "무장 이름은 토막 셋 또는 넷입니다: " + o.name
+
+        if len(bits) == 3:
+            bases.append(o.name)
+        else:
+            kids.setdefault("_".join(bits[:3]), []).append(o.name)
+
+    assert DEFAULT_GUN in bases, "기본 무장 %s 가 씬에 없습니다" % DEFAULT_GUN
+    bases.sort(key=lambda n: (n != DEFAULT_GUN, n))
+
+    out = []
+    for base in bases:
+        active = base == DEFAULT_GUN
+        out.append((gun_node(base), base, active, "Gun_Pitch"))
+        # ⚠ 조각은 <b>늘 켜 둡니다.</b> 무장이 꺼져 있으면 그 밑도 안 보이므로
+        # 따로 끌 이유가 없는데, 껐더니 유니티가 그 오브젝트의 <c>Awake</c> 를
+        # 부르지 않아 <b>반동 부품이 깨어나지 못했습니다</b> - 나중에 무장을 켜도
+        # 포신이 안 밀립니다. 조각을 끄고 켜는 것은 부모의 몫입니다.
+        for kid in sorted(kids.pop(base, ())):
+            out.append((gun_node(kid), kid, True, gun_node(base)))
+
+    assert not kids, "본체 없는 조각이 남았습니다: %s" % sorted(kids)
+
+    return out
 
 
 def look(fwd, up):
@@ -92,7 +148,6 @@ def main():
     gun_pitch = P(bones["B_GunPitch"].head_local)
     neck = P(bones["B_Neck"].head_local)
     head = P(bones["B_Head"].head_local)
-    muzzle = P(bones["B_GunMuzzle"].head_local)
 
     yaw_world = Matrix.Translation(gun_yaw)
     pitch_world = Matrix.Translation(gun_pitch)
@@ -105,7 +160,11 @@ def main():
              axis=[0.0, 1.0, 0.0], range=[-120.0, 120.0]),
         dict(node="Gun_Pitch", parent="Gun_Yaw",
              pos=[round(v, 5) for v in (yaw_world.inverted() @ pitch_world).translation],
-             axis=[1.0, 0.0, 0.0], range=[-25.0, 60.0]),
+             # ⚠ 드는 각이 <c>-25</c> 였는데 <b>형상이 허락하지 않습니다.</b>
+             # build_strider_guns.pitch_limit() 로 재면 무장 여섯이 10.5~18°
+             # 에서 선회 링에 막힙니다. 내리는 각은 60° 가 넉넉히 됩니다.
+             # 이 값이 형상보다 크면 게임에서 포신이 제 몸을 뚫습니다.
+             axis=[1.0, 0.0, 0.0], range=[-10.0, 60.0]),
         dict(node="Head_Yaw", parent="Body",
              pos=[round(v, 5) for v in (body_world.inverted() @ neck_world).translation],
              axis=[0.0, 1.0, 0.0], range=[-75.0, 75.0]),
@@ -119,13 +178,43 @@ def main():
         dict(name="Head", yaw="Head_Yaw", pitch="Head_Pitch", muzzle=""),
     ]
 
-    out["muzzles"] = [dict(node="Muzzle", parent="Gun_Pitch",
-                           pos=[round(v, 5) for v in (pitch_world.inverted() @ Matrix.Translation(muzzle)).translation])]
+    # ⚠ 총구는 <b>본이 아니라 엠프티에서</b> 읽습니다. <c>B_GunMuzzle</c> 본은
+    # 예전 중포에 맞춰 박아 둔 자리라, 포신 길이를 고치면 조용히 어긋납니다 -
+    # 머즐 플래시가 포신 속이나 허공에서 납니다. 엠프티는 무장을 지을 때
+    # 그 무장의 총구에 놓이므로 어긋날 수가 없습니다.
+    # 총구를 <b>무장 노드 밑</b>에 답니다. <c>Gun_Pitch</c> 밑에 두면 무장을 갈아
+    # 끼웠을 때 총구만 옛 자리에 남습니다 - 머즐 플래시가 허공에서 납니다.
+    #
+    # 무장 본체의 트랜스폼이 <c>Gun_Pitch</c> 기준으로 항등이므로 좌표는 같습니다.
+    out["muzzles"] = []
+    for node, obj_name, active, parent in gun_parts():
+        if parent != "Gun_Pitch":
+            continue
+
+        suffix = obj_name[len(GUN_PREFIX):]
+        emp = bpy.data.objects.get("SKT_Muzzle_" + suffix)
+        if emp is None:
+            continue
+
+        at = P(emp.matrix_world.translation)
+        out["muzzles"].append(dict(
+            node="Muzzle" if active else "Muzzle_" + suffix,
+            parent=node,
+            pos=[round(v, 5) for v in
+                 (pitch_world.inverted() @ Matrix.Translation(at)).translation]))
+
+    assert out["muzzles"], "SKT_Muzzle_* 엠프티가 하나도 없습니다"
 
     AIM_WORLD = {"Gun_Yaw": yaw_world, "Gun_Pitch": pitch_world,
                  "Head_Yaw": neck_world, "Head_Pitch": head_world}
 
-    for node, obj_name, active, parent in BODY_PARTS:
+    # 무장 본체는 <c>Gun_Pitch</c> 자리에 항등으로 앉습니다. 그 밑의 조각들이
+    # <b>본체 기준</b> 좌표로 나와야 하므로 여기에 같이 넣어 둡니다.
+    for node, obj_name, active, parent in gun_parts():
+        if parent == "Gun_Pitch":
+            AIM_WORLD[node] = pitch_world
+
+    for node, obj_name, active, parent in BODY_PARTS + gun_parts():
         base = AIM_WORLD.get(parent, body_world)
         d = trs(base.inverted() @ M2U(bpy.data.objects[obj_name].matrix_world))
         d.update(node=node, mesh=obj_name, active=active, parent=parent)

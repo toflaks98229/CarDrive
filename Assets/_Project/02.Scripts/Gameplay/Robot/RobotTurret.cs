@@ -137,6 +137,40 @@ namespace CarDrive.Gameplay
 
         // --- Public Methods ---
 
+        /// <summary>
+        /// 반동으로 포탑을 <b>들어 올립니다.</b> 스프링이 알아서 되돌립니다.
+        ///
+        /// <b>왜 각도가 아니라 여기로 들어오는가.</b> 무장이 <see cref="pitchNode"/> 를
+        /// 직접 돌리면 같은 프레임에 <see cref="Pose"/> 가 덮어씁니다.
+        /// <see cref="IWalkerAttachment"/> 는 부품 사이의 순서를 보장하지 않으므로
+        /// 어떤 프레임은 보이고 어떤 프레임은 안 보입니다 — 그것이 가장 잡기 어려운
+        /// 종류의 결함입니다. 속도로 넣으면 <b>순서와 무관하게</b> 결과가 같습니다.
+        ///
+        /// 겨누는 목표는 그대로이므로, 튀어 오른 포신은 <b>스스로 목표로 돌아옵니다.</b>
+        /// 되돌아오는 성격은 <see cref="spring"/> 하나가 정합니다 — 조준과 반동이
+        /// 같은 스프링을 쓰는 것이 이 기계의 무게감을 한 벌로 만듭니다.
+        /// </summary>
+        /// <param name="degrees">들어 올릴 각(도). 음수면 내려갑니다</param>
+        public void AddRecoil(float degrees)
+        {
+            if (pitchMotion == null || Mathf.Approximately(degrees, 0f)) return;
+
+            pitchMotion.AddVelocity(SecondOrderDynamics.ImpulseForPeak(spring, degrees));
+        }
+
+        /// <summary>
+        /// 지금 겨누고 있는 자리를 알려 줍니다. <b>쏘아도 되는지</b>를 무장이 이것으로 봅니다.
+        ///
+        /// 목표를 무장이 따로 들고 있으면 포탑과 <b>다른 것을 볼 수</b> 있습니다 —
+        /// 겨눈 데 없는 곳으로 쏘는 것이 그렇게 생깁니다.
+        /// </summary>
+        /// <param name="point">겨누는 자리</param>
+        /// <returns>겨눌 것이 있으면 참</returns>
+        public bool TryGetTarget(out Vector3 point)
+        {
+            return ResolveTarget(out point);
+        }
+
         /// <summary>겨눌 자리를 코드로 줍니다. <see cref="target"/> 이 비어 있을 때 쓰입니다.</summary>
         /// <param name="worldPoint">겨눌 월드 좌표</param>
         public void AimAt(Vector3 worldPoint)

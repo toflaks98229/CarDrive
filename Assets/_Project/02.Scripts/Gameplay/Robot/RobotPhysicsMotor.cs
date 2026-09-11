@@ -225,6 +225,22 @@ namespace CarDrive.Gameplay
         }
 
         /// <summary>
+        /// 속도를 <b>이만큼 바꿉니다.</b> 질량을 몰라도 되게 하는 창구입니다.
+        ///
+        /// <see cref="AddImpulse"/> 는 N·s 를 받으므로 부르는 쪽이 질량을 알아야 합니다.
+        /// 그런데 "이 포를 쏘면 <b>1.2 m/s 로 밀린다</b>" 처럼 <b>결과</b>로 적어야
+        /// 조율할 수 있는 값들이 있습니다 — 로봇마다 질량이 다르면 같은 충격량이
+        /// 다른 그림을 내므로, 그런 값은 속도로 적어야 뜻이 지켜집니다.
+        /// </summary>
+        /// <param name="delta">바꿀 속도(m/s)</param>
+        public void AddVelocityChange(Vector3 delta)
+        {
+            if (body == null) return;
+
+            AddImpulse(delta * body.mass);
+        }
+
+        /// <summary>
         /// 로봇을 다른 자리로 옮깁니다. 속도를 지우고 발도 다시 심습니다.
         /// 리지드바디가 있는 로봇은 <see cref="WalkerRobot.Teleport"/> 대신 이쪽을 불러야 합니다.
         /// </summary>

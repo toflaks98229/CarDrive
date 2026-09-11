@@ -75,6 +75,9 @@ namespace CarDrive.Gameplay
         /// <summary>목적지를 향해 걷는 쪽입니다. 죽으면 걸음을 멈춥니다.</summary>
         private RobotDriver driver;
 
+        /// <summary>무엇을 볼지 정하는 쪽입니다. 맞으면 깨웁니다.</summary>
+        private RobotThreat threat;
+
         /// <summary>사망 처리를 이미 했는지입니다. 앙크는 매 프레임 때리므로 한 번만 돌아야 합니다.</summary>
         private bool died;
 
@@ -88,6 +91,7 @@ namespace CarDrive.Gameplay
             // 로봇은 부품이 루트에 모여 있지만, 프리팹 구조가 바뀌어도 견디도록 자식까지 봅니다.
             knockdown = GetComponentInChildren<RobotKnockdown>(true);
             driver = GetComponentInChildren<RobotDriver>(true);
+            threat = GetComponentInChildren<RobotThreat>(true);
         }
 
         // --- Public Methods : IDamageable ---
@@ -105,6 +109,10 @@ namespace CarDrive.Gameplay
             if (health == null || health.IsDead) return;
 
             health.TakeDamage(amount);
+
+            // <b>맞으면 깨어납니다.</b> 스트라이더는 건드려야만 겨누므로, 이 한 줄이
+            // 없으면 앙크로 때려도 <b>가만히 서서 맞습니다.</b>
+            if (threat != null) threat.Provoke();
 
             if (onDamaged != null) onDamaged.Invoke();
 

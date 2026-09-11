@@ -28,7 +28,6 @@ Material:
     m_Ints: []
     m_Floats:
     - _SplatOn: 0
-    - _UseHatching: 0
     m_Colors:
     - _BaseColor: {r: 0.95, g: 0.62, b: 0.2, a: 1}
     - _Color: {r: 0.95, g: 0.62, b: 0.2, a: 1}

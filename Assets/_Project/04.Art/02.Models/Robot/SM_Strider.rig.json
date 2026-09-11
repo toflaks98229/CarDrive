@@ -91,8 +91,8 @@
   {
    "pos": [
     0.0,
-    -0.56,
-    0.0
+    -0.81396,
+    -0.64
    ],
    "rot": [
     0.0,
@@ -117,10 +117,27 @@
     0.0,
     1.0
    ],
-   "node": "Gun",
+   "node": "Gun_HeavyCannon",
    "mesh": "SM_Gun_HeavyCannon",
    "active": true,
    "parent": "Gun_Pitch"
+  },
+  {
+   "pos": [
+    0.0,
+    0.04,
+    3.35
+   ],
+   "rot": [
+    0.0,
+    -0.0,
+    0.0,
+    1.0
+   ],
+   "node": "Gun_HeavyCannon_Barrel",
+   "mesh": "SM_Gun_HeavyCannon_Barrel",
+   "active": true,
+   "parent": "Gun_HeavyCannon"
   },
   {
    "pos": [
@@ -134,10 +151,214 @@
     0.0,
     1.0
    ],
-   "node": "Gun_Alt",
+   "node": "Gun_Autocannon",
    "mesh": "SM_Gun_Autocannon",
    "active": false,
    "parent": "Gun_Pitch"
+  },
+  {
+   "pos": [
+    0.27,
+    -0.02,
+    2.915
+   ],
+   "rot": [
+    0.0,
+    -0.0,
+    0.0,
+    1.0
+   ],
+   "node": "Gun_Autocannon_BarrelL",
+   "mesh": "SM_Gun_Autocannon_BarrelL",
+   "active": true,
+   "parent": "Gun_Autocannon"
+  },
+  {
+   "pos": [
+    -0.27,
+    -0.02,
+    2.915
+   ],
+   "rot": [
+    0.0,
+    -0.0,
+    0.0,
+    1.0
+   ],
+   "node": "Gun_Autocannon_BarrelR",
+   "mesh": "SM_Gun_Autocannon_BarrelR",
+   "active": true,
+   "parent": "Gun_Autocannon"
+  },
+  {
+   "pos": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rot": [
+    0.0,
+    -0.0,
+    0.0,
+    1.0
+   ],
+   "node": "Gun_MissileRack",
+   "mesh": "SM_Gun_MissileRack",
+   "active": false,
+   "parent": "Gun_Pitch"
+  },
+  {
+   "pos": [
+    -0.0,
+    -0.1,
+    2.56
+   ],
+   "rot": [
+    0.0,
+    -0.0,
+    0.0,
+    1.0
+   ],
+   "node": "Gun_MissileRack_Doors",
+   "mesh": "SM_Gun_MissileRack_Doors",
+   "active": true,
+   "parent": "Gun_MissileRack"
+  },
+  {
+   "pos": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rot": [
+    0.0,
+    -0.0,
+    0.0,
+    1.0
+   ],
+   "node": "Gun_Rotary",
+   "mesh": "SM_Gun_Rotary",
+   "active": false,
+   "parent": "Gun_Pitch"
+  },
+  {
+   "pos": [
+    0.0,
+    0.0,
+    2.69
+   ],
+   "rot": [
+    0.0,
+    -0.0,
+    0.0,
+    1.0
+   ],
+   "node": "Gun_Rotary_Rotor",
+   "mesh": "SM_Gun_Rotary_Rotor",
+   "active": true,
+   "parent": "Gun_Rotary"
+  },
+  {
+   "pos": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rot": [
+    0.0,
+    -0.0,
+    0.0,
+    1.0
+   ],
+   "node": "Gun_Siege",
+   "mesh": "SM_Gun_Siege",
+   "active": false,
+   "parent": "Gun_Pitch"
+  },
+  {
+   "pos": [
+    0.0,
+    -0.02,
+    2.5
+   ],
+   "rot": [
+    0.0,
+    -0.0,
+    0.0,
+    1.0
+   ],
+   "node": "Gun_Siege_Barrel",
+   "mesh": "SM_Gun_Siege_Barrel",
+   "active": true,
+   "parent": "Gun_Siege"
+  },
+  {
+   "pos": [
+    0.0,
+    0.26,
+    2.36
+   ],
+   "rot": [
+    0.0,
+    -0.0,
+    0.0,
+    1.0
+   ],
+   "node": "Gun_Siege_Cylinders",
+   "mesh": "SM_Gun_Siege_Cylinders",
+   "active": true,
+   "parent": "Gun_Siege"
+  },
+  {
+   "pos": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rot": [
+    0.0,
+    -0.0,
+    0.0,
+    1.0
+   ],
+   "node": "Gun_TowHook",
+   "mesh": "SM_Gun_TowHook",
+   "active": false,
+   "parent": "Gun_Pitch"
+  },
+  {
+   "pos": [
+    0.0,
+    0.02,
+    1.18
+   ],
+   "rot": [
+    0.0,
+    -0.0,
+    0.0,
+    1.0
+   ],
+   "node": "Gun_TowHook_Drum",
+   "mesh": "SM_Gun_TowHook_Drum",
+   "active": true,
+   "parent": "Gun_TowHook"
+  },
+  {
+   "pos": [
+    -0.0,
+    -0.86,
+    3.24
+   ],
+   "rot": [
+    0.0,
+    -0.0,
+    0.0,
+    1.0
+   ],
+   "node": "Gun_TowHook_Hook",
+   "mesh": "SM_Gun_TowHook_Hook",
+   "active": true,
+   "parent": "Gun_TowHook"
   }
  ],
  "legs": [
@@ -523,7 +744,7 @@
     0.0
    ],
    "range": [
-    -25.0,
+    -10.0,
     60.0
    ]
   },
@@ -581,11 +802,56 @@
  "muzzles": [
   {
    "node": "Muzzle",
-   "parent": "Gun_Pitch",
+   "parent": "Gun_HeavyCannon",
+   "pos": [
+    -0.0,
+    0.04,
+    4.4
+   ]
+  },
+  {
+   "node": "Muzzle_Autocannon",
+   "parent": "Gun_Autocannon",
    "pos": [
     0.0,
-    0.04,
-    4.22
+    -0.02,
+    3.92
+   ]
+  },
+  {
+   "node": "Muzzle_MissileRack",
+   "parent": "Gun_MissileRack",
+   "pos": [
+    0.0,
+    -0.1,
+    2.74
+   ]
+  },
+  {
+   "node": "Muzzle_Rotary",
+   "parent": "Gun_Rotary",
+   "pos": [
+    -0.0,
+    0.0,
+    3.68
+   ]
+  },
+  {
+   "node": "Muzzle_Siege",
+   "parent": "Gun_Siege",
+   "pos": [
+    0.0,
+    -0.02,
+    3.26
+   ]
+  },
+  {
+   "node": "Muzzle_TowHook",
+   "parent": "Gun_TowHook",
+   "pos": [
+    0.0,
+    -1.86,
+    3.24
    ]
   }
  ],

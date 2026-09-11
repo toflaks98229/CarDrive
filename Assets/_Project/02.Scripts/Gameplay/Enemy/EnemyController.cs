@@ -87,21 +87,21 @@ namespace CarDrive.Gameplay
         /// </summary>
         void FixedUpdate()
         {
+            // 대상이 <b>없을 때만</b>이 아니라 주기적으로 다시 봅니다. 예전에는 한 번
+            // 정하면 끝이라, 플레이어가 차에서 내려도 적은 <b>빈 차를</b> 계속 쫓았습니다.
+            // 밤에 걸어 다닐 때 위협이 사라지던 이유의 절반이 이것이었습니다.
+            // 매 물리 프레임 찾지는 않습니다.
+            if (Time.time >= nextTargetSearchTime)
+            {
+                nextTargetSearchTime = Time.time + TargetSearchInterval;
+                ResolveTarget();
+            }
+
             if (target == null)
             {
-                // 매 물리 프레임 찾지 않습니다. 차가 갑자기 생기는 일은 드뭅니다.
-                if (Time.time >= nextTargetSearchTime)
-                {
-                    nextTargetSearchTime = Time.time + TargetSearchInterval;
-                    ResolveTarget();
-                }
-
-                if (target == null)
-                {
-                    // 노릴 것이 없으면 XZ 이동을 멈춥니다. (Y축은 중력을 위해 유지)
-                    rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
-                    return;
-                }
+                // 노릴 것이 없으면 XZ 이동을 멈춥니다. (Y축은 중력을 위해 유지)
+                rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+                return;
             }
 
             Vector3 toTarget = target.position - transform.position;
@@ -188,13 +188,40 @@ namespace CarDrive.Gameplay
         // --- Private Methods ---
 
         /// <summary>
-        /// 노릴 차량을 정합니다. 플레이어가 타고 있는 차가 있으면 그 차를,
-        /// 없으면 가장 가까운 차를 고릅니다.
+        /// 노릴 것을 정합니다. <b>도보면 사람, 주행이면 그 차</b>입니다.
+        ///
+        /// 예전에는 차만 골랐습니다. 그래서 차에서 내리는 순간 적이 노릴 것을 잃고
+        /// 빈 차 주위를 맴돌았습니다. 플레이어가 곧 차라는 전제는 <see cref="PlayerMode"/>
+        /// 가 생긴 시점에 이미 깨져 있었습니다.
+        ///
+        /// 인스펙터에서 대상을 지정해 둔 적은 <b>건드리지 않습니다.</b> 손으로 정한 규칙이
+        /// 자동 판단보다 셉니다.
         /// </summary>
         private void ResolveTarget()
         {
+            if (authoredTarget != null)
+            {
+                target = authoredTarget;
+                return;
+            }
+
+            PlayerModeController player = GameContext.Get<PlayerModeController>();
+
+            if (player != null && player.Mode == PlayerMode.OnFoot)
+            {
+                target = player.PickupAnchor;
+                return;
+            }
+
             Vehicle prey = Vehicle.GetTargetVehicle(transform.position);
-            target = prey != null ? prey.transform : null;
+            if (prey != null)
+            {
+                target = prey.transform;
+                return;
+            }
+
+            // 차가 하나도 없으면 사람이라도 노립니다.
+            target = player != null ? player.PickupAnchor : null;
         }
     }
 }

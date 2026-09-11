@@ -290,8 +290,13 @@ class Mass:
         nose = out * depth * 0.5
         thick = wall + depth
 
+        # <b>세로 테두리는 구멍 높이까지만 올라갑니다.</b> 예전에는 h + jamb*2 라
+        # 가로 테두리와 <b>네 모서리에서 같은 자리를 차지했고</b>, 두 상자의 앞뒷면이
+        # 같은 평면에서 같은 쪽을 봐 깜빡였습니다. 집 여섯 채에서 잡힌 z-fighting
+        # 대부분이 이것이었습니다(House04 249쌍 중 약 200쌍).
+        # 지금은 세로가 h, 가로가 w + jamb*2 라 모서리에서 <b>맞대기</b>가 됩니다.
         for sign in (-1.0, 1.0):
-            put(sign * (w + jamb) * 0.5, nose, 0.0, jamb, thick, h + jamb * 2.0, mat)
+            put(sign * (w + jamb) * 0.5, nose, 0.0, jamb, thick, h, mat)
             put(0.0, nose, sign * (h + jamb) * 0.5, w + jamb * 2.0, thick, jamb, mat)
 
     def to_object(self, name):

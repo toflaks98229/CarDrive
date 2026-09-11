@@ -1,0 +1,649 @@
+{
+ "standHeight": 24.0,
+ "rootOriginBlender": [
+  0.0,
+  5.0,
+  0.0
+ ],
+ "meshPrefix": "SM_Nomad_",
+ "bodyLocal": {
+  "pos": [
+   -0.0,
+   24.0,
+   -0.0
+  ],
+  "rot": [
+   0.0,
+   0.0,
+   0.0,
+   1.0
+  ]
+ },
+ "bodyParts": [
+  {
+   "pos": [
+    0.0,
+    -24.0,
+    5.0
+   ],
+   "rot": [
+    0.0,
+    -0.0,
+    0.0,
+    1.0
+   ],
+   "node": "Chassis",
+   "mesh": "SM_Nomad_Truss",
+   "active": true,
+   "parent": "Body"
+  },
+  {
+   "pos": [
+    0.0,
+    -24.0,
+    5.0
+   ],
+   "rot": [
+    0.0,
+    -0.0,
+    0.0,
+    1.0
+   ],
+   "node": "Deck",
+   "mesh": "SM_Nomad_Deck",
+   "active": true,
+   "parent": "Body"
+  },
+  {
+   "pos": [
+    0.0,
+    -24.0,
+    5.0
+   ],
+   "rot": [
+    0.0,
+    -0.0,
+    0.0,
+    1.0
+   ],
+   "node": "Duct",
+   "mesh": "SM_Nomad_Duct",
+   "active": true,
+   "parent": "Body"
+  },
+  {
+   "pos": [
+    0.0,
+    -24.0,
+    5.0
+   ],
+   "rot": [
+    0.0,
+    -0.0,
+    0.0,
+    1.0
+   ],
+   "node": "Capsule",
+   "mesh": "SM_Nomad_Capsule",
+   "active": true,
+   "parent": "Body"
+  },
+  {
+   "pos": [
+    0.0,
+    -30.7,
+    7.0
+   ],
+   "rot": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "node": "Gantry",
+   "mesh": "SM_Nomad_Gantry",
+   "active": true,
+   "parent": "Crane_Yaw"
+  },
+  {
+   "pos": [
+    0.0,
+    -34.3,
+    7.0
+   ],
+   "rot": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "node": "Crane",
+   "mesh": "SM_Nomad_Crane",
+   "active": true,
+   "parent": "Crane_Pitch"
+  },
+  {
+   "pos": [
+    0.0,
+    -23.4,
+    -14.2
+   ],
+   "rot": [
+    0.0,
+    -0.0,
+    0.0,
+    1.0
+   ],
+   "node": "Head",
+   "mesh": "SM_Nomad_Head",
+   "active": true,
+   "parent": "Head_Pitch"
+  }
+ ],
+ "legs": [
+  {
+   "node": "Leg_FrontLeft",
+   "legLocal": {
+    "pos": [
+     -8.60891,
+     1.7817,
+     7.70906
+    ],
+    "rot": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   },
+   "upperLength": 16.91567,
+   "lowerLength": 33.7929,
+   "ankleLength": 3.0,
+   "homeOffset": [
+    -32.0,
+    0.0,
+    14.0
+   ],
+   "kneePole": [
+    -0.675909,
+    0.727141,
+    0.120053
+   ],
+   "ankleOutward": 0.0,
+   "femurLocal": {
+    "pos": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "rot": [
+     -0.240422,
+     -0.60221,
+     -0.165635,
+     0.743038
+    ]
+   },
+   "tibiaLocal": {
+    "pos": [
+     -0.0,
+     0.0,
+     16.91567
+    ],
+    "rot": [
+     0.800618,
+     0.0,
+     -0.0,
+     0.599175
+    ]
+   },
+   "tarsusLocal": {
+    "pos": [
+     0.0,
+     -0.0,
+     33.7929
+    ],
+    "rot": [
+     0.092312,
+     -0.122667,
+     0.696386,
+     0.701055
+    ]
+   },
+   "parts": [
+    {
+     "pos": [
+      8.60891,
+      -25.78169,
+      -2.70906
+     ],
+     "rot": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "node": "HipMesh",
+     "mesh": "SM_Nomad_Hip_L"
+    },
+    {
+     "pos": [
+      -1.86733,
+      -16.34715,
+      -21.80441
+     ],
+     "rot": [
+      0.240422,
+      0.60221,
+      0.165635,
+      0.743038
+     ],
+     "node": "FemurMesh",
+     "mesh": "SM_Nomad_Femur_L"
+    },
+    {
+     "pos": [
+      -1.86733,
+      -32.53928,
+      26.60204
+     ],
+     "rot": [
+      -0.450835,
+      0.49344,
+      -0.382896,
+      0.637696
+     ],
+     "node": "TibiaMesh",
+     "mesh": "SM_Nomad_Tibia_L"
+    },
+    {
+     "pos": [
+      -33.19604,
+      1.7387,
+      3.0
+     ],
+     "rot": [
+      -0.078271,
+      0.702761,
+      -0.702762,
+      0.078271
+     ],
+     "node": "TarsusMesh",
+     "mesh": "SM_Nomad_Foot_L"
+    }
+   ]
+  },
+  {
+   "node": "Leg_FrontRight",
+   "legLocal": {
+    "pos": [
+     8.60891,
+     1.7817,
+     7.70906
+    ],
+    "rot": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   },
+   "upperLength": 16.91567,
+   "lowerLength": 33.7929,
+   "ankleLength": 3.0,
+   "homeOffset": [
+    32.0,
+    0.0,
+    14.0
+   ],
+   "kneePole": [
+    0.675909,
+    0.727141,
+    0.120053
+   ],
+   "ankleOutward": 0.0,
+   "femurLocal": {
+    "pos": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "rot": [
+     -0.240422,
+     0.60221,
+     0.165635,
+     0.743038
+    ]
+   },
+   "tibiaLocal": {
+    "pos": [
+     0.0,
+     0.0,
+     16.91567
+    ],
+    "rot": [
+     0.800618,
+     -0.0,
+     0.0,
+     0.599175
+    ]
+   },
+   "tarsusLocal": {
+    "pos": [
+     -0.0,
+     -0.0,
+     33.7929
+    ],
+    "rot": [
+     0.122667,
+     -0.092312,
+     0.701055,
+     0.696386
+    ]
+   },
+   "parts": [
+    {
+     "pos": [
+      -8.60891,
+      -25.78169,
+      -2.70906
+     ],
+     "rot": [
+      0.0,
+      -0.0,
+      -0.0,
+      1.0
+     ],
+     "node": "HipMesh",
+     "mesh": "SM_Nomad_Hip_R"
+    },
+    {
+     "pos": [
+      1.86733,
+      -16.34715,
+      -21.80441
+     ],
+     "rot": [
+      0.240422,
+      -0.60221,
+      -0.165635,
+      0.743038
+     ],
+     "node": "FemurMesh",
+     "mesh": "SM_Nomad_Femur_R"
+    },
+    {
+     "pos": [
+      1.86733,
+      -32.53928,
+      26.60204
+     ],
+     "rot": [
+      -0.450835,
+      -0.49344,
+      0.382896,
+      0.637696
+     ],
+     "node": "TibiaMesh",
+     "mesh": "SM_Nomad_Tibia_R"
+    },
+    {
+     "pos": [
+      -33.19604,
+      -1.7387,
+      3.0
+     ],
+     "rot": [
+      -0.702761,
+      0.078271,
+      -0.078271,
+      0.702762
+     ],
+     "node": "TarsusMesh",
+     "mesh": "SM_Nomad_Foot_R"
+    }
+   ]
+  },
+  {
+   "node": "Leg_Rear",
+   "legLocal": {
+    "pos": [
+     0.0,
+     1.86626,
+     -5.19944
+    ],
+    "rot": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   },
+   "upperLength": 16.00417,
+   "lowerLength": 33.65828,
+   "ankleLength": 3.0,
+   "homeOffset": [
+    -0.0,
+    0.0,
+    -28.0
+   ],
+   "kneePole": [
+    0.0,
+    0.706089,
+    -0.708123
+   ],
+   "ankleOutward": 0.0,
+   "femurLocal": {
+    "pos": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "rot": [
+     0.0,
+     0.951925,
+     0.30633,
+     0.0
+    ]
+   },
+   "tibiaLocal": {
+    "pos": [
+     0.0,
+     0.0,
+     16.00417
+    ],
+    "rot": [
+     0.812841,
+     0.0,
+     0.0,
+     0.582486
+    ]
+   },
+   "tarsusLocal": {
+    "pos": [
+     0.0,
+     -0.0,
+     33.65829
+    ],
+    "rot": [
+     0.104075,
+     -0.104075,
+     0.699406,
+     0.699406
+    ]
+   },
+   "parts": [
+    {
+     "pos": [
+      -0.0,
+      -25.86626,
+      10.19944
+     ],
+     "rot": [
+      -0.0,
+      0.0,
+      -0.0,
+      1.0
+     ],
+     "node": "HipMesh",
+     "mesh": "SM_Nomad_Hip_B"
+    },
+    {
+     "pos": [
+      0.0,
+      -15.0634,
+      -23.37062
+     ],
+     "rot": [
+      0.0,
+      -0.951925,
+      -0.30633,
+      0.0
+     ],
+     "node": "FemurMesh",
+     "mesh": "SM_Nomad_Femur_B"
+    },
+    {
+     "pos": [
+      0.0,
+      -32.44373,
+      26.91997
+     ],
+     "rot": [
+      -0.0,
+      0.80348,
+      -0.595331,
+      0.0
+     ],
+     "node": "TibiaMesh",
+     "mesh": "SM_Nomad_Tibia_B"
+    },
+    {
+     "pos": [
+      -33.0,
+      0.0,
+      3.0
+     ],
+     "rot": [
+      -0.5,
+      -0.5,
+      0.5,
+      0.5
+     ],
+     "node": "TarsusMesh",
+     "mesh": "SM_Nomad_Foot_B"
+    }
+   ]
+  }
+ ],
+ "aim": [
+  {
+   "node": "Crane_Yaw",
+   "parent": "Body",
+   "pos": [
+    0.0,
+    6.7,
+    -2.0
+   ],
+   "axis": [
+    0.0,
+    1.0,
+    0.0
+   ],
+   "range": [
+    -180.0,
+    180.0
+   ]
+  },
+  {
+   "node": "Crane_Pitch",
+   "parent": "Crane_Yaw",
+   "pos": [
+    0.0,
+    3.6,
+    0.0
+   ],
+   "axis": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "range": [
+    -55.0,
+    20.0
+   ]
+  },
+  {
+   "node": "Head_Yaw",
+   "parent": "Body",
+   "pos": [
+    0.0,
+    -0.6,
+    19.2
+   ],
+   "axis": [
+    0.0,
+    1.0,
+    0.0
+   ],
+   "range": [
+    -70.0,
+    70.0
+   ]
+  },
+  {
+   "node": "Head_Pitch",
+   "parent": "Head_Yaw",
+   "pos": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "axis": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "range": [
+    -20.0,
+    25.0
+   ]
+  }
+ ],
+ "turrets": [
+  {
+   "name": "Crane",
+   "yaw": "Crane_Yaw",
+   "pitch": "Crane_Pitch",
+   "muzzle": "Muzzle_Main"
+  },
+  {
+   "name": "Head",
+   "yaw": "Head_Yaw",
+   "pitch": "Head_Pitch",
+   "muzzle": ""
+  }
+ ],
+ "muzzles": [
+  {
+   "node": "Muzzle_Main",
+   "parent": "Crane_Pitch",
+   "pos": [
+    0.0,
+    1.2,
+    26.0
+   ]
+  }
+ ],
+ "bodyBox": {
+  "center": [
+   0.0,
+   24.0,
+   3.53
+  ],
+  "size": [
+   25.6,
+   9.0,
+   33.34
+  ]
+ }
+}

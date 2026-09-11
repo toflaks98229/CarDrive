@@ -18,6 +18,34 @@ public static class StriderCapture
 
     private const string DefaultPrefab = "Assets/_Project/05.Prefabs/Robot/WalkerRobot_Strider.prefab";
 
+    /// <summary>
+    /// <c>STRIDER_GUN</c> 이 있으면 그 무장 하나만 켜고 나머지를 끕니다.
+    ///
+    /// <b>무장이 여섯이 되면서 필요해졌습니다.</b> 프리팹에는 여섯이 다 들어 있고
+    /// 기본 하나만 켜져 있으므로, 나머지 다섯은 <b>켜 보기 전에는 어떻게 생겼는지
+    /// 알 수 없습니다</b> - json 에 자리가 적혀 있어도 실제로 그 자리에 붙었는지는
+    /// 그려 봐야 압니다.
+    /// </summary>
+    /// <param name="root">로봇 루트</param>
+    private static void PickGun(GameObject root)
+    {
+        string want = System.Environment.GetEnvironmentVariable("STRIDER_GUN");
+        if (string.IsNullOrEmpty(want)) return;
+
+        bool found = false;
+        foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+        {
+            if (!t.name.StartsWith("Gun_") && t.name != "Gun") continue;
+            if (t.name == "Gun_Yaw" || t.name == "Gun_Pitch") continue;
+
+            bool on = t.name == want;
+            t.gameObject.SetActive(on);
+            found |= on;
+        }
+
+        if (!found) Debug.LogError("StriderCapture: 그런 무장이 없습니다: " + want);
+    }
+
     /// <summary>STRIDER_PREFAB 으로 다른 기계를 재도록 바꿀 수 있습니다.</summary>
     private static string PrefabPath
     {
@@ -62,6 +90,7 @@ public static class StriderCapture
 
         GameObject robot = (GameObject)PrefabUtility.InstantiatePrefab(prefab, scene);
         robot.transform.position = Vector3.zero;
+        PickGun(robot);
 
         // STRIDER_STATIC=1 이면 살아 있는 컴포넌트를 재웁니다. 프리팹에 적힌 자세를 그대로 봅니다.
         if (System.Environment.GetEnvironmentVariable("STRIDER_STATIC") == "1")
@@ -107,7 +136,9 @@ public static class StriderCapture
             camObject.transform.position = bounds.center - rotation * Vector3.forward * distance;
             camObject.transform.rotation = rotation;
 
-            Shoot(cam, Path.Combine(outDir, "strider_" + name + ".png"));
+            string tag = System.Environment.GetEnvironmentVariable("STRIDER_TAG");
+            string stem = string.IsNullOrEmpty(tag) ? "strider" : "strider_" + tag;
+            Shoot(cam, Path.Combine(outDir, stem + "_" + name + ".png"));
         }
 
         Debug.Log("StriderCapture: " + outDir);

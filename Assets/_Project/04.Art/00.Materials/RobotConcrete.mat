@@ -34,12 +34,11 @@ Material:
     - _BaseMapStrength: 0.45
     - _SplatOn: 0
     - _UseGrain: 1
-    - _UseHatching: 0
     m_Colors:
     - _BaseColor: {r: 0.6, g: 0.59, b: 0.55, a: 1}
     - _BaseMapGain: {r: 1.9647397, g: 1.9647397, b: 1.9647397, a: 1}
     - _Color: {r: 0.6, g: 0.59, b: 0.55, a: 1}
-    - _EmissionColor: {r: 0, g: 0, b: 0, a: 0}
+    - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _HeightColor: {r: 0, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

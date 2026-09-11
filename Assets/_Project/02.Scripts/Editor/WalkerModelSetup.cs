@@ -62,13 +62,71 @@ public static class WalkerModelSetup
 
     private static Config Dreadnought()
     {
+        return DreadVariant("Castraferrum");
+    }
+
+    /// <summary>
+    /// 노마드 — 메가스트럭쳐 규격의 거대 스트라이더입니다.
+    ///
+    /// <b>큰 세 값은 스파인의 머티리얼을 그대로 씁니다.</b> 비슷하게 맞춘 로봇 팔레트가
+    /// 아니라 같은 에셋입니다. 스파인의 명도 폭이 로봇보다 넓게 벌어져 있는 것이
+    /// 질감 없는 덩어리를 크게 읽히게 하는 장치이고, 같은 것을 쓰면 배칭도 됩니다.
+    ///
+    /// <b>표시등만 따로 만듭니다.</b> MegaSignal 은 발광이 켜져 있는데 GI 플래그가
+    /// EmissiveIsBlack 입니다. 여기서 재지정하면 그 플래그가 뒤집혀 스파인 전체의
+    /// 등에 영향이 갑니다. 등 하나 때문에 남의 에셋을 건드릴 이유가 없습니다.
+    /// </summary>
+    private static Config Nomad()
+    {
         return new Config
         {
-            Fbx = "Assets/_Project/04.Art/02.Models/Robot/SM_Dreadnought.fbx",
-            Rig = "Assets/_Project/04.Art/02.Models/Robot/SM_Dreadnought.rig.json",
-            Prefab = "Assets/_Project/05.Prefabs/Robot/WalkerRobot_Dreadnought.prefab",
-            // 스트라이더의 1/4 크기 기계입니다. 반지름도 같은 비율로 줄입니다.
-            Radius = new[] { 0.20f, 0.16f, 0.22f },
+            Fbx = "Assets/_Project/04.Art/02.Models/Robot/SM_Nomad.fbx",
+            Rig = "Assets/_Project/04.Art/02.Models/Robot/SM_Nomad.rig.json",
+            Prefab = "Assets/_Project/05.Prefabs/Robot/WalkerRobot_Nomad.prefab",
+            // 마디 단면에서 옵니다 - 넓적 5.2, 종아리 4.3~2.5, 발판 9.4 x 10.4.
+            Radius = new[] { 1.9f, 1.3f, 2.0f },
+            Materials = new[]
+            {
+                ("M_Nomad_Concrete", "MegaConcrete", new Color(0.42f, 0.415f, 0.395f), Color.black),
+                ("M_Nomad_Steel",    "MegaSteel",    new Color(0.22f, 0.235f, 0.26f), Color.black),
+                ("M_Nomad_Dark",     "MegaDark",     new Color(0.052f, 0.058f, 0.064f), Color.black),
+                ("M_Nomad_Signal",   "NomadSignal",  new Color(0.86f, 0.36f, 0.09f), new Color(0.52f, 0.19f, 0.035f)),
+            },
+        };
+    }
+
+    /// <summary>
+    /// 드레드노트 계열의 패턴 이름입니다. 블렌더의 <c>PATTERNS</c> 표와 <b>같은 이름</b>이어야
+    /// 합니다 — 저쪽이 파일 이름을 그 이름으로 짓기 때문입니다.
+    /// </summary>
+    private static readonly string[] DreadPatterns =
+    {
+        "Castraferrum", "Ironclad", "Mortis", "Ballistus",
+    };
+
+    /// <summary>
+    /// 드레드노트 계열 하나의 설정입니다.
+    ///
+    /// <b>기본 패턴만 옛 이름을 씁니다.</b> 씬과 프리팹이 전부 <c>SM_Dreadnought</c> 를
+    /// 가리키고 있어서, 이름을 바꾸면 형태와 무관한 곳이 줄줄이 깨집니다.
+    /// 변형은 <c>SM_Dread_&lt;패턴&gt;</c> 입니다. 이 규칙은 <c>build_dreadnought.paths_for</c>
+    /// 와 짝입니다 — 한쪽만 고치면 파일을 못 찾습니다.
+    /// </summary>
+    /// <param name="pattern">패턴 이름</param>
+    /// <returns>그 패턴의 설정</returns>
+    private static Config DreadVariant(string pattern)
+    {
+        bool baseline = pattern == "Castraferrum";
+        string stem = baseline ? "SM_Dreadnought" : "SM_Dread_" + pattern;
+        string prefab = baseline ? "WalkerRobot_Dreadnought" : "WalkerRobot_Dread" + pattern;
+
+        return new Config
+        {
+            Fbx = "Assets/_Project/04.Art/02.Models/Robot/" + stem + ".fbx",
+            Rig = "Assets/_Project/04.Art/02.Models/Robot/" + stem + ".rig.json",
+            Prefab = "Assets/_Project/05.Prefabs/Robot/" + prefab + ".prefab",
+            // 변형끼리 마디 단면이 거의 같습니다(넓적 1.00~1.06). 반지름은 공유합니다.
+            Radius = new[] { 0.36f, 0.28f, 0.30f },
             Materials = new[]
             {
                 ("M_Dread_Concrete", "RobotConcrete", new Color(0.60f, 0.59f, 0.55f), Color.black),
@@ -96,8 +154,43 @@ public static class WalkerModelSetup
         Run(Dreadnought());
     }
 
+    /// <summary>노마드를 조립합니다. 배치모드에서 부릅니다.</summary>
+    public static void RunNomad()
+    {
+        Run(Nomad());
+    }
+
+    /// <summary>
+    /// 드레드노트 계열을 <b>한 번에</b> 조립합니다. 배치모드에서 부릅니다.
+    ///
+    /// 변형마다 따로 부르면 유니티를 네 번 띄워야 하고 그때마다 에셋 데이터베이스가
+    /// 다시 올라옵니다. 한 판에 다 돌리는 편이 훨씬 쌉니다.
+    /// </summary>
+    public static void RunDreadnoughtAll()
+    {
+        int errors = 0;
+
+        foreach (string pattern in DreadPatterns) errors += RunOne(DreadVariant(pattern));
+
+        AssetDatabase.SaveAssets();
+        Debug.Log("WalkerModelSetup: 드레드노트 계열 " + DreadPatterns.Length +
+                  "종 — 실패 " + errors + "건");
+
+        if (Application.isBatchMode) EditorApplication.Exit(errors > 0 ? 2 : 0);
+    }
+
     /// <summary>실패하면 종료코드 2 로 나갑니다.</summary>
     private static void Run(Config config)
+    {
+        int errors = RunOne(config);
+        AssetDatabase.SaveAssets();
+        if (Application.isBatchMode) EditorApplication.Exit(errors > 0 ? 2 : 0);
+    }
+
+    /// <summary>하나를 조립합니다. 실패 건수를 돌려주고 <b>종료하지 않습니다.</b></summary>
+    /// <param name="config">조립할 기계의 설정</param>
+    /// <returns>실패했으면 1, 아니면 0</returns>
+    private static int RunOne(Config config)
     {
         _config = config;
         int errors = 0;
@@ -117,9 +210,7 @@ public static class WalkerModelSetup
             errors++;
         }
 
-        AssetDatabase.SaveAssets();
-
-        if (Application.isBatchMode) EditorApplication.Exit(errors > 0 ? 2 : 0);
+        return errors;
     }
 
     // --- Private Methods : 치수 ---
@@ -239,11 +330,15 @@ public static class WalkerModelSetup
             Dictionary<string, Transform> nodes = new Dictionary<string, Transform> { { "Body", body } };
             BuildAim(rig, nodes);
 
+            // <b>파츠도 마디로 등록합니다.</b> 무장의 움직이는 조각(포신 · 로터 ·
+            // 덮개)은 무장 본체 밑으로 들어가므로, 앞서 만든 파츠를 이름으로 찾을
+            // 수 있어야 합니다. 목록은 <b>부모가 먼저</b> 오도록 나옵니다.
             foreach (Part part in rig.bodyParts)
             {
                 Transform parent = Resolve(nodes, part.parent, body);
                 GameObject go = Attach(parent, part, source);
                 go.SetActive(part.active);
+                nodes[part.node] = go.transform;
             }
 
             BuildMuzzles(rig, nodes);
@@ -550,10 +645,29 @@ public static class WalkerModelSetup
         }
     }
 
+    /// <summary>
+    /// 이름으로 마디를 찾습니다. <b>비어 있으면</b> 기본값, <b>있는데 못 찾으면 예외</b>입니다.
+    ///
+    /// ⚠ 예전에는 못 찾으면 조용히 기본값(몸통)으로 떨어졌습니다. 그래서 무장의
+    /// 움직이는 조각을 <c>parent: "Gun_Rotary"</c> 로 적었을 때, 이름이 한 글자만
+    /// 틀려도 <b>로터가 몸통 한복판에 붙었습니다</b> - 오류도 경고도 없이 말입니다.
+    /// 이름을 적어 놓고 못 찾는 것은 <b>언제나 실수</b>이므로 여기서 멈춥니다.
+    /// </summary>
+    /// <param name="nodes">지금까지 만든 마디들</param>
+    /// <param name="name">찾을 이름. 비어 있으면 <paramref name="fallback"/></param>
+    /// <param name="fallback">이름이 비었을 때 쓸 마디</param>
+    /// <returns>찾은 마디</returns>
     private static Transform Resolve(Dictionary<string, Transform> nodes, string name, Transform fallback)
     {
         if (string.IsNullOrEmpty(name)) return fallback;
-        return nodes.TryGetValue(name, out Transform found) ? found : fallback;
+
+        if (!nodes.TryGetValue(name, out Transform found))
+        {
+            throw new Exception("리그에 " + name + " 마디가 없습니다. "
+                                + "부모가 자식보다 먼저 나오는지 확인하십시오.");
+        }
+
+        return found;
     }
 
     /// <summary>마디 캡슐을 길이에 맞춥니다. 캡슐은 로컬 +Z 로 눕습니다.</summary>
@@ -595,7 +709,15 @@ public static class WalkerModelSetup
     {
         foreach (MeshFilter filter in root.GetComponentsInChildren<MeshFilter>(true).ToArray())
         {
+            // ⚠ <b>부모를 지우면 자식도 같이 죽습니다.</b> 목록은 미리 떠 놓은 것이라
+            // 죽은 자식이 뒤에 남아 있고, 그것을 만지면 예외가 납니다.
+            //
+            // 파츠가 전부 평평하게 놓여 있던 동안에는 이 일이 없었습니다. 무장의
+            // 움직이는 조각(포신 · 로터 · 덮개)이 <b>무장 파츠 밑으로</b> 들어가면서
+            // 처음으로 부모-자식인 메시가 생겼습니다.
+            if (filter == null) continue;
             if (filter.transform == root) continue;
+
             UnityEngine.Object.DestroyImmediate(filter.gameObject);
         }
     }

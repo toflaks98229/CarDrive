@@ -1,0 +1,43 @@
+# 드레드노트 레퍼런스 목록 (내려받는 곳)
+#
+# 이미지 자체는 Games Workshop 저작물이라 저장소에 넣지 않습니다.
+# 이 목록으로 다시 받습니다. 계보별 분류와 실측은
+# Assets/_Project/09.Docs/드레드노트_변형_기획.md 에 있습니다.
+#
+# 받는 법:
+#   import io, urllib.request
+#   UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36"
+#   for ln in io.open("Art/Reference/dreadnought_refs.txt", encoding="utf-8"):
+#       if ln.startswith("#") or not ln.strip(): continue
+#       name, url = ln.split()
+#       req = urllib.request.Request(url, headers={"User-Agent": UA})
+#       open(name, "wb").write(urllib.request.urlopen(req, timeout=40).read())
+#
+# 이름<탭>주소
+contemptor_cortus.png	https://static.wikia.nocookie.net/warhammer40k/images/a/a8/Contemptor-CortusDreadnought000.png
+contemptor_achillus.png	https://static.wikia.nocookie.net/warhammer40k/images/2/24/ContemptorAchillusDreadnought00.png
+contemptor_16.jpg	https://static.wikia.nocookie.net/warhammer40k/images/e/e9/Contemptor16.jpg
+redemptor.jpg	https://static.wikia.nocookie.net/warhammer40k/images/5/57/RedemptorDreadnought.jpg
+redemptor_art.png	https://static.wikia.nocookie.net/warhammer40k/images/5/59/RedemptorDreadArt.png
+redemptor_3.png	https://static.wikia.nocookie.net/warhammer40k/images/3/3c/Redemptor3.PNG
+deredeo_0.png	https://static.wikia.nocookie.net/warhammer40k/images/9/92/DeredeoPatternDreadnought0000.png
+deredeo_1.png	https://static.wikia.nocookie.net/warhammer40k/images/5/51/DeredeoPatternDreadnought0001.png
+deredeo_2.png	https://static.wikia.nocookie.net/warhammer40k/images/0/08/DeredeoPatternDreadnought0002.png
+deredeo_00.png	https://static.wikia.nocookie.net/warhammer40k/images/5/54/DeredeoDreadnought00.png
+ironclad_00.png	https://static.wikia.nocookie.net/warhammer40k/images/5/56/IroncladDreadnought00.png
+ironclad_000.png	https://static.wikia.nocookie.net/warhammer40k/images/2/27/IroncladDreadnought000.png
+ironclad_01.png	https://static.wikia.nocookie.net/warhammer40k/images/2/2f/IroncladDreadnought01.png
+ironclad_02.png	https://static.wikia.nocookie.net/warhammer40k/images/7/7a/IroncladDreadnought02.png
+helbrute.jpg	https://static.wikia.nocookie.net/warhammer40k/images/3/37/HelbruteImage.jpg
+helbrute_ts.jpg	https://static.wikia.nocookie.net/warhammer40k/images/b/b6/TS_Helbrute.jpg
+deffdread.jpg	https://static.wikia.nocookie.net/warhammer40k/images/a/ad/Deff_dread.jpg
+deffdread_1.jpg	https://static.wikia.nocookie.net/warhammer40k/images/4/4a/DeffDread1.jpg
+telemon.jpg	https://static.wikia.nocookie.net/warhammer40k/images/4/4e/Telemon_Iliastus_Accl_Culverin.jpg
+leviathan_dg.png	https://static.wikia.nocookie.net/warhammer40k/images/e/ef/DG_Leviathan_Dred_2.png
+brutalis.jpg	https://static.wikia.nocookie.net/warhammer40k/images/6/6e/BrutalisDreadnought1.jpg
+ballistus.png	https://static.wikia.nocookie.net/warhammer40k/images/5/59/BallistusDreadnought.png
+furibundus.jpg	https://static.wikia.nocookie.net/warhammer40k/images/a/af/Furibundus_dreadnought_1.jpg
+mkv_000.png	https://static.wikia.nocookie.net/warhammer40k/images/d/d0/MarkVDreadnought000.png
+mkv_001.png	https://static.wikia.nocookie.net/warhammer40k/images/f/fd/MarkVDreadnought001.png
+mkiv.jpg	https://static.wikia.nocookie.net/warhammer40k/images/f/fe/MkIV_Dreadnought.jpg
+exploded.jpg	https://static.wikia.nocookie.net/warhammer40k/images/c/ce/Exploded_View_Ancient_Dreadnought.jpg
