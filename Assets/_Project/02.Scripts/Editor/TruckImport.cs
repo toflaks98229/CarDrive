@@ -29,6 +29,16 @@ public static class TruckImport
     private const string ToonShader = "CarDrive/Toon Lit";
 
     /// <summary>
+    /// 창에 쓸 셰이더입니다.
+    ///
+    /// ⚠ <b>차창은 불투명이면 안 됩니다.</b> 툰 셰이더는 서른 몇 개 머티리얼이
+    /// 불투명이라는 전제 위에 함께 쓰고 있어서 거기에 투명을 넣지 않았고,
+    /// 대신 유리용 셰이더가 따로 있습니다(<c>CarDriveToonGlass</c>). 세단의
+    /// <c>CarGlass</c> 가 쓰는 바로 그것입니다.
+    /// </summary>
+    private const string GlassShader = "CarDrive/Toon Glass";
+
+    /// <summary>
     /// 원본 머티리얼 이름과 이 게임에서 쓸 색입니다.
     ///
     /// 색은 원본의 <c>Kd</c> 를 그대로 쓰지 않고 <b>눌러서</b> 씁니다 — 이 게임은
@@ -44,7 +54,8 @@ public static class TruckImport
         ("paintYellow", new Color(0.52f, 0.44f, 0.18f)),
         ("paintWhite",  new Color(0.62f, 0.62f, 0.60f)),
         ("paintBlack",  new Color(0.10f, 0.10f, 0.11f)),
-        ("window",      new Color(0.16f, 0.19f, 0.22f)),
+        // ⚠ <b>알파가 유리의 진하기입니다.</b> 1 로 두면 유리 셰이더를 써도 통짜 판입니다.
+        ("window",      new Color(0.16f, 0.19f, 0.22f, 0.45f)),
         ("carTire",     new Color(0.09f, 0.09f, 0.10f)),
         ("lightFront",  new Color(0.86f, 0.83f, 0.72f)),
         ("lightBack",   new Color(0.52f, 0.14f, 0.10f)),
@@ -105,10 +116,12 @@ public static class TruckImport
     public static void Run()
     {
         Shader toon = Shader.Find(ToonShader);
+        Shader glass = Shader.Find(GlassShader);
 
-        if (toon == null)
+        if (toon == null || glass == null)
         {
-            Debug.Log("TRUCK ⚠ 툰 셰이더를 못 찾았습니다 — " + ToonShader);
+            Debug.Log("TRUCK ⚠ 셰이더를 못 찾았습니다 — "
+                      + (toon == null ? ToonShader : GlassShader));
             EditorApplication.Exit(1);
             return;
         }
@@ -156,7 +169,7 @@ public static class TruckImport
                 Material inside = asset as Material;
                 if (inside == null) continue;
 
-                Material mine = Mine(inside.name, toon, made);
+                Material mine = Mine(inside.name, toon, glass, made);
                 if (mine == null) continue;
 
                 importer.AddRemap(
@@ -178,8 +191,10 @@ public static class TruckImport
     /// <summary>그 이름에 쓸 툰 머티리얼입니다. 없으면 만듭니다.</summary>
     /// <param name="fbxName">FBX 안의 머티리얼 이름</param>
     /// <param name="toon">툰 셰이더</param>
+    /// <param name="glass">유리 셰이더</param>
     /// <param name="cache">이번 실행에서 만든 것들</param>
-    private static Material Mine(string fbxName, Shader toon, Dictionary<string, Material> cache)
+    private static Material Mine(string fbxName, Shader toon, Shader glass,
+                                Dictionary<string, Material> cache)
     {
         // ⚠ <b>이름에 확장자가 붙어 오는 경우가 있습니다</b>(색판을 쓰는 팩이 그렇습니다).
         // 앞부분만 맞춰 봅니다.
@@ -206,17 +221,25 @@ public static class TruckImport
 
         if (cache.TryGetValue(key, out Material had)) return had;
 
+        // 창은 유리 셰이더를 씁니다. 나머지는 툰입니다.
+        Shader want = string.Equals(key, "window", System.StringComparison.OrdinalIgnoreCase)
+                      ? glass : toon;
+
         string path = MaterialDir + "/Truck_" + key + ".mat";
         Material found = AssetDatabase.LoadAssetAtPath<Material>(path);
 
         if (found == null)
         {
-            found = new Material(toon) { name = "Truck_" + key };
+            found = new Material(want) { name = "Truck_" + key };
             found.SetColor("_BaseColor", colour);
             AssetDatabase.CreateAsset(found, path);
         }
         else
         {
+            // ⚠ <b>이미 있는 것의 셰이더도 맞춰 둡니다.</b> 안 그러면 한 번 불투명으로
+            // 만들어진 창이 이 도구를 다시 돌려도 <b>불투명인 채로</b> 색만 바뀝니다.
+            if (found.shader != want) found.shader = want;
+
             found.SetColor("_BaseColor", colour);
             EditorUtility.SetDirty(found);
         }

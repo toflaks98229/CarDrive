@@ -8,13 +8,13 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Truck_window
-  m_Shader: {fileID: 4800000, guid: 709c1582bc7946bf935f7ebd1d7c9be8, type: 3}
+  m_Shader: {fileID: 4800000, guid: f40e3b81d7c5446fb1f5d4f710b00d8c, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
   m_InvalidKeywords: []
   m_LightmapFlags: 4
-  m_EnableInstancingVariants: 0
+  m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
   stringTagMap: {}
@@ -22,58 +22,25 @@ Material:
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
-    m_TexEnvs:
-    - _BaseMap:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _ToonRampMap:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
+    m_TexEnvs: []
     m_Ints: []
     m_Floats:
-    - _AlphaClip: 0
     - _Ambient: 0.85
-    - _BaseMapStrength: 1
     - _Cull: 2
-    - _Cutoff: 0.5
-    - _FadeEnd: 330
-    - _FadeScatter: 0.6
-    - _FadeStart: 240
-    - _HeightBottom: 0
-    - _HeightStrength: 0
-    - _HeightTop: 20
+    - _FresnelOpacity: 0.45
+    - _FresnelPower: 4
+    - _FresnelStrength: 0.35
     - _MidPoint: 0.35
-    - _OutlineWidth: 0
-    - _RimStrength: 0
-    - _RimWidth: 4
     - _ShadowSoftness: 0.25
     - _ShadowStrength: 0.75
     - _Softness: 0.05
-    - _SpecularSize: 40
-    - _SpecularStrength: 0
-    - _SplatDarken: 0.45
-    - _SplatEdgeBite: 1.7
-    - _SplatEdgeSharp: 1.5
-    - _SplatGloss: 0.55
-    - _SplatHatchBite: 1
-    - _SplatHatchScale: 0.6
-    - _SplatNoiseScale: 3.5
-    - _SplatOn: 0
+    - _SpecularSize: 90
+    - _SpecularStrength: 0.6
     - _StepSoftness: 0.35
     - _Steps: 0
-    - _UseDitherFade: 0
-    - _UseGrain: 0
-    - _UseRamp: 0
     m_Colors:
-    - _BaseColor: {r: 0.16, g: 0.19, b: 0.22, a: 1}
-    - _BaseMapGain: {r: 1, g: 1, b: 1, a: 1}
-    - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _HeightColor: {r: 0.29999998, g: 0.33999997, b: 0.47999996, a: 1}
-    - _OutlineColor: {r: 0.079999976, g: 0.06999998, b: 0.09999997, a: 1}
-    - _RimColor: {r: 1, g: 1, b: 1, a: 1}
+    - _BaseColor: {r: 0.16, g: 0.19, b: 0.22, a: 0.45}
+    - _FresnelColor: {r: 1, g: 1, b: 1, a: 1}
     - _ShadowTint: {r: 0.41999996, g: 0.4699999, b: 0.62, a: 1}
-    - _SplatColor: {r: 0.78, g: 0.68, b: 0.31999996, a: 0.85}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

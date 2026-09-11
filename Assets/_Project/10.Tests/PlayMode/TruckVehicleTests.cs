@@ -115,5 +115,54 @@ namespace CarDrive.Tests
             float tilt = Vector3.Angle(truck.transform.up, Vector3.up);
             Assert.That(tilt, Is.LessThan(15f), "가만히 두었는데 " + tilt.ToString("F0") + "도 기울었습니다");
         }
+
+        /// <summary>
+        /// <b>밖에서 트럭을 보면 트럭 문이 잡히는가.</b>
+        ///
+        /// ⚠ <b>부품이 다 물려 있어도 못 탈 수 있습니다.</b> 조준점이 읽는 것은
+        /// 문에 딸린 상호작용 콜라이더 하나뿐인데, 그것이 세단 자리(중심에서 1.07 m)에
+        /// 남아 있으면 폭 3.15 m 짜리 트럭 <b>껍데기 안에 묻힙니다.</b> 그러면
+        /// 트럭을 아무리 봐도 "탑승" 이 안 뜨고, 3 m 안에 다른 차가 서 있으면
+        /// 조준선이 트럭을 지나쳐 <b>그 차의 문</b>을 잡습니다.
+        ///
+        /// 그래서 차의 부품이 아니라 <b>밖에서 보이는가</b>를 잽니다.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator 밖에서_트럭을_보면_트럭_문이_잡힌다()
+        {
+            if (!Spawn()) yield break;
+            for (int i = 0; i < 5; i++) yield return new WaitForFixedUpdate();
+
+            BoxCollider hull = truck.GetComponent<BoxCollider>();
+            Assert.That(hull, Is.Not.Null, "몸 상자가 없습니다");
+
+            // 서 있는 사람의 눈높이에서, 양옆으로 두 걸음 떨어져 봅니다.
+            Vector3 middle = truck.transform.TransformPoint(hull.center);
+            float reach = hull.size.x * 0.5f + 2f;
+
+            foreach (float way in new[] { 1f, -1f })
+            {
+                Vector3 from = middle + truck.transform.right * (way * reach);
+                from.y = truck.transform.position.y + 1.6f;
+
+                Vector3 look = (middle - from).normalized;
+
+                bool hit = Physics.Raycast(from, look, out RaycastHit what, 3f,
+                                           ~0, QueryTriggerInteraction.Collide);
+
+                Assert.IsTrue(hit, (way > 0f ? "오른쪽" : "왼쪽")
+                              + "에서 트럭을 봤는데 아무것도 안 잡힙니다");
+
+                VehicleDoorInteractable door =
+                    what.collider.GetComponentInParent<VehicleDoorInteractable>();
+
+                Assert.That(door, Is.Not.Null,
+                            (way > 0f ? "오른쪽" : "왼쪽") + "에서 잡힌 것이 문이 아니라 "
+                            + what.collider.name + " 입니다 — 문 손잡이가 껍데기 안에 묻혀 있습니다");
+
+                Assert.That(door.GetComponentInParent<Vehicle>(), Is.EqualTo(truck.GetComponent<Vehicle>()),
+                            "다른 차의 문이 잡혔습니다");
+            }
+        }
     }
 }

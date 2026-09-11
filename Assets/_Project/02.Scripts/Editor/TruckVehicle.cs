@@ -151,6 +151,7 @@ public static class TruckVehicle
             Hide(made);
             int moved = Wheels(made, shell);
             Hull(made, shell);
+            Doors(made);
             Weight(made);
             Sit(made);
 
@@ -647,6 +648,57 @@ public static class TruckVehicle
 
         Debug.Log("TRUCKCAR 몸 콜라이더 — 상자 " + hull.size.ToString("F2")
                   + " · 가운데 " + hull.center.ToString("F2"));
+    }
+
+    /// <summary>
+    /// 탈 수 있게 <b>문의 손잡이를 트럭 옆구리로</b> 옮깁니다.
+    ///
+    /// ⚠ <b>세단의 문 자리를 그대로 두면 탈 수 없습니다.</b> 조준점이 읽는 것은
+    /// 문에 딸린 상호작용 콜라이더 하나뿐인데, 세단은 폭 2.05 m 라 그 상자가
+    /// 차 중심에서 1.07 m 에 있습니다. 트럭의 몸은 폭 3.15 m — 상자가 통째로
+    /// <b>트럭 껍데기 안에</b> 묻힙니다. 높이도 세단 기준(0.86 m)이라 서서 보는
+    /// 눈높이보다 한참 아래입니다. 그래서 트럭을 아무리 봐도 "탑승" 이 안 뜨고,
+    /// 조준점은 트럭을 지나쳐 <b>옆에 세워 둔 세단의 문</b>을 잡습니다.
+    ///
+    /// 몸 상자에서 재서 옆면 <b>바깥으로</b> 조금 내밉니다. 손잡이는 원래
+    /// 밖에서 잡는 물건이고, 트리거라 부딪히지는 않습니다.
+    /// </summary>
+    private static void Doors(GameObject root)
+    {
+        BoxCollider hull = root.GetComponent<BoxCollider>();
+        if (hull == null) return;
+
+        float side = hull.size.x * 0.5f;
+        int moved = 0;
+
+        foreach (VehicleDoorInteractable door in
+                 root.GetComponentsInChildren<VehicleDoorInteractable>(true))
+        {
+            BoxCollider touch = door.GetComponentInChildren<BoxCollider>(true);
+            if (touch == null) continue;
+
+            Transform hand = touch.transform;
+
+            // ⚠ <b>차 기준으로 읽고 차 기준으로 씁니다.</b> 상자의 중심은 <b>자기 부모</b>
+            // 기준인데, 이 부품은 문 축이 아니라 <b>콜라이더 오브젝트에</b> 붙어 있어서
+            // 부모 자리가 (0,0,0) 입니다. 그것만 보고 좌우를 고르면 <b>두 문이 같은 쪽으로</b>
+            // 갑니다 — 한 번 그렇게 나왔고, 오른쪽에 손잡이가 둘 생겼습니다.
+            Vector3 at = root.transform.InverseTransformPoint(hand.TransformPoint(touch.center));
+
+            float way = at.x >= 0f ? 1f : -1f;
+
+            // 상자 바깥면이 몸 옆면보다 0.25 m 밖에 서게 둡니다.
+            at.x = way * (side + 0.25f - touch.size.x * 0.5f);
+
+            // 서서 보는 눈높이입니다. 세단의 0.86 m 는 트럭에서 문턱 아래입니다.
+            at.y = hull.center.y - 0.25f;
+
+            touch.center = hand.InverseTransformPoint(root.transform.TransformPoint(at));
+            moved++;
+        }
+
+        Debug.Log("TRUCKCAR 문 손잡이 " + moved + " 개를 옆구리로 옮겼습니다 — 몸 반폭 "
+                  + side.ToString("F2") + " m");
     }
 
     /// <summary>트럭은 무겁습니다.</summary>

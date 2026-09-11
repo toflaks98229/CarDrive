@@ -186,6 +186,30 @@ public static class SceneLookCapture
 
         Camera worldCamera = MakeWorldCamera(camera);
 
+        // ⚠ <b>나무를 자르는 거리도 사다리 값으로 맞춥니다.</b> 페이드 구간(FadeStart·
+        // FadeEnd)은 전역이라 <see cref="ViewRangeScaler"/> 가 편집 중에도 넣어 두는데,
+        // <c>Terrain.treeDistance</c> 는 <b>재생 중에만</b> 씁니다. 그래서 그냥 찍으면
+        // 씬에 구워진 340 m 까지 나무를 그려 놓고 셰이더는 231 m 에서 지우는,
+        // <b>게임에는 없는 상태</b>가 찍힙니다. 2026-09-11 에 나무 LOD 를 판단하다
+        // 이 어긋남 때문에 "숲이 사라졌다" 고 오판할 뻔했습니다.
+        float treeCut = ViewDistances.Current.TreeCut;
+        Terrain[] grounds = Object.FindObjectsByType<Terrain>(FindObjectsInactive.Include,
+                                                              FindObjectsSortMode.None);
+        float[] treeCutWas = new float[grounds.Length];
+
+        for (int i = 0; i < grounds.Length; i++)
+        {
+            if (grounds[i] == null) continue;
+
+            treeCutWas[i] = grounds[i].treeDistance;
+            if (treeCut > 1f) grounds[i].treeDistance = treeCut;
+        }
+
+        Debug.Log("SCENELOOK 나무 자르는 거리 " + treeCut.ToString("F0") + " m · 지형 "
+                  + grounds.Length + "장 · 페이드 "
+                  + ViewDistances.Current.FadeStart.ToString("F0") + "~"
+                  + ViewDistances.Current.FadeEnd.ToString("F0") + " m");
+
         for (int i = 0; i < Moments.Length; i++)
         {
             Moment moment = Moments[i];
@@ -228,6 +252,11 @@ public static class SceneLookCapture
         }
 
         // 되돌립니다. 씬은 저장하지 않지만, 메모리 상태도 원래대로 두는 편이 안전합니다.
+        for (int i = 0; i < grounds.Length; i++)
+        {
+            if (grounds[i] != null) grounds[i].treeDistance = treeCutWas[i];
+        }
+
         sun.transform.rotation = sunRotation;
         sun.intensity = sunIntensity;
         sun.color = sunColor;
