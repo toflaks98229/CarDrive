@@ -107,6 +107,17 @@ namespace CarDrive.Gameplay
         [Range(1f, 30f)]
         public float grudgeSeconds = 8f;
 
+        /// <summary>
+        /// 알아챘을 때 따라갈 고개입니다. 비우면 같은 오브젝트에서 찾습니다.
+        ///
+        /// ⚠ <b>싸움이 이깁니다.</b> <see cref="RobotThreat"/> 도 같은 고개를 겨누므로,
+        /// 그쪽이 깨어 있는 동안에는 여기서 손대지 않습니다. 둘이 같이 쓰면
+        /// 한 프레임씩 번갈아 겨눠 <b>고개가 떱니다.</b>
+        /// </summary>
+        [Header("고개")]
+        [Tooltip("알아챘을 때 따라갈 고개. 비우면 RobotThreat 이 쓰는 것을 씁니다")]
+        public RobotTurret head;
+
         /// <summary>무엇이 시야를 가리는가.</summary>
         [Header("보는 법")]
         [Tooltip("무엇이 시야를 가리는가")]
@@ -135,6 +146,7 @@ namespace CarDrive.Gameplay
 
         private RobotDriver driver;
         private RobotPatrol patrol;
+        private RobotThreat threat;
         private Transform player;
 
         private float stuck;
@@ -146,6 +158,10 @@ namespace CarDrive.Gameplay
         {
             driver = GetComponent<RobotDriver>();
             patrol = GetComponent<RobotPatrol>();
+            threat = GetComponentInChildren<RobotThreat>(true);
+
+            if (head == null && threat != null) head = threat.head;
+            if (head == null) head = GetComponentInChildren<RobotTurret>(true);
         }
 
         void Update()
@@ -156,8 +172,10 @@ namespace CarDrive.Gameplay
             Transform who = Player();
             Sense now = Look(who, dt);
 
-            Response want = Judge(now, noticeRadius, noticeAngle, patience, blameRadius);
+            Response want = Judge(now, noticeRadius, noticeAngle, patience, blameRadius,
+                                  grudgeSeconds);
             Apply(want);
+            Head(who, want);
         }
 
         // --- Public Methods ---
@@ -184,11 +202,18 @@ namespace CarDrive.Gameplay
         /// <param name="angle">알아채는 각도</param>
         /// <param name="patienceSeconds">참는 시간</param>
         /// <param name="blame">사람 탓으로 볼 거리</param>
+        /// <param name="grudge">얻어맞은 뒤 항의하는 시간(초)</param>
         public static Response Judge(Sense sense, float radius, float angle,
-                                     float patienceSeconds, float blame)
+                                     float patienceSeconds, float blame, float grudge)
         {
-            // 맞았으면 보든 안 보든 항의합니다. 뒤에서 받히는 일이 흔합니다.
-            if (sense.SinceHit < 0f) return Response.Ignore;
+            // ⚠ <b>맞았으면 보든 안 보든 항의합니다.</b> 뒤에서 받히는 일이 흔한데,
+            // 시야에 기대면 <b>받고도 가만히 있습니다.</b>
+            //
+            // ⚠ 이 줄은 원래 여기 없었습니다. 기억은 <c>Apply</c> 에서 따로 다뤘고
+            // 여기에는 <c>SinceHit &lt; 0</c> 이라는 <b>절대 참이 안 되는 줄</b>이
+            // 주석만 맞은 채 남아 있었습니다. 그래서 "맞으면 항의한다" 는 규칙이
+            // <b>테스트가 닿지 않는 곳</b>에 있었습니다.
+            if (sense.SinceHit < grudge) return Response.Protest;
 
             bool near = sense.Distance <= radius && sense.Angle <= angle * 0.5f && sense.InSight;
 
@@ -243,9 +268,6 @@ namespace CarDrive.Gameplay
         /// <summary>바뀐 반응을 밖에 알리고, 항의 중에는 길을 멈춥니다.</summary>
         private void Apply(Response want)
         {
-            // 얻어맞은 기억이 남아 있으면 알아챔으로 내려가지 않습니다.
-            if (want != Response.Protest && sinceHit < grudgeSeconds) want = Response.Protest;
-
             // ⚠ <b>항의하는 동안 길을 멈춥니다.</b> 안 멈추면 항의하면서 걸어가
             // "비켜 달라" 가 "밀고 지나간다" 가 됩니다.
             if (patrol != null) patrol.Paused = want == Response.Protest;
@@ -261,6 +283,26 @@ namespace CarDrive.Gameplay
             {
                 onCalmed.Invoke();
             }
+        }
+
+        /// <summary>
+        /// 알아챈 쪽으로 고개를 돌립니다.
+        ///
+        /// <b>이것이 "알아챔" 의 전부입니다.</b> 기계는 멈추지도 다가오지도 않고
+        /// 고개만 따라갑니다 — 지나가는 것을 한 번 보는 정도입니다.
+        /// 그 이상을 하면 "로봇은 당신을 모릅니다" 가 깨집니다.
+        /// </summary>
+        /// <param name="who">보고 있는 사람</param>
+        /// <param name="want">지금 반응</param>
+        private void Head(Transform who, Response want)
+        {
+            if (head == null) return;
+
+            // ⚠ 싸움이 이깁니다. 겨누는 중인 고개를 여기서 뺏으면 조준이 떱니다.
+            if (threat != null && threat.State != RobotThreat.Mood.Idle) return;
+
+            if (who != null && want != Response.Ignore) head.AimAt(who.position);
+            else head.StopAiming();
         }
 
         /// <summary>지금 볼 사람입니다. 차에 타고 있으면 차입니다.</summary>

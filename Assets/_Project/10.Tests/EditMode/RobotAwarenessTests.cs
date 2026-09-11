@@ -17,10 +17,11 @@ namespace CarDrive.Tests
         private const float Angle = 75f;
         private const float Patience = 3.5f;
         private const float Blame = 14f;
+        private const float Grudge = 8f;
 
         private static RobotAwareness.Response Judge(RobotAwareness.Sense s)
         {
-            return RobotAwareness.Judge(s, Radius, Angle, Patience, Blame);
+            return RobotAwareness.Judge(s, Radius, Angle, Patience, Blame, Grudge);
         }
 
         /// <summary>아무 일도 없는 기본 상태입니다.</summary>
@@ -125,6 +126,28 @@ namespace CarDrive.Tests
             s.InSight = true;
 
             Assert.That(Judge(s), Is.EqualTo(RobotAwareness.Response.Notice));
+        }
+
+        [Test]
+        public void 맞으면_보든_안_보든_항의한다()
+        {
+            // ⚠ 뒤에서 받히는 일이 흔합니다. 시야에 기대면 받고도 가만히 있습니다.
+            RobotAwareness.Sense s = Quiet();
+            s.Distance = 90f;
+            s.Angle = 179f;
+            s.InSight = false;
+            s.SinceHit = 1f;
+
+            Assert.That(Judge(s), Is.EqualTo(RobotAwareness.Response.Protest));
+        }
+
+        [Test]
+        public void 맞은_기억은_시간이_지나면_풀린다()
+        {
+            RobotAwareness.Sense s = Quiet();
+            s.SinceHit = Grudge + 0.1f;
+
+            Assert.That(Judge(s), Is.EqualTo(RobotAwareness.Response.Ignore));
         }
 
         [Test]
