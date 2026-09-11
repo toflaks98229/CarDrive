@@ -63859,6 +63859,7 @@ MonoBehaviour:
   interactor: {fileID: 900000109}
   width: 0.004
   fadeSeconds: 0.08
+  color: {r: 0.95, g: 0.92, b: 0.8, a: 1}
 --- !u!1001 &900459753
 PrefabInstance:
   m_ObjectHideFlags: 0

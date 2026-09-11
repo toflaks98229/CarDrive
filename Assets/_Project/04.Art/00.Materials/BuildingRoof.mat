@@ -38,6 +38,7 @@ Material:
     m_Floats:
     - _AlphaClip: 0
     - _Ambient: 0.85
+    - _BaseMapStrength: 1
     - _Cull: 2
     - _Cutoff: 0.5
     - _FadeEnd: 330
@@ -66,9 +67,12 @@ Material:
     - _StepSoftness: 0.35
     - _Steps: 0
     - _UseDitherFade: 1
+    - _UseGrain: 0
     - _UseRamp: 0
     m_Colors:
     - _BaseColor: {r: 0.42, g: 0.28, b: 0.26, a: 1}
+    - _BaseMapGain: {r: 1, g: 1, b: 1, a: 1}
+    - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _HeightColor: {r: 0.29999998, g: 0.33999997, b: 0.47999996, a: 1}
     - _OutlineColor: {r: 0.079999976, g: 0.06999998, b: 0.09999997, a: 1}
     - _RimColor: {r: 1, g: 1, b: 1, a: 1}

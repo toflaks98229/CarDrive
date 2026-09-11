@@ -53,6 +53,8 @@ public static class InteractionOutlineSetup
 
         outline.interactor = interactor;
 
+        EnablePass();
+
         EditorSceneManager.MarkSceneDirty(interactor.gameObject.scene);
         EditorSceneManager.SaveOpenScenes();
 
@@ -141,6 +143,87 @@ public static class InteractionOutlineSetup
         }
 
         EditorApplication.Exit(0);
+    }
+
+    /// <summary>
+    /// 외곽선 패스를 <b>상호작용 대상의 재질에만</b> 켭니다.
+    ///
+    /// ⚠ <b>이것이 선이 한 번도 안 그려지던 이유입니다.</b> 재질 54 개 중 53 개가
+    /// YAML 에 이렇게 들고 있었습니다.
+    ///
+    /// <code>
+    /// disabledShaderPasses:
+    /// - SRPDEFAULTUNLIT
+    /// </code>
+    ///
+    /// 외곽선 패스의 <c>LightMode</c> 가 바로 <c>SRPDefaultUnlit</c> 입니다.
+    /// 유니티의 재질 변환기가 URP 로 옮길 때 넣는 항목인데 <b>셰이더를 갈아 끼워도
+    /// 그대로 남습니다.</b> 그래서 두께를 5 배로 올려도, 프로퍼티 블록을 거치든
+    /// 재질에 직접 넣든 아무것도 안 그려졌습니다 — 전부 같은 벽에 막혀 있었습니다.
+    ///
+    /// ⚠ <b>그렇다고 전부 켜면 안 됩니다.</b> 패스가 켜져 있으면 두께가 0 이어도
+    /// <b>드로우콜은 나갑니다.</b> 정점 셰이더가 삼각형을 한 점으로 눌러 래스터라이저를
+    /// 건너뛰게 할 뿐입니다. 나무가 수천 그루라 그 한 번이 수천 번이 됩니다.
+    /// 그래서 <b>실제로 선이 켜질 수 있는 재질</b>에만 켜고 나머지는 도로 끕니다.
+    /// </summary>
+    private static void EnablePass()
+    {
+        // 선이 켜질 수 있는 재질 — 상호작용 대상이 쓰는 것들입니다.
+        // 컴포넌트가 렌더러를 찾는 규칙(없으면 위로)과 같아야 합니다.
+        System.Collections.Generic.HashSet<Material> wanted =
+            new System.Collections.Generic.HashSet<Material>();
+
+        MonoBehaviour[] all = Object.FindObjectsByType<MonoBehaviour>(
+            FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+        for (int i = 0; i < all.Length; i++)
+        {
+            MonoBehaviour m = all[i];
+            if (m == null || !(m is CarDrive.Common.IInteractable)) continue;
+
+            Transform at = m.transform;
+            Renderer[] parts = at.GetComponentsInChildren<Renderer>(true);
+
+            while (parts.Length == 0 && at.parent != null)
+            {
+                at = at.parent;
+                parts = at.GetComponentsInChildren<Renderer>(true);
+            }
+
+            for (int k = 0; k < parts.Length; k++)
+            {
+                Material[] mats = parts[k].sharedMaterials;
+                for (int j = 0; j < mats.Length; j++)
+                {
+                    if (mats[j] != null && mats[j].HasProperty("_OutlineWidth")) wanted.Add(mats[j]);
+                }
+            }
+        }
+
+        string[] guids = AssetDatabase.FindAssets("t:Material");
+        int on = 0, off = 0;
+
+        for (int i = 0; i < guids.Length; i++)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guids[i]);
+            if (!path.StartsWith("Assets/_Project")) continue;
+
+            Material mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat == null || !mat.HasProperty("_OutlineWidth")) continue;
+
+            bool want = wanted.Contains(mat);
+            if (mat.GetShaderPassEnabled("SRPDefaultUnlit") == want) continue;
+
+            mat.SetShaderPassEnabled("SRPDefaultUnlit", want);
+            EditorUtility.SetDirty(mat);
+
+            if (want) on++; else off++;
+        }
+
+        if (on + off > 0) AssetDatabase.SaveAssets();
+
+        Debug.Log("OUTLINE 외곽선 패스 — 켠 재질 " + on + " 개 · 도로 끈 재질 " + off
+                  + " 개 · 선이 켜질 수 있는 재질 " + wanted.Count + " 개");
     }
 
     // --- Private Methods ---
