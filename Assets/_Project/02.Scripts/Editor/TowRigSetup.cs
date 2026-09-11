@@ -105,6 +105,13 @@ public static class TowRigSetup
         // 세워야 하고, 걷는 기계는 다리가 비쌉니다.
         tow.notice = 400f;
 
+        // 갈고리가 걸리는 소리와 내려놓는 소리입니다. 쇳덩이가 쇳덩이에 닿는 소리라
+        // 충돌음을 그대로 씁니다 — 이 기계에 쓸 소리를 따로 구할 수 없었습니다.
+        tow.hookSound = AssetDatabase.LoadAssetAtPath<AudioClip>(
+            "Assets/_Project/06.Sound/Impact/metal_slam_01.ogg");
+        tow.dropSound = AssetDatabase.LoadAssetAtPath<AudioClip>(
+            "Assets/_Project/06.Sound/Impact/metal_falling_01.ogg");
+
         // ⚠ <b>비무장입니다.</b> 기획이 그렇게 적었고, 무장한 채로 두면 이 기계가
         // 플레이어에게 <b>위협</b>이 되어 "주우러 오는 것" 이라는 뜻이 흐려집니다.
         int disarmed = Disarm(made);

@@ -232,6 +232,33 @@ half ToonLightAmount(Light light, float3 normalWS, ToonParams p)
 }
 
 /// <summary>
+/// <b>추가 광원</b>(헤드라이트 · 등불 · 귀신 불빛)의 밝기입니다.
+///
+/// ⚠ <b>거리 감쇠를 밴드로 끊지 않습니다.</b> 주광과 같은 <see cref="ToonLightAmount"/> 를
+/// 쓰면 <c>ToonBand(감쇠, 0.5)</c> 가 걸리는데, 점광원의 감쇠는 1/d² 라 <b>0.5 를 넘는
+/// 곳이 반경 1.4 m 뿐</b>입니다. 그 밖은 세기를 아무리 올려도 0 입니다.
+///
+/// 실측(2026-09-11): 5 m 기둥 위의 등을 세기 3 에서 300 까지 올려 봐도 등 아래 땅의
+/// 밝기가 0.033~0.035 로 <b>꿈쩍하지 않았습니다.</b> 등 자체의 팔(0.5 m)만 하얗게
+/// 탔습니다. 헤드라이트가 길을 못 밝히던 것도 같은 이유입니다.
+///
+/// 명암 경계(N·L)는 그대로 끊습니다 — 그것이 툰 룩입니다. 거리로 옅어지는 것은
+/// <b>빛이 닿는 범위</b>이지 명암 경계가 아닙니다.
+/// </summary>
+/// <param name="light">추가 광원</param>
+/// <param name="normalWS">표면의 법선</param>
+/// <param name="p">툰 설정</param>
+half ToonExtraLightAmount(Light light, float3 normalWS, ToonParams p)
+{
+    half ndl = dot(normalWS, light.direction) * 0.5h + 0.5h;
+    half lit = ToonBand(ndl, p.midPoint, p.shadowSoftness);
+
+    half reach = saturate(light.distanceAttenuation * light.shadowAttenuation);
+
+    return ToonSteps(lit, p.steps, p.stepSoftness) * reach;
+}
+
+/// <summary>
 /// 툰 하이라이트입니다. 블린-퐁을 밴드로 끊어 <b>납작한 점</b>으로 만듭니다.
 /// </summary>
 half ToonSpecular(Light light, ToonSurface s, ToonParams p)
@@ -406,15 +433,16 @@ half3 ToonShade(ToonSurface s, ToonParams p, float4 shadowCoord)
     half cloud = SampleCloudShadow(s.positionWS);
     lighting *= lerp(1.0h, cloud, sunPower);
 
-    // 추가 광원(헤드라이트·귀신 라이트 등)도 같은 밴드를 통과시킵니다.
+    // 추가 광원(헤드라이트·등불·귀신 라이트 등)입니다. 명암 경계는 주광과 같은 밴드를
+    // 쓰지만 <b>거리 감쇠는 끊지 않습니다</b> — 위 ToonExtraLightAmount 의 설명을 보십시오.
     #ifdef _ADDITIONAL_LIGHTS
         uint count = GetAdditionalLightsCount();
         for (uint i = 0u; i < count; ++i)
         {
             Light extra = GetAdditionalLight(i, s.positionWS);
 
-            // 칠하는 쪽은 끊어서 툰 룩을 유지하고,
-            lighting += extra.color * ToonLightAmount(extra, s.normalWS, p);
+            // 명암 경계는 끊고, 닿는 범위는 거리대로 옅어집니다.
+            lighting += extra.color * ToonExtraLightAmount(extra, s.normalWS, p);
         }
     #endif
 

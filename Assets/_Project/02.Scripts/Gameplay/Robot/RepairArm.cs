@@ -69,6 +69,24 @@ namespace CarDrive.Gameplay
         [Tooltip("있으면 일하는 동안 차를 향해 굽힙니다")]
         public RobotTurret arm;
 
+        /// <summary>손을 대기 시작할 때 낼 소리입니다.</summary>
+        [Header("소리")]
+        [Tooltip("손을 대기 시작할 때 낼 소리")]
+        public AudioClip startSound;
+
+        /// <summary>다 고쳤을 때 낼 소리입니다.</summary>
+        [Tooltip("다 고쳤을 때 낼 소리")]
+        public AudioClip doneSound;
+
+        /// <summary>돈이 모자랄 때 낼 소리입니다.</summary>
+        [Tooltip("돈이 모자랄 때 낼 소리")]
+        public AudioClip refusedSound;
+
+        /// <summary>소리 크기입니다.</summary>
+        [Tooltip("소리 크기")]
+        [Range(0f, 1f)]
+        public float volume = 0.6f;
+
         /// <summary>일을 시작할 때 부릅니다.</summary>
         [Header("알림")]
         public UnityEvent onStarted;
@@ -113,6 +131,8 @@ namespace CarDrive.Gameplay
             busyWith = null;
 
             if (arm != null) arm.StopAiming();
+
+            Say(doneSound);
             if (onFinished != null) onFinished.Invoke();
         }
 
@@ -157,6 +177,7 @@ namespace CarDrive.Gameplay
             // 고쳐 준 뒤</b> 거절하게 됩니다.
             if (wallet == null || !wallet.TrySpend(CurrencyType.Money, price))
             {
+                Say(refusedSound);
                 if (onRefused != null) onRefused.Invoke();
                 return;
             }
@@ -165,6 +186,7 @@ namespace CarDrive.Gameplay
             Working = true;
             working = workSeconds;
 
+            Say(startSound);
             if (onStarted != null) onStarted.Invoke();
 
             // 시간이 0 이면 그 자리에서 끝냅니다.
@@ -173,6 +195,8 @@ namespace CarDrive.Gameplay
                 Working = false;
                 Mend(car);
                 busyWith = null;
+
+                Say(doneSound);
                 if (onFinished != null) onFinished.Invoke();
             }
         }
@@ -203,6 +227,20 @@ namespace CarDrive.Gameplay
         }
 
         // --- Private Methods ---
+
+        /// <summary>
+        /// 소리를 한 번 냅니다.
+        ///
+        /// <b>이 기계는 말을 하지 않습니다.</b> 손을 대는 소리, 다 된 소리, 거절하는
+        /// 소리 셋뿐이고 그것이 이 기계가 하는 말 전부입니다.
+        /// </summary>
+        /// <param name="clip">낼 소리. 없으면 아무 일도 하지 않습니다</param>
+        private void Say(AudioClip clip)
+        {
+            if (clip == null) return;
+
+            OneShotAudioPool.Play(clip, transform.position, volume);
+        }
 
         /// <summary>이 차에 매길 값입니다.</summary>
         private int Bill(Vehicle car)

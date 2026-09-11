@@ -150,6 +150,14 @@ public static class RepairArmSetup
         RepairArm arm = root.AddComponent<RepairArm>();
         arm.arm = turret;
 
+        // 말을 하지 않는 기계라, 소리 셋이 이 기계가 하는 말 전부입니다.
+        arm.startSound = AssetDatabase.LoadAssetAtPath<AudioClip>(
+            "Assets/_Project/06.Sound/Impact/metal_hit_03.ogg");
+        arm.doneSound = AssetDatabase.LoadAssetAtPath<AudioClip>(
+            "Assets/_Project/06.Sound/Impact/metal_hit_01.ogg");
+        arm.refusedSound = AssetDatabase.LoadAssetAtPath<AudioClip>(
+            "Assets/_Project/06.Sound/Impact/metal_hit_05.ogg");
+
         foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
         {
             t.gameObject.layer = InteractableLayer;

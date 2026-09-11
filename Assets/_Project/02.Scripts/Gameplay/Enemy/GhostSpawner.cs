@@ -74,6 +74,21 @@ namespace CarDrive.Gameplay
         [Range(1f, 5f)]
         public float maxActivityMultiplier = 3f;
 
+        /// <summary>
+        /// <b>등불 아래에서</b> 스폰 간격이 몇 배로 벌어지는가.
+        ///
+        /// <b>이것이 로봇과 귀신을 잇는 유일한 고리입니다</b>(<c>로봇_기획.md</c> 의 6번).
+        /// 여태 두 시스템은 나란히 있을 뿐 서로 곱해지지 않았습니다. 불이 켜진 구간에서
+        /// 귀신이 뜸해지면, 길의 등을 되살리며 걷는 기계가 <b>지킬 만한 것</b>이 됩니다 —
+        /// 나머지 기계는 전부 비켜 주거나 부수는 대상입니다.
+        ///
+        /// ⚠ <b>0 으로 만들지 않습니다.</b> 등 아래가 완전한 안전지대가 되면 밤에
+        /// 등 밑에 차를 대고 기다리는 것이 최적 전략이 됩니다. 뜸해질 뿐입니다.
+        /// </summary>
+        [Tooltip("등불 바로 아래에서 스폰 간격이 몇 배로 벌어지는가. 1 이면 등이 영향을 안 줍니다")]
+        [Range(1f, 6f)]
+        public float lampCalm = 2.5f;
+
         // --- Private Member Variables ---
 
         /// <summary>귀신이 달라붙을 차량입니다. 같은 GameObject에서 가져옵니다.</summary>
@@ -159,6 +174,22 @@ namespace CarDrive.Gameplay
             }
         }
 
+        // --- Public Methods ---
+
+        /// <summary>
+        /// 등불이 스폰 간격을 <b>몇 배로 벌리는가</b>.
+        ///
+        /// <b>왜 갈라 두는가.</b> 이 한 줄이 "빛이 귀신을 쫓는다" 는 규칙 전부입니다.
+        /// 귀신도 등도 없이 확인할 수 있어야 합니다.
+        /// </summary>
+        /// <param name="lit">그 자리의 밝기(0~1)</param>
+        /// <param name="calm">등 바로 아래에서의 배율</param>
+        /// <returns>간격에 곱할 값. 1 이상입니다</returns>
+        public static float Calm(float lit, float calm)
+        {
+            return Mathf.Lerp(1f, Mathf.Max(calm, 1f), Mathf.Clamp01(lit));
+        }
+
         // --- Private Methods ---
 
         /// <summary>
@@ -175,6 +206,13 @@ namespace CarDrive.Gameplay
                 float multiplier = Mathf.Clamp(activity.Activity, 0.1f, maxActivityMultiplier);
                 interval /= multiplier;
             }
+
+            // 등불 아래에서는 뜸해집니다.
+            //
+            // ⚠ <b>자리는 이 스포너가 서 있는 곳입니다.</b> 귀신이 나타날 앵커는 차의
+            // 앞뒤에 붙어 있어 몇 미터 차이뿐이고, 등의 반경은 그보다 훨씬 큽니다.
+            // 앵커마다 따로 재면 같은 등 아래에서 뒤와 옆이 다른 값을 받습니다.
+            interval *= Calm(StreetLamp.LightAt(transform.position), lampCalm);
 
             spawnTimer = interval;
         }

@@ -99,6 +99,20 @@ namespace CarDrive.Gameplay
         [Range(2f, 12f)]
         public float towDistance = 5f;
 
+        /// <summary>갈고리가 차에 걸릴 때 낼 소리입니다.</summary>
+        [Header("소리")]
+        [Tooltip("갈고리가 차에 걸릴 때 낼 소리")]
+        public AudioClip hookSound;
+
+        /// <summary>차를 내려놓을 때 낼 소리입니다.</summary>
+        [Tooltip("차를 내려놓을 때 낼 소리")]
+        public AudioClip dropSound;
+
+        /// <summary>소리 크기입니다.</summary>
+        [Tooltip("소리 크기")]
+        [Range(0f, 1f)]
+        public float volume = 0.7f;
+
         /// <summary>차를 걸었을 때 부릅니다.</summary>
         [Header("알림")]
         public UnityEvent onHooked;
@@ -266,6 +280,7 @@ namespace CarDrive.Gameplay
             Pay(LastBill);
             Grab();
 
+            Say(hookSound, Hauled.transform.position);
             if (onHooked != null) onHooked.Invoke();
             Doing = Phase.Hauling;
         }
@@ -280,9 +295,12 @@ namespace CarDrive.Gameplay
 
             if (Flat(to, transform.position) > hookRange) return;
 
+            Vector3 where = Hauled.transform.position;
             Drop();
 
             if (winch != null) winch.Raise();
+
+            Say(dropSound, where);
             if (onDelivered != null) onDelivered.Invoke();
 
             Doing = Phase.Leaving;
@@ -371,6 +389,16 @@ namespace CarDrive.Gameplay
             if (engine == null || engine.MaxFuel <= 0f) return 1f;
 
             return engine.CurrentFuel;
+        }
+
+        /// <summary>소리를 한 번 냅니다.</summary>
+        /// <param name="clip">낼 소리. 없으면 아무 일도 하지 않습니다</param>
+        /// <param name="at">소리가 날 자리</param>
+        private void Say(AudioClip clip, Vector3 at)
+        {
+            if (clip == null) return;
+
+            OneShotAudioPool.Play(clip, at, volume);
         }
 
         /// <summary>높이를 뺀 거리입니다. 로봇은 언덕 위에 있을 수 있습니다.</summary>
