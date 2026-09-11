@@ -43682,6 +43682,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: CarDrive.Gameplay::CarDrive.Gameplay.LookMood
   threatInk: 0.55
   fatigueChroma: 0.45
+  fatigueCoarse: 12
   rainInk: 0.25
   response:
     frequency: 1.1
@@ -47613,6 +47614,37 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 713276477}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &713946596
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 713946597}
+  m_Layer: 0
+  m_Name: WalkerRobot_Strider_Stop1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &713946597
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 713946596}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 25.422222, y: 19.283588, z: 62.335426}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1545047959}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &714956974
 GameObject:
   m_ObjectHideFlags: 0
@@ -57979,6 +58011,37 @@ Terrain:
   m_EnableTreesAndDetailsRayTracing: 0
   m_EnableHeightmapLODFrustumCulling: 1
   m_TreeMotionVectorModeOverride: 3
+--- !u!1 &799331375
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 799331376}
+  m_Layer: 0
+  m_Name: WalkerRobot_Strider_Stop0
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &799331376
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 799331375}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -32.533325, y: 19.44675, z: 46.806282}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1545047959}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &800737991
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -59637,8 +59700,18 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 7585455745858112564, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1683276153}
   m_SourcePrefab: {fileID: 100100000, guid: 3a77bbadc2a8afb4d825b02083f6dc4b, type: 3}
+--- !u!1 &829240150 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7585455745858112564, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+    type: 3}
+  m_PrefabInstance: {fileID: 829240149}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &829552617
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -81477,6 +81550,38 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 1104881301}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1105762450
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1105762451}
+  m_Layer: 0
+  m_Name: RobotRoutes
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1105762451
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1105762450}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1545047959}
+  m_Father: {fileID: 1990000006}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1108375047
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -105015,6 +105120,41 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 1542505782}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1545047958
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1545047959}
+  m_Layer: 0
+  m_Name: WalkerRobot_Strider_Route
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1545047959
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1545047958}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 799331376}
+  - {fileID: 713946597}
+  - {fileID: 1909012036}
+  - {fileID: 1735558740}
+  m_Father: {fileID: 1105762451}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1547383333
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -113317,6 +113457,25 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 1681944609}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1683276153
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 829240150}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 71a084880999a5f41aecff4f240e2d44, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Gameplay::CarDrive.Gameplay.RobotPatrol
+  route: []
+  routeParent: {fileID: 1545047959}
+  loop: 0
+  dwellSeconds: 8
+  onDutyHour: 18
+  offDutyHour: 6
+  berth: {fileID: 0}
 --- !u!1 &1683419852
 GameObject:
   m_ObjectHideFlags: 0
@@ -122168,6 +122327,37 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 1733842615}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1735558739
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1735558740}
+  m_Layer: 0
+  m_Name: WalkerRobot_Strider_Stop3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1735558740
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1735558739}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 141.33333, y: 22.95057, z: 93.39371}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1545047959}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1739867158
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -138788,6 +138978,37 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 1908405632}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1909012035
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1909012036}
+  m_Layer: 0
+  m_Name: WalkerRobot_Strider_Stop2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1909012036
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1909012035}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 83.37777, y: 23.447166, z: 77.86456}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1545047959}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1910373366
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -144357,6 +144578,7 @@ Transform:
   - {fileID: 977150519}
   - {fileID: 317127154}
   - {fileID: 1269096791}
+  - {fileID: 1105762451}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1990000007
