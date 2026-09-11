@@ -170,6 +170,19 @@ namespace CarDrive.Gameplay
         [Tooltip("맞을 수 있는 레이어")]
         public LayerMask hitMask = ~0;
 
+        /// <summary>
+        /// 날아가는 탄입니다. 비워 두면 <b>선으로 쏩니다</b>(히트스캔).
+        ///
+        /// <b>왜 무기마다 고르게 두는가.</b> 기관포의 탄이 날아가는 것이 보이면
+        /// 그것대로 좋겠지만, 초당 여러 발을 쏘는 무기에 전부 물체를 띄우면
+        /// 값이 붙습니다. 무엇보다 <b>가까운 거리에서는 날아가는 것이 안 보입니다</b> —
+        /// 40 m 를 초속 200 m 로 가면 0.2 초입니다.
+        ///
+        /// 미사일은 다릅니다. 90 m 를 느리게 가므로 <b>날아가는 동안이 곧 게임</b>입니다.
+        /// </summary>
+        [Tooltip("날아가는 탄. 비워 두면 선으로 쏩니다")]
+        public GameObject projectile;
+
         // --- Public Member Variables : 반동 ---
 
         /// <summary>
@@ -351,12 +364,41 @@ namespace CarDrive.Gameplay
                 OneShotAudioPool.Play(clip, Origin, fireVolume);
             }
 
-            Hit();
+            // 탄이 있으면 날려 보내고, 없으면 지금 이 자리에서 선으로 판정합니다.
+            if (projectile != null) Launch();
+            else Hit();
+
             Push();
 
             if (onFired != null) onFired.Invoke();
 
             Schedule();
+        }
+
+        /// <summary>
+        /// 탄을 날려 보냅니다.
+        ///
+        /// <b>맞는 판정을 여기서 하지 않습니다.</b> 그것이 히트스캔과의 차이 전부입니다 —
+        /// 도착할 때까지 아무 일도 일어나지 않으므로, 그 사이에 차를 몰고 나가면
+        /// 맞지 않습니다.
+        /// </summary>
+        private void Launch()
+        {
+            GameObject shot = PrefabPool.Get(projectile, Origin,
+                                             Quaternion.LookRotation(Forward), null);
+            if (shot == null) return;
+
+            WeaponMissile flying = shot.GetComponent<WeaponMissile>();
+
+            if (flying == null)
+            {
+                // ⚠ 조용히 넘어가면 <b>쏜 자리에 탄이 쌓입니다.</b>
+                Debug.LogWarning("RobotWeapon: 탄 프리팹에 WeaponMissile 이 없습니다 — " + name);
+                if (!PrefabPool.Release(shot)) Destroy(shot);
+                return;
+            }
+
+            flying.Launch(Origin, Forward, damage, range, hitMask, root);
         }
 
         /// <summary>선을 쏴 맞은 것에 피해를 줍니다.</summary>

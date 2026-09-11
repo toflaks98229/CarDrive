@@ -92,6 +92,12 @@ public static class StriderWeaponSetup
         /// <summary>덮개 조각의 노드 이름입니다. 없으면 비웁니다.</summary>
         public string doors;
 
+        /// <summary>날아가는 탄을 쓸 것인가. 비우면 선으로 쏩니다.</summary>
+        public bool flies;
+
+        /// <summary>탄의 초속(m)입니다.</summary>
+        public float shotSpeed;
+
         /// <summary>윈치의 드럼·갈고리 노드 이름입니다. 없으면 비웁니다.</summary>
         public string drum;
         public string hook;
@@ -163,6 +169,10 @@ public static class StriderWeaponSetup
                 interval = 0.22f, rounds = 6, cooldown = 8f,
                 range = 90f, damage = 18f, aim = 6f, podKick = 0f,
                 doors = "Gun_MissileRack_Doors",
+
+                // 미사일만 날아갑니다. 90 m 를 55 로 가면 1.6 초 —
+                // 그 사이가 차를 몰고 벗어날 시간입니다.
+                flies = true, shotSpeed = 55f,
             },
 
             new Loadout
@@ -321,6 +331,7 @@ public static class StriderWeaponSetup
             errors++;
         }
 
+        weapon.projectile = one.flies ? Missile(one.shotSpeed, ref errors) : null;
         weapon.fireClips = Clips(SoundDir, one.sounds, ref errors);
         weapon.impactClips = Clips(ImpactDir, new[]
         {
@@ -387,6 +398,117 @@ public static class StriderWeaponSetup
     /// <param name="muzzle">총구</param>
     /// <param name="one">무장 설정</param>
     /// <returns>단 섬광 부품</returns>
+    /// <summary>
+    /// 날아가는 탄의 프리팹입니다. 없으면 만듭니다.
+    ///
+    /// <b>왜 도구가 만드는가.</b> 손으로 만든 프리팹은 다음에 이 도구를 돌릴 때
+    /// 무엇이 들어 있었는지 알 수 없습니다. 여기에 적혀 있으면 판단이 남습니다.
+    ///
+    /// 생김새는 <b>길쭉한 상자 하나와 자국</b>입니다. 초속 55 m 면 한 프레임에
+    /// 0.9 m 를 가므로, 몸통만으로는 <b>점선으로 끊겨 보입니다.</b>
+    /// 뒤에 남는 자국이 있어야 하나로 이어집니다.
+    /// </summary>
+    /// <param name="speed">초속(m)</param>
+    /// <param name="errors">못 만들었으면 늘립니다</param>
+    private static GameObject Missile(float speed, ref int errors)
+    {
+        const string path = "Assets/_Project/05.Prefabs/Robot/RobotMissile.prefab";
+
+        GameObject made = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+
+        if (made != null)
+        {
+            WeaponMissile had = made.GetComponent<WeaponMissile>();
+            if (had != null && Mathf.Abs(had.speed - speed) > 0.01f)
+            {
+                had.speed = speed;
+                EditorUtility.SetDirty(made);
+                AssetDatabase.SaveAssets();
+            }
+
+            return made;
+        }
+
+        GameObject body = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        body.name = "RobotMissile";
+
+        // 콜라이더는 뗍니다. 맞는 판정은 스스로 선을 쏴서 합니다 —
+        // ⚠ 콜라이더를 달아 두면 <b>자기 레이캐스트에 자기가 걸립니다.</b>
+        UnityEngine.Object.DestroyImmediate(body.GetComponent<Collider>());
+
+        body.transform.localScale = new Vector3(0.16f, 0.16f, 0.62f);
+
+        Material steel = AssetDatabase.LoadAssetAtPath<Material>(
+            "Assets/_Project/04.Art/00.Materials/RobotSteel.mat");
+        if (steel != null) body.GetComponent<MeshRenderer>().sharedMaterial = steel;
+
+        TrailRenderer tail = body.AddComponent<TrailRenderer>();
+        tail.time = 0.35f;
+        tail.startWidth = 0.22f;
+        tail.endWidth = 0.0f;
+        tail.minVertexDistance = 0.4f;
+        tail.numCapVertices = 2;
+        tail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        tail.receiveShadows = false;
+        tail.sharedMaterial = TrailMaterial(ref errors);
+
+        WeaponMissile flying = body.AddComponent<WeaponMissile>();
+        flying.speed = speed;
+
+        GameObject saved = PrefabUtility.SaveAsPrefabAsset(body, path);
+        UnityEngine.Object.DestroyImmediate(body);
+
+        if (saved == null)
+        {
+            Debug.LogError("STRIDER 탄 프리팹을 만들지 못했습니다 — " + path);
+            errors++;
+            return null;
+        }
+
+        Debug.Log("STRIDER 탄 프리팹을 만들었습니다 — " + path);
+        return saved;
+    }
+
+    /// <summary>
+    /// 자국에 쓸 재질입니다. 없으면 만듭니다.
+    ///
+    /// ⚠ <b>재질을 안 주면 자홍색으로 나옵니다.</b> 자국은 조명을 받을 이유가 없으므로
+    /// 언릿이고, 뒤로 갈수록 사라져야 하니 반투명입니다.
+    /// </summary>
+    private static Material TrailMaterial(ref int errors)
+    {
+        const string path = "Assets/_Project/04.Art/00.Materials/MissileTrail.mat";
+
+        Material had = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (had != null) return had;
+
+        Shader unlit = Shader.Find("Universal Render Pipeline/Unlit");
+
+        if (unlit == null)
+        {
+            Debug.LogError("STRIDER URP Unlit 셰이더를 찾지 못했습니다");
+            errors++;
+            return null;
+        }
+
+        Material made = new Material(unlit);
+        made.name = "MissileTrail";
+
+        // 반투명 · 더하기. 밤에 지나가는 불꽃으로 읽혀야 합니다.
+        made.SetFloat("_Surface", 1f);
+        made.SetFloat("_Blend", 1f);
+        made.SetFloat("_ZWrite", 0f);
+        made.renderQueue = 3000;
+        made.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        made.SetColor("_BaseColor", new Color(1f, 0.62f, 0.28f, 1f));
+
+        AssetDatabase.CreateAsset(made, path);
+        AssetDatabase.SaveAssets();
+
+        Debug.Log("STRIDER 자국 재질을 만들었습니다 — " + path);
+        return made;
+    }
+
     private static WeaponFlash Flash(Transform muzzle, Loadout one)
     {
         GameObject go = new GameObject("Flash");
