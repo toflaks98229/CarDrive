@@ -245,6 +245,16 @@ Shader "CarDrive/Post/Palette"
             // 상황에 따라 흔드는 것은 여기서만 합니다.
             float4 _CarDriveLookMood;
 
+            // ── 눈가의 얼룩 ──
+            //
+            // <c>GhostEdgeCue</c> 가 밀어 넣습니다. xy = 귀신이 있는 쪽(화면 기준,
+            // 길이 1), z = 진하기. <b>z 가 0 이면 아무 일도 일어나지 않습니다.</b>
+            //
+            // ⚠ <b>왜 후처리에 넣는가.</b> 캔버스를 새로 세우면 이 게임의 화면에
+            // <b>후처리를 안 거친 층</b>이 하나 생깁니다. 계단도 종이도 안 탄 그림이
+            // 그 위에 얹히면, 그것만 다른 게임에서 온 것처럼 보입니다.
+            float4 _CarDriveGhostEdge;
+
             TEXTURE2D(_PaperTex);
             SAMPLER(sampler_LinearRepeat_PaperTex);
             half  _PaperGrain;
@@ -462,6 +472,25 @@ Shader "CarDrive/Post/Palette"
                     float2 fromMid = input.texcoord - 0.5;
                     half reach = (half)saturate(length(fromMid) * 1.41421356);
                     drawing *= 1.0h - _PaperEdge * smoothstep(0.45h, 1.0h, reach);
+                }
+
+                // ── 눈가의 얼룩 ──
+                //
+                // 시야 밖의 귀신이 <b>어느 쪽에</b> 있는지만 말합니다. 그쪽 모서리가
+                // 어두워지고, 가운데는 건드리지 않습니다 — 운전은 가운데로 합니다.
+                [branch] if (_CarDriveGhostEdge.z > 0.001)
+                {
+                    float2 fromMid = input.texcoord - 0.5;
+
+                    // 그쪽 방향일수록 1. 제곱해서 <b>한쪽 모서리</b>로 좁힙니다.
+                    half side = (half)saturate(dot(normalize(fromMid + 1e-6),
+                                                   _CarDriveGhostEdge.xy));
+                    side = side * side * side;
+
+                    // 가장자리에서만 앉습니다. 종이의 가장자리 어둠과 같은 자를 씁니다.
+                    half rim = (half)smoothstep(0.30, 0.95, length(fromMid) * 1.41421356);
+
+                    drawing *= 1.0h - side * rim * (half)_CarDriveGhostEdge.z;
                 }
 
                 return half4(drawing, source.a);

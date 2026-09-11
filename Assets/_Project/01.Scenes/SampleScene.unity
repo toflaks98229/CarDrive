@@ -24808,6 +24808,7 @@ GameObject:
   m_Component:
   - component: {fileID: 343738748}
   - component: {fileID: 343738749}
+  - component: {fileID: 343738750}
   m_Layer: 0
   m_Name: CameraRig
   m_TagString: Untagged
@@ -24844,6 +24845,24 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   target: {fileID: 446511180}
+--- !u!114 &343738750
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 343738747}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9078bee5eccdf894fbb72a5e2962f33f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Gameplay::CarDrive.Gameplay.GhostEdgeCue
+  eye: {fileID: 0}
+  near: 3
+  far: 22
+  strength: 0.55
+  breath: 0.7
+  fade: 0.6
 --- !u!1001 &345014889
 PrefabInstance:
   m_ObjectHideFlags: 0
