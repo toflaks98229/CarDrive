@@ -109,17 +109,25 @@ namespace CarDrive.Tests
         }
 
         /// <summary>
-        /// <b>진짜 씬에서</b> 물줄기가 살아남는지 봅니다.
+        /// <b>진짜 씬에서</b> 물줄기가 <b>자기 몸에</b> 부딪히는지 봅니다.
         ///
         /// 격리 리그에서는 두 번 다 재현이 안 됐습니다(캡슐로도, CharacterController 로도).
         /// 그러면 리그가 놓친 것이 씬에 있다는 뜻이고, 남은 길은 씬을 통째로 띄워
         /// 실제 콜라이더·실제 레이어 배치에서 재는 것뿐입니다.
         ///
-        /// 이 테스트는 <b>고장을 재현하면 실패</b>합니다. 통과하면 물줄기가 사라지는 원인이
-        /// 충돌 설정이 아니라 다른 데 있다는 뜻이므로, 그때는 다른 곳을 봐야 합니다.
+        /// ⚠ <b>살아남은 수를 세지 않습니다.</b> 처음에는 "90 개를 뿜어 30 개 넘게 남는가"
+        /// 로 재었는데, 그것은 충돌이 아니라 <b>그날의 프레임 시간</b>을 재는 수였습니다.
+        /// 입자는 15 m/s 로 날고 부딪히면 즉사하므로, 한 프레임이 길수록 같은 거리를
+        /// <b>더 적은 프레임</b>에 지나갑니다. 간격을 고정해 재 보면 그대로 나옵니다 —
+        /// 8.3 ms 에 42 개, 20.1 ms 에 21 개, 33.3 ms 에 9 개. 씬에 물건을 몇 개 더
+        /// 놓았을 뿐인데 이 검사가 빨간불이 된 이유가 그것입니다.
+        ///
+        /// 그래서 <b>무엇에 부딪혔는지 이름을 받아</b> 봅니다. 원래 잡으려던 고장이
+        /// "자기 몸에 부딪혀 죽는다" 였으니, 부딪힌 것의 이름이 곧 답입니다.
+        /// 마을 집에 부딪히는 것은 고장이 아니라 <b>벽</b>입니다.
         /// </summary>
         [UnityTest]
-        public IEnumerator 실제_씬에서_물줄기가_살아남는다()
+        public IEnumerator 실제_씬에서_물줄기가_자기_몸에_안_부딪힌다()
         {
             SceneManager.LoadScene("SampleScene", LoadSceneMode.Single);
             for (int i = 0; i < 10; i++) yield return null;
@@ -138,42 +146,94 @@ namespace CarDrive.Tests
             for (Transform t = real.transform; t != null; t = t.parent)
                 chain.Insert(0, "/" + t.name + (t.gameObject.activeSelf ? "" : "(꺼짐)"));
             Debug.Log("STREAMTEST 부모 사슬: " + chain);
-            Debug.Log("STREAMTEST 활성=" + real.gameObject.activeInHierarchy +
-                      " 재생중=" + real.isPlaying + " 최대입자=" + real.main.maxParticles);
 
             // 켜고 재생시킵니다. 여기서 재려는 것은 충돌이지 모드 전환이 아닙니다.
+            Transform rig = real.transform;
             for (Transform t = real.transform; t != null; t = t.parent)
+            {
                 t.gameObject.SetActive(true);
+                if (t.GetComponent<CharacterController>() != null) rig = t;
+            }
+
             real.Play();
             yield return null;
-
 
             ParticleSystem.CollisionModule c = real.collision;
             Debug.Log(string.Format(
                 "STREAMTEST 씬 충돌: 켜짐={0} 마스크={1} 수명손실={2:0.00} 감쇠={3:0.00}",
                 c.enabled, c.collidesWith.value, c.lifetimeLossMultiplier, c.dampenMultiplier));
 
-            // <b>충돌 설정은 씬에 구워진 것 그대로 씁니다.</b> 여기서 값을 덮어쓰면 실제로 배포되는
-            // 설정이 아니라 테스트가 만든 설정을 검사하게 되어, 정작 고장은 못 잡습니다.
+            // ⚠ <b>부딪힌 것의 이름을 받으려면 켜야 합니다.</b> 씬에 구워진 설정은
+            // 이것이 꺼져 있습니다 — 게임에서는 아무도 안 듣기 때문입니다.
+            c.sendCollisionMessages = true;
+
+            Ear ear = real.gameObject.AddComponent<Ear>();
+
+            // <b>충돌 설정은 씬에 구워진 것 그대로 씁니다.</b> 여기서 값을 덮어쓰면 실제로
+            // 배포되는 설정이 아니라 테스트가 만든 설정을 검사하게 되어, 정작 고장은 못 잡습니다.
             ParticleSystem.MainModule main = real.main;
             main.startSpeed = 15f;
             main.startLifetime = 3f;
 
-            int peak = 0;
             for (int f = 0; f < 30; f++)
             {
                 real.Emit(3);
                 yield return null;
-                peak = Mathf.Max(peak, real.particleCount);
             }
 
-            Debug.Log("STREAMTEST 씬 설정으로 90개를 뿜어 최대 " + peak + " 개 생존");
+            Assert.Greater(ear.Hits.Count, 0,
+                "아무것에도 안 부딪혔습니다. 충돌이 꺼졌거나 입자가 안 나간 것이므로, " +
+                "이 검사는 아무것도 못 봅니다");
 
-            // 90개를 뿜었습니다. 자기 몸에 부딪혀 죽으면 3개까지 떨어졌습니다.
-            // 절반은 살아 있어야 물줄기로 보입니다.
-            Assert.Greater(peak, 30,
-                "물줄기 입자가 " + peak + " 개밖에 안 남습니다. 자기 몸에 부딪혀 죽고 있습니다 — " +
-                "충돌 마스크에 플레이어의 레이어가 들어갔거나 동적 콜라이더가 켜져 있습니다.");
+            foreach (System.Collections.Generic.KeyValuePair<string, int> hit in ear.Hits)
+            {
+                Debug.Log("STREAMTEST 부딪힌 것 — " + hit.Key + " · " + hit.Value + " 번");
+            }
+
+            // 진짜 고장은 이것 하나입니다 — <b>자기 몸</b>이나 <b>자기 차</b>에 부딪히는가.
+            foreach (Transform hit in ear.What)
+            {
+                Assert.IsFalse(Under(hit, rig),
+                    "물줄기가 <b>자기 몸에</b> 부딪힙니다 — " + hit.name
+                    + ". 충돌 마스크에 플레이어의 레이어가 들어갔거나 몸통 콜라이더가 켜져 있습니다");
+
+                Assert.IsNull(hit.GetComponentInParent<CarDrive.Gameplay.Vehicle>(),
+                    "물줄기가 <b>차에</b> 부딪힙니다 — " + hit.name
+                    + ". 도보 리그가 차 안에서 켜졌거나 차가 사람 위에 세워져 있습니다");
+            }
+        }
+
+        // --- Private Methods ---
+
+        /// <summary>그것이 이 뿌리 아래에 있는가.</summary>
+        private static bool Under(Transform what, Transform root)
+        {
+            for (Transform t = what; t != null; t = t.parent)
+            {
+                if (t == root) return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>부딪힌 것의 이름을 받아 적습니다.</summary>
+        private class Ear : MonoBehaviour
+        {
+            public readonly System.Collections.Generic.Dictionary<string, int> Hits =
+                new System.Collections.Generic.Dictionary<string, int>();
+
+            public readonly System.Collections.Generic.List<Transform> What =
+                new System.Collections.Generic.List<Transform>();
+
+            void OnParticleCollision(GameObject other)
+            {
+                string key = other.name + " (레이어 " + other.layer + ")";
+
+                Hits.TryGetValue(key, out int had);
+                Hits[key] = had + 1;
+
+                if (had == 0) What.Add(other.transform);
+            }
         }
     }
 }
