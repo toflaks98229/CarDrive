@@ -36,7 +36,6 @@ Material:
     - _FogScale: 1
     - _SplatOn: 0
     - _UseGrain: 1
-    - _UseHatching: 0
     m_Colors:
     - _BaseColor: {r: 0.135, g: 0.14, b: 0.15, a: 1}
     - _BaseMapGain: {r: 1.9613352, g: 1.9507838, b: 2.0457213, a: 1}

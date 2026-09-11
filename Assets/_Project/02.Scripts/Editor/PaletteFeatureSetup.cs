@@ -147,6 +147,9 @@ public static class PaletteFeatureSetup
         material.SetFloat("_Desaturate", Knob("PALETTE_DESAT", material.GetFloat("_Desaturate")));
         material.SetFloat("_DitherPixel", Knob("PALETTE_PIXEL", material.GetFloat("_DitherPixel")));
 
+        HatchDither(material);
+        Paper(material);
+
         EditorUtility.SetDirty(material);
         AssetDatabase.SaveAssets();
 
@@ -155,6 +158,124 @@ public static class PaletteFeatureSetup
                   $"디더칸 {material.GetFloat("_DitherPixel"):F0} px · 셰이더 {material.shader.name}");
 
         Finish(0);
+    }
+
+    /// <summary>
+    /// 후처리 디더에 <b>빗금 판</b>을 물립니다.
+    ///
+    /// <b>왜 임포트 설정까지 여기서 못 박는가.</b> 이 텍스처는 그림이 아니라
+    /// <b>문턱 행렬</b>입니다. 값이 0~1 에 고르게 흩어져 있어야 계단이 치우치지
+    /// 않는데, 기본 임포트로 들어오면 이중선형으로 뭉개지고 sRGB 로 휘고 밉이
+    /// 생겨 그 고름이 전부 깨집니다. 그림처럼 생긴 것을 그림이 아닌 용도로 쓸 때
+    /// 늘 나는 문제라, 사람의 기억이 아니라 코드가 지킵니다.
+    /// </summary>
+    /// <param name="material">팔레트 재질</param>
+    private static void HatchDither(Material material)
+    {
+        const string path = "Assets/_Project/04.Art/01.Images/Hatching/HatchDither.png";
+
+        TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
+
+        if (importer == null)
+        {
+            Debug.LogWarning("PaletteFeatureSetup: 빗금 디더 행렬이 없습니다 — " + path);
+            return;
+        }
+
+        bool dirty = false;
+
+        if (importer.sRGBTexture) { importer.sRGBTexture = false; dirty = true; }
+        if (importer.mipmapEnabled) { importer.mipmapEnabled = false; dirty = true; }
+        if (importer.filterMode != FilterMode.Point) { importer.filterMode = FilterMode.Point; dirty = true; }
+        if (importer.wrapMode != TextureWrapMode.Repeat) { importer.wrapMode = TextureWrapMode.Repeat; dirty = true; }
+        if (importer.textureCompression != TextureImporterCompression.Uncompressed)
+        {
+            // ⚠ 압축하면 문턱값이 <b>이웃과 섞입니다.</b> 256x256 한 장이라
+            // 압축을 안 해도 64 KB 입니다.
+            importer.textureCompression = TextureImporterCompression.Uncompressed;
+            dirty = true;
+        }
+
+        if (dirty)
+        {
+            importer.SaveAndReimport();
+            Debug.Log("PaletteFeatureSetup: 빗금 디더 행렬 임포트를 고쳤습니다 (Point · Repeat · 밉 없음 · 선형 · 무압축)");
+        }
+
+        Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        if (tex != null) material.SetTexture("_HatchDitherTex", tex);
+
+        material.SetFloat("_HatchDither", Knob("PALETTE_HATCH", material.GetFloat("_HatchDither")));
+        material.SetFloat("_HatchDitherScale",
+                          Knob("PALETTE_HATCH_SCALE", material.GetFloat("_HatchDitherScale")));
+        material.SetFloat("_HatchInk", Knob("PALETTE_HATCH_INK", material.GetFloat("_HatchInk")));
+        material.SetFloat("_HatchSoft", Knob("PALETTE_HATCH_SOFT", material.GetFloat("_HatchSoft")));
+        material.SetFloat("_HatchDepth", Knob("PALETTE_HATCH_DEPTH", material.GetFloat("_HatchDepth")));
+        material.SetFloat("_HatchChroma", Knob("PALETTE_HATCH_CHROMA", material.GetFloat("_HatchChroma")));
+        material.SetFloat("_HatchTam", Knob("PALETTE_HATCH_TAM", material.GetFloat("_HatchTam")));
+        material.SetFloat("_HatchTamTop", Knob("PALETTE_HATCH_TAMTOP", material.GetFloat("_HatchTamTop")));
+        material.SetFloat("_HatchToneSmooth",
+                          Knob("PALETTE_HATCH_SMOOTH", material.GetFloat("_HatchToneSmooth")));
+        material.SetFloat("_HatchBoilRate", Knob("PALETTE_BOIL", material.GetFloat("_HatchBoilRate")));
+        material.SetFloat("_HatchBoilJump", Knob("PALETTE_BOIL_JUMP", material.GetFloat("_HatchBoilJump")));
+
+        Debug.Log("PaletteFeatureSetup: 빗금 판 " + material.GetFloat("_HatchDither").ToString("F2")
+                  + " · 한 판 " + material.GetFloat("_HatchDitherScale").ToString("F0") + " px"
+                  + " · 잉크 " + material.GetFloat("_HatchInk").ToString("F2")
+                  + " · 보간 " + material.GetFloat("_HatchSoft").ToString("F3")
+                  + " · 진하기 " + material.GetFloat("_HatchDepth").ToString("F2")
+                  + " · 행렬 " + (tex != null ? tex.name : "(없음)"));
+    }
+
+    /// <summary>
+    /// 그림이 놓일 <b>종이</b>를 물립니다.
+    ///
+    /// 결 텍스처는 그림이 아니라 <b>곱하는 값</b>입니다. 0.5 가 "안 바꿈" 이라
+    /// sRGB 로 휘면 그 가운데가 어긋나 화면 전체가 밝거나 어두워집니다.
+    /// 밉은 남겨 둡니다 — 획과 달리 결은 멀리서 뭉개져도 종이답습니다.
+    /// </summary>
+    /// <param name="material">팔레트 재질</param>
+    private static void Paper(Material material)
+    {
+        const string path = "Assets/_Project/04.Art/01.Images/Hatching/PaperGrain.png";
+
+        TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
+
+        if (importer == null)
+        {
+            Debug.LogWarning("PaletteFeatureSetup: 종이 결이 없습니다 — " + path);
+            return;
+        }
+
+        bool dirty = false;
+
+        if (importer.sRGBTexture) { importer.sRGBTexture = false; dirty = true; }
+        if (importer.filterMode != FilterMode.Bilinear) { importer.filterMode = FilterMode.Bilinear; dirty = true; }
+        if (importer.wrapMode != TextureWrapMode.Repeat) { importer.wrapMode = TextureWrapMode.Repeat; dirty = true; }
+        if (importer.textureCompression != TextureImporterCompression.Uncompressed)
+        {
+            // ⚠ 압축하면 결이 <b>블록으로 뭉칩니다.</b> 512x512 한 장이라 256 KB 입니다.
+            importer.textureCompression = TextureImporterCompression.Uncompressed;
+            dirty = true;
+        }
+
+        if (dirty)
+        {
+            importer.SaveAndReimport();
+            Debug.Log("PaletteFeatureSetup: 종이 결 임포트를 고쳤습니다 (선형 · Repeat · 무압축)");
+        }
+
+        Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        if (tex != null) material.SetTexture("_PaperTex", tex);
+
+        material.SetFloat("_PaperGrain", Knob("PALETTE_PAPER", material.GetFloat("_PaperGrain")));
+        material.SetFloat("_PaperScale", Knob("PALETTE_PAPER_SCALE", material.GetFloat("_PaperScale")));
+        material.SetFloat("_PaperEdge", Knob("PALETTE_PAPER_EDGE", material.GetFloat("_PaperEdge")));
+
+        Debug.Log("PaletteFeatureSetup: 종이 결 " + material.GetFloat("_PaperGrain").ToString("F2")
+                  + " · 한 판 " + material.GetFloat("_PaperScale").ToString("F0") + " px"
+                  + " · 가장자리 " + material.GetFloat("_PaperEdge").ToString("F2")
+                  + " · 그림 " + (tex != null ? tex.name : "(없음)"));
     }
 
     private static float Knob(string name, float fallback)

@@ -90,14 +90,12 @@ Shader "CarDrive/Toon Lit"
         _OutlineColor ("외곽선 색", Color) = (0.08, 0.07, 0.10, 1)
 
         [Header(Hand Drawn)]
-        [Toggle(_HATCHING)] _UseHatching ("빗금으로 음영 그리기", Float) = 0
 
         // <b>움직이는 것에는 이것도 켜야 합니다.</b> 빗금은 기본이 월드 좌표라
         // 건물·바위처럼 붙박이인 것에 맞춰져 있습니다. 차처럼 달리는 물체에 그대로 켜면
         // 획이 차체 위를 미끄러져, 그린 것이 아니라 <b>비춘 것</b>으로 보입니다.
         //
         // ⚠ 물체의 스케일이 1 이어야 합니다. 이유는 CarDriveToonLighting.hlsl 에 적어 두었습니다.
-        [Toggle(_HATCH_LOCAL)] _HatchLocal ("빗금을 물체에 붙이기 (움직이는 것)", Float) = 0
 
         [Header(Cutout)]
         [Toggle(_ALPHATEST_ON)] _AlphaClip ("알파 컷아웃 쓰기 (잎처럼 뚫린 것)", Float) = 0
@@ -325,8 +323,6 @@ ENDHLSL
             #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
             #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
             #pragma shader_feature_local_fragment _TOON_RAMP
-            #pragma shader_feature_local_fragment _HATCHING
-            #pragma shader_feature_local_fragment _HATCH_LOCAL
             #pragma shader_feature_local_fragment _ALPHATEST_ON
             #pragma shader_feature_local_fragment _DITHER_FADE
             #pragma shader_feature_local_fragment _SPLAT_ON

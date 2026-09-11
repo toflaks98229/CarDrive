@@ -44,8 +44,13 @@ TEXTURE2D(_CarDriveTamBright); SAMPLER(sampler_CarDriveTamBright);
 // R,G,B = 어두운 쪽 세 단계(3,4,5)
 TEXTURE2D(_CarDriveTamDark);
 
-// x = 획 크기(m), y = 세기(0~1), z = 빗금이 시작되는 밝기, w = 전역이 유효한가(0/1)
+// w = 전역이 유효한가(0/1). x,y,z 는 월드 음영이 쓰던 자리로 지금은 아무도 안 읽습니다.
+//
+// ⚠ <b>w 만 보고 갈라야 합니다.</b> TAM 은 기본값으로 물러설 수 없습니다 — 전역이
+// 안 들어왔는데 샘플하면 바인딩되지 않은 텍스처를 읽어 플랫폼마다 다른 색이 나옵니다.
+// 그래서 HatchingRig 가 씬에 없으면 부르는 쪽이 디더로 물러섭니다.
 float4 _CarDriveHatchParams;
+
 
 /// <summary>
 /// 이 픽셀에 얼마나 잉크가 얹힐지 구합니다. 1 이면 종이 그대로, 0 에 가까울수록 덮입니다.
@@ -145,36 +150,6 @@ half CarDriveHatchValue(half tone, float3 positionWS, float3 normalWS, float sca
              + w3 * dark.r   + w4 * dark.g   + w5 * dark.b;
 
     return ink / max(sum, 1e-4h);
-}
-
-/// <summary>
-/// 빗금을 색에 <b>곱합니다.</b>
-///
-/// 잉크는 종이 위에 얹히는 것이라 밑색을 어둡게 할 뿐 색을 갈아 끼우지 않습니다.
-/// 원본(nkihrk)도 <c>col *= hatch</c> 입니다.
-/// </summary>
-half3 CarDriveApplyHatch(half3 color, half tone, float3 positionWS, float3 normalWS)
-{
-    // <b>TAM 은 기본값으로 물러설 수 없습니다.</b> 절차적 빗금은 수치만 있으면 그렸지만
-    // 이건 텍스처가 있어야 합니다. 전역이 안 들어왔는데 그냥 샘플하면 바인딩되지 않은
-    // 텍스처를 읽어 <b>플랫폼마다 다른 색</b>(대개 흰색이나 검정)이 나옵니다.
-    // 그래서 HatchingRig 가 씬에 없으면 아무것도 하지 않고 돌려보냅니다.
-    if (_CarDriveHatchParams.w < 0.5) return color;
-
-    half strength = (half)_CarDriveHatchParams.y;
-    half top = (half)_CarDriveHatchParams.z;
-
-    // <b>여기서 일찍 빠져나가면 안 됩니다.</b> 밝은 픽셀을 건너뛰고 싶어지지만,
-    // 아래 함수 안에 <c>ddx/ddy</c> 가 있습니다. 미분은 <b>균일한 흐름</b>에서만 유효한데
-    // tone 은 픽셀마다 달라서, 한 쿼드에서 일부만 들어가면 밉 단계가 무너져 원경이 지글거립니다.
-    //
-    // 건너뛰는 일은 함수 <b>안에서</b> 이미 일어납니다 — 밝으면 창 가중치가 종이 쪽에만 서고
-    // needBright/needDark 가 둘 다 거짓이 되어 <b>텍스처를 한 번도 읽지 않습니다.</b>
-    // 아끼려던 것(샘플)은 그대로 아끼고 미분만 지킵니다.
-    half ink = CarDriveHatchValue(tone, positionWS, normalWS, _CarDriveHatchParams.x, top);
-
-    // 세기가 0 이면 종이 그대로(1), 1 이면 획 그대로입니다.
-    return color * lerp(1.0h, ink, strength);
 }
 
 #endif // CARDRIVE_HATCH_INCLUDED

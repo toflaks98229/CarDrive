@@ -93,9 +93,8 @@ half CarDriveFadeCurve(float viewDistance, float start, float end)
 }
 
 
-// 손그림 빗금은 조명에 기대지 않아 따로 떼어 두었습니다.
-// UI(니즈 게이지)도 같은 빗금을 쓰기 때문입니다.
-#include "CarDriveHatch.hlsl"
+// 빗금은 이제 <b>월드 음영에 쓰지 않습니다.</b> 남은 쓰임(오줌 얼룩 테두리·니즈
+// 게이지)이 각자 <c>CarDriveHatch.hlsl</c> 을 직접 부릅니다.
 
 /// <summary>툰 음영을 계산할 때 쓰는 설정 묶음입니다.</summary>
 struct ToonSurface
@@ -365,39 +364,25 @@ half3 ToonShade(ToonSurface s, ToonParams p, float4 shadowCoord)
 
     half3 lighting;
 
-    #ifdef _HATCHING
-        // ── 단색 그늘을 쓰지 않습니다 ──
-        //
-        // 예전에는 여기서 면을 둘로 갈라 그늘 쪽에 <c>shadowTint</c> 를 칠했고
-        // (램프를 쓰는 재질은 램프에서 색을 읽었고), 그것이 이 게임의 툰 음영이었습니다.
-        // <b>이제 그 일을 빗금이 합니다.</b> 같은 그늘을 색으로도 칠하고 획으로도 그으면
-        // 경계가 두 번 생겨 지저분해집니다.
-        //
-        // 주광의 색과 세기는 남깁니다. <b>밤에 어두워지는 것은 그늘이 아니라 해가 지는 것</b>이라,
-        // 이것까지 걷으면 낮과 밤이 같아집니다.
-        lighting = mainLight.color;
+    // ⚠ <b>여기는 예전에 갈래가 둘이었습니다.</b> 빗금을 켠 재질은 툰 음영을
+    // 통째로 건너뛰고(<c>lighting = mainLight.color</c>) 그늘을 획으로만 그렸습니다.
+    // 월드 빗금을 걷어내면서 그 갈래가 없어졌으므로, 모든 재질이 아래 한 길을 갑니다.
+    // 빗금을 켜지 않은 재질(나무 등)은 예전 방식 그대로입니다.
+    // 그늘을 그리는 수단이 아무것도 없으면 통째로 납작해집니다.
+    #ifdef _TOON_RAMP
+        // 램프가 이미 띠를 갖고 있으므로 여기서도 날것의 밝기로 읽습니다.
+        half3 ramp = ToonRampColor(rawLit);
+
+        // 밤에는 램프의 색조만 남기고 세기를 눌러야 화면이 죽지 않습니다.
+        ramp = lerp(half3(1, 1, 1), ramp, sunPower);
+        lighting = ramp * mainLight.color;
     #else
-        // 빗금을 켜지 않은 재질(나무 등)은 예전 방식 그대로입니다.
-        // 그늘을 그리는 수단이 아무것도 없으면 통째로 납작해집니다.
-        #ifdef _TOON_RAMP
-            // 램프가 이미 띠를 갖고 있으므로 여기서도 날것의 밝기로 읽습니다.
-            half3 ramp = ToonRampColor(rawLit);
+        // 단색 음영은 <b>끊은</b> 값을 씁니다. 그것이 툰 룩의 딱딱한 경계입니다.
+        half lit = ToonLightAmount(mainLight, s.normalWS, p);
 
-            // 밤에는 램프의 색조만 남기고 세기를 눌러야 화면이 죽지 않습니다.
-            ramp = lerp(half3(1, 1, 1), ramp, sunPower);
-            lighting = ramp * mainLight.color;
-        #else
-            // 단색 음영은 <b>끊은</b> 값을 씁니다. 그것이 툰 룩의 딱딱한 경계입니다.
-            half lit = ToonLightAmount(mainLight, s.normalWS, p);
-
-            half3 shadowColor = lerp(half3(1, 1, 1), p.shadowTint, p.shadowStrength * sunPower);
-            lighting = lerp(shadowColor, half3(1, 1, 1), lit) * mainLight.color;
-        #endif
+        half3 shadowColor = lerp(half3(1, 1, 1), p.shadowTint, p.shadowStrength * sunPower);
+        lighting = lerp(shadowColor, half3(1, 1, 1), lit) * mainLight.color;
     #endif
-
-    // 받은 빛의 <b>양</b>입니다. 색이 아니라 양이라 빗금이 이걸 읽습니다.
-    // 주광은 날것의 밝기에 그날의 광량을 곱한 만큼 들어옵니다.
-    half received = rawLit * sunPower;
 
     // 구름 그림자는 <b>주광에만</b> 곱합니다. 구름이 가리는 것은 해이지
     // 헤드라이트나 귀신 불빛이 아닙니다. 그래서 추가 광원을 더하기 전에 적용합니다.
@@ -415,10 +400,6 @@ half3 ToonShade(ToonSurface s, ToonParams p, float4 shadowCoord)
 
             // 칠하는 쪽은 끊어서 툰 룩을 유지하고,
             lighting += extra.color * ToonLightAmount(extra, s.normalWS, p);
-
-            // 빗금 쪽은 날것으로 받습니다. 헤드라이트가 비춘 자리에서 획이 <b>서서히</b>
-            // 옅어져야 빛이 번지는 것으로 읽힙니다. 끊으면 원이 오려낸 듯 생깁니다.
-            received += ToonLightRaw(extra, s.normalWS) * saturate(Luminance(extra.color));
         }
     #endif
 
@@ -432,50 +413,6 @@ half3 ToonShade(ToonSurface s, ToonParams p, float4 shadowCoord)
     // 높이 그라데이션은 조명 뒤에 얹습니다. 빛을 받든 안 받든 같은 높이면 같은 색이 되어야
     // 원경이 고르게 눌립니다.
     color = ApplyHeightGradient(color, s.positionWS.y, p);
-
-    // <b>빗금은 맨 마지막입니다.</b> 잉크는 색 위에 얹히는 것이지 조명을 받는 것이 아닙니다.
-    //
-    // 밝기는 주광만이 아니라 <b>받은 빛 전부</b>에서 뽑습니다. 헤드라이트가 비춘 자리는
-    // 빗금이 옅어져야 빛이 닿았다는 것이 읽힙니다.
-    #ifdef _HATCHING
-        // <b>최종 색의 휘도를 쓰면 안 됩니다.</b> 단색 그늘을 걷어낸 뒤로 그 휘도에는
-        // 방향성이 남아 있지 않아, 해를 등진 면과 마주한 면이 같은 값이 됩니다.
-        // 그래서 위에서 따로 모아 둔 <c>received</c> 를 씁니다.
-        half hatchTone = saturate(received + Luminance(ambient));
-
-        // ── 획을 어디에 붙일 것인가 ──
-        //
-        // 기본은 <b>월드</b>입니다. 땅·풀·건물이 같은 크기의 획을 받아야 하는데
-        // 터레인은 100m 타일에 0~1 UV 라 획이 100m 로 늘어나고 풀은 잎마다 쓸 UV 가 없습니다.
-        // (그 사연은 <c>HatchingRig.scale</c> 주석에 적혀 있습니다) 그것들은 움직이지 않으므로
-        // 획이 세계에 박혀 있어도 아무 문제가 없습니다.
-        //
-        // <b>움직이는 것은 그럴 수 없습니다.</b> 획이 세계에 박혀 있으면 차가 달릴 때
-        // 획이 차체 위를 <b>미끄러집니다</b> — 종이는 가만있고 그림만 흘러가는 꼴이라
-        // 손으로 그린 것이 아니라 무늬를 투사한 것으로 보입니다.
-        //
-        // 그래서 움직이는 재질은 좌표를 <b>물체 자신의 공간</b>으로 접습니다.
-        // 그러면 획이 차체에 그려진 잉크처럼 함께 돌고 함께 달립니다.
-        //
-        // ⚠ <b>물체의 스케일이 1 이어야 합니다.</b> 물체 공간의 1 이 곧 1m 여야
-        // 세계에 박힌 획과 같은 굵기가 나옵니다. 스케일을 준 물체에 켜면
-        // 그 물체만 획이 굵거나 잘아져 다시 튑니다.
-        float3 hatchPosition = s.positionWS;
-        float3 hatchNormal = s.normalWS;
-
-        #ifdef _HATCH_LOCAL
-            hatchPosition = mul(unity_WorldToObject, float4(s.positionWS, 1.0)).xyz;
-
-            // <b>법선은 위치와 다른 행렬을 씁니다.</b> 물체→월드로 옮길 때 법선은
-            // 역전치를 쓰므로(<c>mul(normalOS, (float3x3)unity_WorldToObject)</c>),
-            // 되돌리는 것은 그 반대인 <c>unity_ObjectToWorld</c> 를 오른쪽에서 곱하는 것입니다.
-            // 위치의 행렬을 그대로 쓰면 스케일이 고르지 않은 물체에서 삼중평면 창이 어긋나
-            // 옆면에 윗면의 획이 섞입니다.
-            hatchNormal = normalize(mul(s.normalWS, (float3x3)unity_ObjectToWorld));
-        #endif
-
-        color = CarDriveApplyHatch(color, hatchTone, hatchPosition, hatchNormal);
-    #endif
 
     return color;
 }

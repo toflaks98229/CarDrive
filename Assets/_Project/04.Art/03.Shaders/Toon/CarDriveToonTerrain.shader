@@ -37,7 +37,6 @@ Shader "CarDrive/Toon Terrain"
         _TextureBlend ("텍스처 섞는 정도", Range(0, 1)) = 0
 
         [Header(Hand Drawn)]
-        [Toggle(_HATCHING)] _UseHatching ("빗금으로 음영 그리기", Float) = 0
 
         [Header(Toon Shading)]
         _MidPoint ("명암 경계 (낮을수록 밝은 면이 넓음)", Range(0, 1)) = 0.42
@@ -210,7 +209,6 @@ ENDHLSL
             #pragma multi_compile_fragment _ _SHADOWS_SOFT
             #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
             #pragma shader_feature_local_fragment _TOON_RAMP
-            #pragma shader_feature_local_fragment _HATCHING
 
             // <b>스플랫 텍스처를 쓰지 않으면 아예 컴파일되지 않게 합니다.</b>
             //

@@ -11,9 +11,7 @@ Material:
   m_Shader: {fileID: 4800000, guid: 709c1582bc7946bf935f7ebd1d7c9be8, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords:
-  - _HATCHING
-  - _HATCH_LOCAL
+  m_ValidKeywords: []
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 1
@@ -43,7 +41,6 @@ Material:
     - _FadeEnd: 330
     - _FadeScatter: 0.6
     - _FadeStart: 240
-    - _HatchLocal: 1
     - _HeightBottom: 0
     - _HeightStrength: 0
     - _HeightTop: 20
@@ -67,7 +64,6 @@ Material:
     - _StepSoftness: 0.35
     - _Steps: 0
     - _UseDitherFade: 0
-    - _UseHatching: 1
     - _UseRamp: 0
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}

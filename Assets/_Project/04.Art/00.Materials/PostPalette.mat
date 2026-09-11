@@ -12,7 +12,8 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
-  m_InvalidKeywords: []
+  m_InvalidKeywords:
+  - _HATCHTAM_ON
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -22,13 +23,35 @@ Material:
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
-    m_TexEnvs: []
+    m_TexEnvs:
+    - _HatchDitherTex:
+        m_Texture: {fileID: 2800000, guid: 7d906c66c247d194fba3307a2e589120, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _PaperTex:
+        m_Texture: {fileID: 2800000, guid: 51c4b30aee533f2419e73e8588e4958f, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Desaturate: 0.3
-    - _DitherPixel: 2
+    - _Desaturate: 0
+    - _DitherPixel: 3
     - _DitherStrength: 1
-    - _Levels: 6
+    - _HatchBoilJump: 0.2
+    - _HatchBoilRate: 10
+    - _HatchChroma: 0.5
+    - _HatchDepth: 0.06
+    - _HatchDither: 1
+    - _HatchDitherScale: 128
+    - _HatchInk: 0.26
+    - _HatchSoft: 0.16
+    - _HatchTam: 1
+    - _HatchTamTop: 0.6
+    - _HatchToneSmooth: 0
+    - _Levels: 32
+    - _PaperEdge: 0.15
+    - _PaperGrain: 0.4
+    - _PaperScale: 768
     - _Strength: 1
     m_Colors: []
   m_BuildTextureStacks: []

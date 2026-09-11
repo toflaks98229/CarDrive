@@ -32,8 +32,30 @@ public static class SceneLookCapture
 {
     private const string ScenePath = "Assets/_Project/01.Scenes/SampleScene.unity";
     private const string OutputDirectory = "Logs/SceneLook";
-    private const int Width = 960;
-    private const int Height = 540;
+    // ⚠ <b>해상도가 곧 그림입니다.</b> 화면 후처리의 디더와 빗금은 <b>화면 화소</b>로
+    // 크기를 재므로, 여기서 작게 찍으면 빌드보다 무늬가 굵게 나옵니다. 빌드는
+    // 전체화면·네이티브 해상도로 뜨니(ProjectSettings) 판단하려면 같은 크기로
+    // 찍어야 합니다. <c>CARDRIVE_SHOT</c> 에 "1920x1080" 처럼 넣으십시오.
+    private static int Width = 960;
+    private static int Height = 540;
+
+    /// <summary>찍을 크기를 <c>CARDRIVE_SHOT</c> 에서 받습니다("가로x세로").</summary>
+    private static void ShotSize()
+    {
+        string want = System.Environment.GetEnvironmentVariable("CARDRIVE_SHOT");
+        if (string.IsNullOrEmpty(want)) return;
+
+        string[] bits = want.Split('x', 'X');
+        if (bits.Length != 2) return;
+
+        if (int.TryParse(bits[0], out int w) && int.TryParse(bits[1], out int h)
+            && w >= 64 && h >= 64)
+        {
+            Width = w;
+            Height = h;
+            Debug.Log("SCENELOOK 찍는 크기 " + Width + "x" + Height);
+        }
+    }
 
     /// <summary>
     /// ViewRangeScaler 가 런타임에 거는 안개 <b>거리</b>입니다.
@@ -75,8 +97,28 @@ public static class SceneLookCapture
     public static void Run()
     {
         Directory.CreateDirectory(OutputDirectory);
+        ShotSize();
+        PaletteOverride();
 
         EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+
+        // ⚠ <b>에디터의 품질 단계는 빌드의 것과 다릅니다.</b> 이 프로젝트는 에디터가
+        // Balanced(그림자 35 m · 512), 스탠드얼론 빌드가 High Fidelity(150 m · 2048)
+        // 입니다. 빗금은 <b>받은 빛</b>을 읽으므로 그림자가 닿는 거리가 달라지면
+        // 그림도 달라집니다 — 에디터에서 찍은 그림으로 빌드를 판단할 수 없습니다.
+        string quality = System.Environment.GetEnvironmentVariable("CARDRIVE_QUALITY");
+        if (!string.IsNullOrEmpty(quality) && int.TryParse(quality, out int level))
+        {
+            QualitySettings.SetQualityLevel(level, true);
+            Debug.Log("SCENELOOK 품질 단계 " + level + " · " + QualitySettings.names[level]);
+        }
+        else
+        {
+            Debug.Log("SCENELOOK 품질 단계 " + QualitySettings.GetQualityLevel()
+                      + " · " + QualitySettings.names[QualitySettings.GetQualityLevel()]);
+        }
+
+        HatchOverride();
 
         Camera camera = FindMainCamera();
         if (camera == null)
@@ -164,6 +206,9 @@ public static class SceneLookCapture
             if (chosen != null) RenderSettings.skybox = chosen;
 
             // ViewRangeScaler 가 하는 일: 지수제곱 안개. 이건 SkyController 소관이 아닙니다.
+
+            // ⚠ 매 컷마다 다시 넣습니다. 다른 부품이 같은 전역을 덮을 수 있습니다.
+            HatchOverride();
 
             // 운전석 시점. 실제로 플레이어가 보는 화면이다.
             Texture2D shot = Grab(camera, target);
@@ -285,6 +330,143 @@ public static class SceneLookCapture
         Debug.Log(string.Format(CultureInfo.InvariantCulture,
             "SCENELOOK {0,-12} {1,-8} 평균밝기={2:F4} 따뜻함={3:+0.000;-0.000}",
             moment.Name, view, sum / pixels.Length, warmth / pixels.Length));
+    }
+
+    /// <summary>
+    /// 화면 후처리 팔레트의 값을 환경변수로 덮어씁니다.
+    ///
+    /// ⚠ <b>배치 에디터는 더러워진 에셋을 나갈 때 디스크에 씁니다.</b> 처음에는
+    /// "메모리만 바뀌니 괜찮다" 고 봤는데 아니었습니다 — 시험 삼아 넣은 값이
+    /// <c>PostPalette.mat</c> 에 그대로 남아, 다음 실행이 그 값을 물려받았습니다.
+    /// 그래서 원래 값을 적어 두고 <see cref="PaletteRestore"/> 에서 되돌립니다.
+    /// 사람이 튜닝한 값을 도구가 몰래 바꾸면 안 됩니다.
+    /// </summary>
+    private static readonly System.Collections.Generic.Dictionary<string, float> PaletteWas =
+        new System.Collections.Generic.Dictionary<string, float>();
+
+    private static readonly string[,] PaletteKnobs =
+    {
+        { "CARDRIVE_PAL_LEVELS", "_Levels" },
+        { "CARDRIVE_PAL_HATCH",  "_HatchDither" },
+        { "CARDRIVE_PAL_SCALE",  "_HatchDitherScale" },
+        { "CARDRIVE_PAL_INK",    "_HatchInk" },
+        { "CARDRIVE_PAL_SOFT",   "_HatchSoft" },
+        { "CARDRIVE_PAL_DEPTH",  "_HatchDepth" },
+        { "CARDRIVE_PAL_PIXEL",  "_DitherPixel" },
+        { "CARDRIVE_PAL_CHROMA", "_HatchChroma" },
+        { "CARDRIVE_PAL_DESAT",  "_Desaturate" },
+        { "CARDRIVE_PAL_TAM",    "_HatchTam" },
+        { "CARDRIVE_PAL_TAMTOP", "_HatchTamTop" },
+        { "CARDRIVE_PAL_SMOOTH", "_HatchToneSmooth" },
+        { "CARDRIVE_PAL_BOIL",   "_HatchBoilRate" },
+        { "CARDRIVE_PAL_JUMP",   "_HatchBoilJump" },
+        { "CARDRIVE_PAL_PAPER",  "_PaperGrain" },
+        { "CARDRIVE_PAL_PAPERSC","_PaperScale" },
+        { "CARDRIVE_PAL_EDGE",   "_PaperEdge" },
+    };
+
+    private const string PalettePath = "Assets/_Project/04.Art/00.Materials/PostPalette.mat";
+
+    private static void PaletteOverride()
+    {
+        Material pal = AssetDatabase.LoadAssetAtPath<Material>(PalettePath);
+        if (pal == null) return;
+
+        for (int i = 0; i < PaletteKnobs.GetLength(0); i++)
+        {
+            string raw = System.Environment.GetEnvironmentVariable(PaletteKnobs[i, 0]);
+            if (string.IsNullOrEmpty(raw)) continue;
+
+            if (float.TryParse(raw, System.Globalization.NumberStyles.Float,
+                               System.Globalization.CultureInfo.InvariantCulture, out float v))
+            {
+                string prop = PaletteKnobs[i, 1];
+                if (!PaletteWas.ContainsKey(prop)) PaletteWas[prop] = pal.GetFloat(prop);
+                pal.SetFloat(prop, v);
+            }
+        }
+
+        // 나가는 길이 하나가 아니라(중간에 Exit 하는 갈래가 여럿) 여기에 걸어 둡니다.
+        EditorApplication.quitting -= PaletteRestore;
+        EditorApplication.quitting += PaletteRestore;
+
+        Debug.Log("SCENELOOK 팔레트 — 단계 " + pal.GetFloat("_Levels").ToString("F0")
+                  + " · 섞기 " + pal.GetFloat("_HatchDither").ToString("F2")
+                  + " · 한 판 " + pal.GetFloat("_HatchDitherScale").ToString("F0")
+                  + " · 잉크 " + pal.GetFloat("_HatchInk").ToString("F2")
+                  + " · 보간 " + pal.GetFloat("_HatchSoft").ToString("F2")
+                  + " · 진하기 " + pal.GetFloat("_HatchDepth").ToString("F2"));
+    }
+
+    /// <summary>
+    /// 빗금 전역을 직접 넣습니다.
+    ///
+    /// ⚠ <b>컴포넌트의 필드를 바꾸는 것으로는 안 됩니다.</b> <see cref="HatchingRig"/> 는
+    /// <c>[ExecuteAlways]</c> 가 아니라 재생 중이 아니면 <c>Update</c> 가 돌지 않습니다.
+    /// 게다가 이 도구는 다른 부품을 재우려고 씬의 컴포넌트를 끄는데, 그때
+    /// <c>OnDisable</c> 이 돌면서 <b>유효 깃발을 0 으로 내립니다.</b> 그래서 아무것도 안 하면
+    /// 획이 빠진 화면이 찍힙니다 — 실제로 그렇게 찍고서 잘못된 결론을 낼 뻔했습니다.
+    ///
+    /// ⚠ <b>월드 음영의 빗금은 걷어냈습니다.</b> 남은 것은 오줌 자국과 니즈 게이지의
+    /// 테두리뿐이고 둘 다 획 크기를 스스로 정하므로, 여기서 넣을 것은 텍스처 두 장과
+    /// 유효 깃발(w)뿐입니다.
+    /// </summary>
+    private static void HatchOverride()
+    {
+        CarDrive.Systems.HatchingRig rig = Object.FindAnyObjectByType<CarDrive.Systems.HatchingRig>(
+            FindObjectsInactive.Include);
+        if (rig == null) return;
+
+        Texture2D bright = rig.tamBright;
+        Texture2D dark = rig.tamDark;
+
+        // 씬을 건드리지 않고 다른 TAM 으로 찍어 보기 위한 문입니다.
+        // 예: CARDRIVE_TAM=_soft → TAM_comic_bright_soft.png 를 씁니다.
+        string suffix = System.Environment.GetEnvironmentVariable("CARDRIVE_TAM");
+        if (!string.IsNullOrEmpty(suffix))
+        {
+            const string dir = "Assets/_Project/04.Art/01.Images/Hatching/";
+            Texture2D b = AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "TAM_comic_bright" + suffix + ".png");
+            Texture2D d = AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "TAM_comic_dark" + suffix + ".png");
+
+            if (b != null && d != null)
+            {
+                bright = b;
+                dark = d;
+                Debug.Log("SCENELOOK TAM 을 바꿔 찍습니다 — " + b.name + " · " + d.name);
+            }
+            else
+            {
+                Debug.Log("SCENELOOK ⚠ TAM 사본을 못 찾았습니다 — 접미사 " + suffix);
+            }
+        }
+
+        bool ready = bright != null && dark != null;
+        if (ready)
+        {
+            Shader.SetGlobalTexture("_CarDriveTamBright", bright);
+            Shader.SetGlobalTexture("_CarDriveTamDark", dark);
+        }
+
+        Shader.SetGlobalVector("_CarDriveHatchParams", new Vector4(0f, 0f, 0f, ready ? 1f : 0f));
+
+        Debug.Log("SCENELOOK 빗금 전역 — 유효 " + (ready ? 1 : 0));
+    }
+
+    /// <summary>덮어썼던 팔레트 값을 원래대로 돌리고 디스크에 씁니다.</summary>
+    private static void PaletteRestore()
+    {
+        if (PaletteWas.Count == 0) return;
+
+        Material pal = AssetDatabase.LoadAssetAtPath<Material>(PalettePath);
+        if (pal == null) return;
+
+        foreach (var pair in PaletteWas) pal.SetFloat(pair.Key, pair.Value);
+
+        PaletteWas.Clear();
+        EditorUtility.SetDirty(pal);
+        AssetDatabase.SaveAssets();
+        Debug.Log("SCENELOOK 팔레트 값을 원래대로 되돌렸습니다");
     }
 
     private static Camera FindMainCamera()

@@ -64,7 +64,6 @@ Material:
     - _StepSoftness: 0.35
     - _Steps: 0
     - _UseDitherFade: 0
-    - _UseHatching: 0
     - _UseRamp: 0
     m_Colors:
     - _BaseColor: {r: 0.8148469, g: 0.043734983, b: 0.043734983, a: 1}

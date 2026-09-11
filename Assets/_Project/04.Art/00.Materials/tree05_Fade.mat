@@ -55,7 +55,6 @@ Material:
     - _SpecularStrength: 0
     - _Steps: 0
     - _UseDitherFade: 1
-    - _UseHatching: 0
     - _UseRamp: 0
     m_Colors:
     - _BaseColor: {r: 0.9063317, g: 0.9063317, b: 0.9063317, a: 1}

@@ -1,6 +1,10 @@
 #ifndef CARDRIVE_SPLAT_MAP_INCLUDED
 #define CARDRIVE_SPLAT_MAP_INCLUDED
 
+// 자국의 <b>테두리</b>를 손그림 획으로 갉습니다. 월드 음영의 빗금과는 다른
+// 쓰임이라, 그쪽을 걷어낸 뒤에도 이것은 남습니다.
+#include "CarDriveHatch.hlsl"
+
 // ── 전역 자국 맵 읽기 ──
 //
 // 세계 전체를 위에서 내려다본 <b>한 장의 젖음 지도</b>입니다. 값은 0(마름) ~ 1(흠뻑)이고,

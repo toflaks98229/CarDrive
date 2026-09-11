@@ -39,7 +39,6 @@ Material:
     - _HeightTop: 17.639465
     - _SplatOn: 0
     - _UseGrain: 1
-    - _UseHatching: 0
     m_Colors:
     - _BaseColor: {r: 0.3, g: 0.3, b: 0.29, a: 1}
     - _BaseMapGain: {r: 2.3808413, g: 2.3808413, b: 2.3808413, a: 1}
