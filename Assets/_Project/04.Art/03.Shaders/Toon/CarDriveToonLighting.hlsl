@@ -309,6 +309,18 @@ half3 ToonRampColor(half lit)
 }
 
 /// <summary>
+/// 높이 그라데이션이 <b>얼마나 먹을지</b>입니다. SkyController 가 시간대에 맞춰 넣습니다.
+///
+/// ⚠ <b>이 값이 없으면 밤이 오지 않습니다.</b> 높이 색은 <b>조명 뒤에</b> 얹히므로
+/// 빛이 하나도 없어도 그대로 남습니다. 2026-09-11 에 잰 한밤(02시) 화면에서
+/// 건물 벽이 한낮의 <b>61%</b> 였고 땅은 8%, 나무는 10% 였습니다. 빛을 전부 끄고
+/// 주변광을 0 으로 두어도 벽은 그대로였습니다 — 남아 있던 것이 이 색이었습니다.
+/// 마을 집도 거대구조물과 같은 <c>MegaConcrete</c> 를 쓰기 때문입니다.
+///
+/// 0 이면 "아직 안 들어왔다" 는 뜻이라 1 로 봅니다. 페이드 구간과 같은 규칙입니다.
+float _CarDriveHeightScale;
+
+/// <summary>
 /// 월드 높이를 따라 색을 덧입힙니다.
 ///
 /// 안개는 <b>거리</b>로 멀어지는 것을 누르지만, 이건 <b>높이</b>로 누릅니다.
@@ -329,7 +341,10 @@ half3 ApplyHeightGradient(half3 color, float heightWS, ToonParams p)
 
     half t = saturate((heightWS - p.heightBottom) / span);
 
-    return lerp(color, p.heightColor, t * p.heightStrength);
+    // 밤에는 이 색이 물러섭니다. 그래야 빛이 없는 면이 실제로 어두워집니다.
+    half scale = _CarDriveHeightScale > 0.0001h ? (half)_CarDriveHeightScale : 1.0h;
+
+    return lerp(color, p.heightColor, t * p.heightStrength * scale);
 }
 
 /// <summary>

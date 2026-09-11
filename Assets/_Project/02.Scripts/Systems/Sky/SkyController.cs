@@ -108,6 +108,26 @@ namespace CarDrive.Systems
         [Range(0f, 1f)]
         public float groundAmbientScale = 0.35f;
 
+        /// <summary>
+        /// 한밤에 <b>높이 그라데이션</b>이 남길 정도입니다.
+        ///
+        /// <b>무엇을 고치는 값인가.</b> 툰 셰이더의 높이 그라데이션은 <b>조명 뒤에</b>
+        /// 얹힙니다 — 포그를 걷어낸 뒤로 거리를 읽히게 하는 것이 이것이라, 빛을 받든
+        /// 안 받든 같은 높이면 같은 색이어야 원경이 고르게 눌리기 때문입니다.
+        /// 그런데 그 말은 <b>밤에도 그대로 남는다</b>는 뜻입니다.
+        ///
+        /// 2026-09-11 에 잰 한밤(02시) 화면: 건물 벽이 한낮의 <b>61%</b>, 땅은 8%,
+        /// 나무는 10%. 빛을 전부 끄고 주변광을 0 으로 두어도 벽만 그대로 밝았습니다.
+        /// 마을 집이 거대구조물과 같은 <c>MegaConcrete</c>(높이 세기 0.5)를 쓰기
+        /// 때문입니다. 밤인데 건물만 대낮이면 화면 전체가 대낮으로 보입니다.
+        ///
+        /// ⚠ <b>0 으로 두지 마십시오.</b> 그러면 밤에 거대구조물이 거리 단서를 잃고
+        /// 통째로 새까매집니다. 지붕이 있는 세계라 그 실루엣은 남아야 합니다.
+        /// </summary>
+        [Tooltip("한밤에 높이 그라데이션이 남길 정도. 0 이면 밤에 원경이 통째로 검어집니다")]
+        [Range(0f, 1f)]
+        public float nightHeightScale = 0.15f;
+
         /// <summary>가장 궂은 날씨에서 주변광이 낮아지는 하한 배율입니다.</summary>
         [Tooltip("가장 궂은 날씨일 때 주변광에 곱할 배율. 0.5면 절반까지 어두워집니다.")]
         [Range(0.1f, 1f)]
@@ -173,6 +193,9 @@ namespace CarDrive.Systems
         // 사진 기반 하늘(Skybox/Cubemap · Skybox/Panoramic)을 쓸 때 조작할 것들입니다.
         // 그런 하늘은 낮 사진 한 장이라 그냥 두면 <b>한밤중에도 파랗게</b> 빛납니다.
         private static readonly int ExposureId = Shader.PropertyToID("_Exposure");
+
+        /// <summary>높이 그라데이션의 세기입니다. 툰 셰이더가 읽습니다.</summary>
+        private static readonly int HeightScaleId = Shader.PropertyToID("_CarDriveHeightScale");
         private static readonly int TintId = Shader.PropertyToID("_Tint");
 
         // --- Injection ---
@@ -437,10 +460,33 @@ namespace CarDrive.Systems
             float weather = Mathf.Lerp(1f, weatherSunFloor, Mathf.Clamp01(skyConditions.Darkness));
 
             // 밤에 완전히 꺼 버리면 헤드라이트 밖이 아무것도 보이지 않습니다.
-            // 방향은 그대로 두고 약한 달빛만 남깁니다.
+            // 약한 달빛만 남깁니다.
             float max = sunSource != null ? sunSource.SunMaxIntensity : 1f;
             sun.intensity = Mathf.Max(max * daylight * weather, moonIntensity);
             sun.enabled = true;
+
+            // ⚠ <b>지평선 아래로 내려간 해를 그 자리에서 비추게 두면 안 됩니다.</b>
+            //
+            // 이 씬의 빛은 하루를 한 바퀴 도는 방향광 <b>하나뿐</b>입니다(TimeSystem 이
+            // <c>Euler(분/하루 × 360 − 90, 170, 0)</c> 로 돌립니다). 밤에는 그 빛이
+            // <b>땅 밑에서 위로</b> 올라옵니다. 그러면 바닥은 N·L 이 음수라 통째로
+            // 그늘이 되고 <b>벽면만</b> 낮은 해처럼 밝게 섭니다 — 밤인데 새벽 볕이
+            // 든 것처럼 보이는 이유가 이것입니다.
+            //
+            // 실측(2026-09-11, 02시): 건물 벽이 한낮의 <b>61%</b> 인데 땅은 8%,
+            // 나무는 10%, 하늘은 8% 였습니다. 벽만 낮에 남아 있었습니다.
+            //
+            // <b>달은 해의 반대편에 있습니다.</b> 해가 내려가 있는 동안에는 빛을
+            // 반대쪽에서 비추게 돌립니다. 세기와 색은 바로 위에서 달빛으로 덮으므로
+            // 여기서 맞출 것은 <b>방향뿐</b>입니다.
+            //
+            // ⚠ <b>자기 축으로 180도 돌립니다.</b> <c>LookRotation(-forward)</c> 는
+            // 자정에 빛이 정확히 수직이 되어 위 벡터와 겹칩니다. 이쪽은 늘 정의됩니다.
+            // 그리고 한 번 돌리면 아래를 보므로 <b>다음 프레임에 또 돌지 않습니다.</b>
+            if (sun.transform.forward.y > 0f)
+            {
+                sun.transform.rotation *= Quaternion.Euler(180f, 0f, 0f);
+            }
         }
 
 
@@ -455,6 +501,10 @@ namespace CarDrive.Systems
             // 하늘색을 그대로 주변광으로 쓰면(Skybox 모드) 별빛까지 섞여 밤이 이상하게 밝아집니다.
             // 위아래를 직접 정하는 Gradient가 다루기 쉽습니다.
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
+
+            // 높이 그라데이션도 시간대를 따릅니다. 이것은 <b>주변광이 아니라</b>
+            // 조명 뒤에 얹히는 색이라, 여기서 눌러 주지 않으면 밤이 오지 않습니다.
+            Shader.SetGlobalFloat(HeightScaleId, Mathf.Lerp(nightHeightScale, 1f, daylight));
 
             Color sky = Color.Lerp(nightAmbientSky, dayAmbientSky, daylight);
 
