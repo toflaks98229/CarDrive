@@ -160,11 +160,7 @@ namespace CarDrive.Gameplay
         /// <returns>영업 시간 안이면 true</returns>
         public bool IsWithinHours(float hour)
         {
-            if (Mathf.Approximately(openHour, closeHour)) return true;   // 24시간 영업
-
-            if (openHour < closeHour) return hour >= openHour && hour < closeHour;
-
-            return hour >= openHour || hour < closeHour;
+            return DayHours.Within(hour, openHour, closeHour);
         }
 
         /// <summary>

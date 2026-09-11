@@ -34,6 +34,7 @@ public static class StreetLampSetup
     private const string HolderName = "StreetLamps";
     private const string RobotHolder = "PlacedRobots";
     private const string LighterName = "LampLighter";
+    private const string BerthName = "LampLighterBerth";
 
     /// <summary>부딪히는 레이어입니다. 기둥은 벽입니다.</summary>
     private const int SolidLayer = 0;
@@ -353,6 +354,11 @@ public static class StreetLampSetup
         lighter.arm = made.GetComponentInChildren<RobotTurret>(true);
         lighter.fixedSound = AssetDatabase.LoadAssetAtPath<AudioClip>(FixedPath);
 
+        // ⚠ <b>퇴근 자리는 마을입니다.</b> 낮에는 길에서 일하는 모습으로, 밤에는
+        // 마을에 선 모습으로 만나야 한 기계가 <b>사는 물건</b>으로 읽힙니다.
+        // 길에 세워 두면 밤에 만나는 것은 귀신뿐입니다.
+        lighter.berth = Berth(middle);
+
         // ⚠ <b>비무장입니다.</b> 지키고 싶어져야 하는 기계가 총을 들고 있으면
         // 그 뜻이 흐려집니다.
         foreach (RobotWeapon gun in made.GetComponentsInChildren<RobotWeapon>(true))
@@ -369,6 +375,27 @@ public static class StreetLampSetup
                   + (lighter.driver != null ? "있음" : "없음"));
 
         return 1;
+    }
+
+    /// <summary>
+    /// 점등기가 퇴근해서 설 자리입니다. 마을 한쪽입니다.
+    ///
+    /// ⚠ <b>정비 팔·견인기와 겹치지 않게 둡니다.</b> 기계 셋이 한 자리에 서 있으면
+    /// 어느 것이 무엇인지 읽히지 않습니다.
+    /// </summary>
+    /// <param name="middle">마을 한가운데</param>
+    private static Transform Berth(Vector3 middle)
+    {
+        Transform holder = Holder(RobotHolder);
+
+        Transform had = holder.Find(BerthName);
+        GameObject made = had != null ? had.gameObject : new GameObject(BerthName);
+        if (had == null) made.transform.SetParent(holder, true);
+
+        Vector3 want = middle + new Vector3(0f, 0f, -26f);
+        made.transform.position = Ground(want, out Vector3 on) ? on : want;
+
+        return made.transform;
     }
 
     /// <summary>상자 하나입니다.</summary>

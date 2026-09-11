@@ -210,17 +210,13 @@ namespace CarDrive.Gameplay
         /// <summary>
         /// 이 시각에 일하는가.
         ///
-        /// <see cref="ShopSchedule.IsWithinHours"/> 와 <b>같은 규칙</b>입니다.
+        /// 규칙은 <see cref="DayHours.Within"/> 하나입니다 — 가게의 영업 시간도
+        /// 점등기의 근무 시간도 같은 것을 씁니다.
         /// </summary>
         /// <param name="hour">0~24</param>
         public bool IsOnDuty(float hour)
         {
-            if (Mathf.Approximately(onDutyHour, offDutyHour)) return true;
-
-            if (onDutyHour < offDutyHour) return hour >= onDutyHour && hour < offDutyHour;
-
-            // 자정을 넘긴 근무입니다.
-            return hour >= onDutyHour || hour < offDutyHour;
+            return DayHours.Within(hour, onDutyHour, offDutyHour);
         }
 
         /// <summary>

@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Events;
+using VContainer;
 using CarDrive.Common;
 
 namespace CarDrive.Gameplay
@@ -15,9 +16,13 @@ namespace CarDrive.Gameplay
     /// 견인기는 값을 받아 가는 기계이고, 순찰기와 지킴이는 비켜 주거나 부수는
     /// 대상입니다. 등을 켜며 걷는 것만이 <b>내 편</b>입니다.
     ///
-    /// ⚠ <b>낮에도 걷습니다.</b> 등은 어두워져야 켜지지만 <b>죽은 등을 고치는 일</b>은
+    /// ⚠ <b>낮에 일합니다.</b> 등은 어두워져야 켜지지만 <b>죽은 등을 고치는 일</b>은
     /// 밝을 때 하는 편이 낫습니다. 밤에만 일하면 플레이어가 이 기계를 만나는 시간이
     /// 곧 귀신을 만나는 시간과 겹쳐, 지킬 여유가 없습니다.
+    ///
+    /// <b>퇴근하면 마을로 돌아갑니다.</b> 순찰기와 같은 규칙입니다. 낮에는 길에서
+    /// 일하는 모습으로, 밤에는 마을에 선 모습으로 만나게 됩니다 — 한 기계를
+    /// <b>두 가지 모습</b>으로 만나야 그것이 사는 물건으로 읽힙니다.
     /// </summary>
     [AddComponentMenu("CarDrive/점등기 (LampLighter)")]
     public class LampLighter : MonoBehaviour
@@ -35,6 +40,9 @@ namespace CarDrive.Gameplay
 
             /// <summary>등을 손보는 중입니다.</summary>
             Working,
+
+            /// <summary>퇴근해 마을로 돌아가는 중입니다.</summary>
+            OffDuty,
         }
 
         // --- Public Member Variables ---
@@ -47,6 +55,31 @@ namespace CarDrive.Gameplay
         /// <summary>있으면 손보는 동안 등을 향해 굽힙니다.</summary>
         [Tooltip("있으면 손보는 동안 등을 향해 굽힙니다")]
         public RobotTurret arm;
+
+        /// <summary>
+        /// 일을 시작하는 시각입니다(0~24).
+        ///
+        /// <b>왜 낮인가.</b> 등을 고치는 일은 보이는 때에 합니다. 그리고 이 기계는
+        /// 셋 중 유일하게 <b>지키고 싶어져야 하는</b> 기계라, 플레이어가 그것을
+        /// 만나는 시간이 귀신을 만나는 시간과 겹치면 안 됩니다.
+        /// </summary>
+        [Header("시각표")]
+        [Tooltip("일을 시작하는 시각(0~24)")]
+        [Range(0f, 24f)]
+        public float onDutyHour = 7f;
+
+        /// <summary>일을 마치는 시각입니다(0~24). 시작과 같으면 쉬지 않습니다.</summary>
+        [Tooltip("일을 마치는 시각(0~24). 시작과 같으면 쉬지 않습니다")]
+        [Range(0f, 24f)]
+        public float offDutyHour = 18f;
+
+        /// <summary>
+        /// 퇴근해서 설 자리입니다. 비워 두면 <b>선 자리에</b> 섭니다.
+        ///
+        /// 마을에 두면 밤에 플레이어가 이 기계를 마을에서 만납니다.
+        /// </summary>
+        [Tooltip("퇴근해서 설 자리. 비워 두면 선 자리에 섭니다")]
+        public Transform berth;
 
         /// <summary>이 안에서 죽은 등을 찾습니다(m).</summary>
         [Header("찾는 범위")]
@@ -95,8 +128,12 @@ namespace CarDrive.Gameplay
         /// <summary>여태 살린 등의 수입니다.</summary>
         public int Lit { get; private set; }
 
+        /// <summary>지금 근무 시간인가.</summary>
+        public bool OnDuty { get; private set; }
+
         // --- Private Member Variables ---
 
+        private IGameClock clock = NullGameClock.Instance;
         private float working;
         private float resting;
 
@@ -112,12 +149,35 @@ namespace CarDrive.Gameplay
         {
             float dt = Time.deltaTime;
 
+            // ⚠ <b>시각표를 먼저 봅니다.</b> 손보던 중에 퇴근 시각이 되면 그 등은
+            // 두고 갑니다. 하던 일을 마치고 가게 두면 <b>퇴근이 일에 밀려</b>
+            // 시각표가 있으나 마나가 됩니다.
+            OnDuty = DayHours.Within(Hour(), onDutyHour, offDutyHour);
+
+            if (!OnDuty)
+            {
+                Rest();
+                return;
+            }
+
+            if (Doing == Phase.OffDuty) Doing = Phase.Looking;
+
             switch (Doing)
             {
                 case Phase.Looking: Seek(dt); break;
                 case Phase.Walking: Approach(); break;
                 case Phase.Working: Work(dt); break;
             }
+        }
+
+        // --- Injection ---
+
+        /// <summary>게임 시계를 받습니다. 시각표가 그것을 봅니다.</summary>
+        /// <param name="gameClock">게임 시계</param>
+        [Inject]
+        public void Construct(IGameClock gameClock)
+        {
+            if (gameClock != null) clock = gameClock;
         }
 
         // --- Public Methods ---
@@ -210,6 +270,34 @@ namespace CarDrive.Gameplay
             if (onLampLit != null) onLampLit.Invoke();
 
             Give();
+        }
+
+        /// <summary>
+        /// 퇴근합니다. 격납고가 있으면 그리로, 없으면 선 자리에 섭니다.
+        ///
+        /// ⚠ <b>쉬는 시간과 하던 일을 되돌립니다.</b> 안 그러면 다음 날 출근했을 때
+        /// 어제 손보던 중간부터 이어져, 이미 켜진 등 앞에서 한참 서 있습니다.
+        /// 순찰기가 같은 일을 합니다.
+        /// </summary>
+        private void Rest()
+        {
+            if (Doing != Phase.OffDuty)
+            {
+                Give();
+                Doing = Phase.OffDuty;
+            }
+
+            if (driver == null) return;
+
+            if (berth == null) { driver.ClearDestination(); return; }
+
+            driver.SetDestination(berth.position);
+        }
+
+        /// <summary>지금 시각입니다(0~24).</summary>
+        private float Hour()
+        {
+            return Mathf.Repeat(clock.TotalMinutes / 60f, 24f);
         }
 
         /// <summary>손을 떼고 다음을 기다립니다.</summary>

@@ -19,7 +19,8 @@ namespace CarDrive.Tests
         private sealed class Clock : IGameClock
         {
             public float Daylight { get; set; }
-            public float TotalMinutes { get { return 0f; } }
+            public float Hour { get; set; }
+            public float TotalMinutes { get { return Hour * 60f; } }
             public bool IsNight { get { return Daylight < 0.5f; } }
             public bool IsRunning { get { return true; } }
             public float GetMinutesPerSecond(float fallback) { return fallback; }
@@ -107,11 +108,11 @@ namespace CarDrive.Tests
                         "꺼진 등이 자리를 밝히고 있습니다");
         }
 
-        [UnityTest]
-        public IEnumerator 점등기가_죽은_등을_되살린다()
+        /// <summary>점등기를 하나 세웁니다. 시계는 등이 쓰는 것과 같은 것입니다.</summary>
+        /// <param name="hour">지금 시각</param>
+        private LampLighter Robot(float hour)
         {
-            lamp.Break();
-            clock.Daylight = 0f;
+            clock.Hour = hour;
 
             GameObject robot = new GameObject("Lighter");
             robot.transform.position = new Vector3(2f, 0f, 0f);
@@ -121,6 +122,21 @@ namespace CarDrive.Tests
             lighter.reach = 8f;
             lighter.workSeconds = 0f;
             lighter.restSeconds = 0f;
+            lighter.onDutyHour = 7f;
+            lighter.offDutyHour = 18f;
+            lighter.Construct(clock);
+
+            return lighter;
+        }
+
+        [UnityTest]
+        public IEnumerator 점등기가_죽은_등을_되살린다()
+        {
+            lamp.Break();
+            clock.Daylight = 0f;
+
+            LampLighter lighter = Robot(12f);
+            GameObject robot = lighter.gameObject;
 
             try
             {
@@ -132,6 +148,59 @@ namespace CarDrive.Tests
 
                 yield return null;
                 Assert.IsTrue(lamp.Burning, "살린 등이 어두운데도 안 켜집니다");
+            }
+            finally
+            {
+                Object.Destroy(robot);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator 퇴근_시각에는_등을_고치지_않는다()
+        {
+            lamp.Break();
+            clock.Daylight = 0f;
+
+            // 밤 10시. 시각표 밖입니다.
+            LampLighter lighter = Robot(22f);
+            GameObject robot = lighter.gameObject;
+
+            try
+            {
+                for (int i = 0; i < 10; i++) yield return null;
+
+                Assert.IsFalse(lighter.OnDuty, "퇴근 시각인데 근무 중입니다");
+                Assert.IsTrue(lamp.broken, "퇴근했는데 등을 고쳤습니다");
+                Assert.That(lighter.Doing, Is.EqualTo(LampLighter.Phase.OffDuty),
+                            "퇴근했으면 돌아가는 중이어야 합니다");
+            }
+            finally
+            {
+                Object.Destroy(robot);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator 출근하면_다시_고치러_간다()
+        {
+            lamp.Break();
+            clock.Daylight = 0f;
+
+            LampLighter lighter = Robot(22f);
+            GameObject robot = lighter.gameObject;
+
+            try
+            {
+                yield return null;
+                Assert.IsTrue(lamp.broken, "퇴근 중인데 벌써 고쳤습니다");
+
+                // 아침이 됐습니다.
+                clock.Hour = 9f;
+
+                for (int i = 0; i < 10 && lamp.broken; i++) yield return null;
+
+                Assert.IsTrue(lighter.OnDuty, "출근 시각인데 쉬고 있습니다");
+                Assert.IsFalse(lamp.broken, "출근했는데 등을 안 고쳤습니다");
             }
             finally
             {
