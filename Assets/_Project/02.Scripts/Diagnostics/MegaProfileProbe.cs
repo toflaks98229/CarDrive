@@ -8,6 +8,7 @@ using System.Text;
 using Unity.Profiling;
 using Unity.Profiling.LowLevel.Unsafe;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 namespace CarDrive.Diagnostics
 {
@@ -30,8 +31,16 @@ namespace CarDrive.Diagnostics
     /// 한 번 겪었습니다). 그래서 첫 구간에서 <b>쓸 수 있는 카운터 이름을 전부</b>
     /// 파일에 남깁니다.
     ///
+    /// <b>후처리가 얼마나 먹는지</b>도 여기서 잽니다. <c>-megaprofile-post</c> 를 주면
+    /// 자리마다 <b>같은 장면을 두 번</b> 잽니다 — 팔레트 기능을 켠 채로, 그리고 끈 채로.
+    /// 그 차이가 곧 후처리 값입니다.
+    ///
+    /// ⚠ <b>빌드를 두 번 하지 않습니다.</b> 두 빌드를 비교하면 셰이더 캐시·창 크기·
+    /// 드라이버 상태가 달라 차이에 잡음이 섞입니다. 한 실행 안에서 껐다 켜면 그
+    /// 모든 것이 같습니다.
+    ///
     /// <code>
-    /// CarDrive.exe -megaprofile -megaprofile-out C:\out.json -megaprofile-deck 35.2
+    /// CarDrive.exe -megaprofile -megaprofile-post -megaprofile-out C:\out.json
     /// </code>
     /// </summary>
     public static class MegaProfileProbe
@@ -39,6 +48,10 @@ namespace CarDrive.Diagnostics
         private const string Flag = "-megaprofile";
         private const string OutFlag = "-megaprofile-out";
         private const string DeckFlag = "-megaprofile-deck";
+        private const string PostFlag = "-megaprofile-post";
+
+        /// <summary>렌더러에 붙어 있는 팔레트 기능의 이름입니다.</summary>
+        private const string PaletteFeature = "CarDrive Palette";
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Boot()
@@ -53,6 +66,7 @@ namespace CarDrive.Diagnostics
             runner.Output = Argument(args, OutFlag) ?? "megaprofile.json";
             runner.DeckTop = float.TryParse(Argument(args, DeckFlag),
                 NumberStyles.Float, CultureInfo.InvariantCulture, out float deck) ? deck : 35.2f;
+            runner.PostAb = args.Contains(PostFlag);
         }
 
         private static string Argument(string[] args, string name)
@@ -80,6 +94,7 @@ namespace CarDrive.Diagnostics
         {
             public string Output;
             public float DeckTop;
+            public bool PostAb;
 
             private Rigidbody driving;
             private Vector3 heading;
@@ -171,7 +186,24 @@ namespace CarDrive.Diagnostics
                         yield return new WaitForSeconds(2f);
                     }
 
-                    yield return Measure(spot.Name, report, i == spots.Count - 1);
+                    bool last = i == spots.Count - 1;
+
+                    if (PostAb)
+                    {
+                        // 같은 자리에서 두 번. 켠 것을 먼저 재야 끈 쪽이 캐시 덕을
+                        // 보는 일이 없습니다.
+                        Palette(true);
+                        yield return Measure(spot.Name + " · 후처리 켬", report, false);
+
+                        Palette(false);
+                        yield return Measure(spot.Name + " · 후처리 끔", report, last);
+
+                        Palette(true);
+                    }
+                    else
+                    {
+                        yield return Measure(spot.Name, report, last);
+                    }
 
                     driving = null;
                 }
@@ -189,6 +221,37 @@ namespace CarDrive.Diagnostics
                 }
 
                 Application.Quit();
+            }
+
+            /// <summary>
+            /// 팔레트 후처리를 켜고 끕니다.
+            ///
+            /// ⚠ <b>렌더러 기능은 에셋이라 런타임에 참조를 얻을 길이 마땅치 않습니다.</b>
+            /// URP 에셋이 들고 있는 렌더러 데이터가 공개 API 로 안 열립니다. 그래서
+            /// 이미 메모리에 올라와 있는 것을 이름으로 찾습니다 — 진단 도구에서만
+            /// 쓰는 방법이고, 게임 코드에서 이렇게 하면 안 됩니다.
+            /// </summary>
+            /// <param name="on">켤 것인가</param>
+            private static void Palette(bool on)
+            {
+                ScriptableRendererFeature[] all =
+                    Resources.FindObjectsOfTypeAll<ScriptableRendererFeature>();
+
+                int touched = 0;
+
+                for (int i = 0; i < all.Length; i++)
+                {
+                    if (all[i] == null || all[i].name != PaletteFeature) continue;
+
+                    all[i].SetActive(on);
+                    touched++;
+                }
+
+                if (touched == 0)
+                {
+                    Debug.LogWarning("MegaProfileProbe: 팔레트 기능을 못 찾았습니다 — "
+                                     + "끈 쪽과 켠 쪽이 같은 그림이 됩니다");
+                }
             }
 
             /// <summary>쓸 수 있는 카운터 이름 전부. 추측 대신 물어봅니다.</summary>
