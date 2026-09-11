@@ -7,6 +7,7 @@
   <Project Path="Lofelt.NiceVibrations.csproj" />
   <Project Path="LogiUnityBridge.Editor.csproj" />
   <Project Path="CarDrive.Rendering.csproj" />
+  <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="CarDrive.Systems.csproj" />
   <Project Path="CarDrive.Composition.csproj" />
   <Project Path="CFXREditor.csproj" />
@@ -14,7 +15,6 @@
   <Project Path="DOTween.Modules.csproj" />
   <Project Path="CFXRRuntime.csproj" />
   <Project Path="CarDrive.Tests.PlayMode.csproj" />
-  <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="CarDrive.UI.csproj" />
   <Project Path="ConsoleDisplay.Editor.csproj" />
   <Project Path="ConsoleDisplay.Showcase.csproj" />
