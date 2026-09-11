@@ -30,6 +30,12 @@
       "source": "embedded",
       "dependencies": {}
     },
+    "com.toflaks.vendor.kenney-car-kit": {
+      "version": "file:com.toflaks.vendor.kenney-car-kit",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.toflaks.vendor.lowpoly-retro-cars": {
       "version": "file:com.toflaks.vendor.lowpoly-retro-cars",
       "depth": 0,

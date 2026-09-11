@@ -1,0 +1,11 @@
+{
+  "name": "com.toflaks.vendor.kenney-car-kit",
+  "version": "1.0.0",
+  "displayName": "Kenney Car Kit (트럭)",
+  "description": "Kenney 의 Car Kit 1.4 에서 트럭 둘과 바퀴 둘만 가져온 것입니다. CC0 이라 자유롭게 쓰고 고칠 수 있습니다.\n\n텍스처가 없습니다 — 부품마다 단색 머티리얼로 칠해져 있어서, 프로젝트의 툰 머티리얼로 갈아 끼우기에 오히려 알맞습니다.",
+  "unity": "2022.3",
+  "author": {
+    "name": "Kenney",
+    "url": "https://kenney.nl"
+  }
+}
