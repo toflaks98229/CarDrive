@@ -4,14 +4,21 @@ using CarDrive.Common;
 namespace CarDrive.Gameplay
 {
     /// <summary>
-    /// 카메라 리그를 타겟(운전석)에 부드럽게 붙여 따라다닙니다.
+    /// 카메라 리그를 타겟(운전석)에 붙여 앉힙니다.
     ///
     /// <b>카메라를 직접 움직이지 않습니다.</b> 이 컴포넌트는 리그에 붙고, MainCamera는
     /// 그 리그의 자식으로 둡니다. 그래야 흔들림·시야각 같은 다른 효과가 카메라를
     /// 건드려도 추적과 서로 부딪히지 않습니다.
     ///
-    /// <b>위치는 Lerp, 회전은 Slerp로 따라갑니다.</b> 회전에 선형 보간을 쓰면 큰 각도를
-    /// 돌 때 지름길로 가로질러 기울어집니다. 구면 보간이라야 각속도가 고릅니다.
+    /// ⚠ <b>보간하지 않습니다. 운전석에 붙박입니다.</b>
+    ///
+    /// 예전에는 위치를 Lerp, 회전을 Slerp 로 따라갔습니다. 그런데 <b>그 보간은 한 번도
+    /// 화면에 나온 적이 없습니다</b> — 메인 카메라가 이 리그가 아니라 세단에 직접 매달려
+    /// 있어서, 이 컴포넌트가 움직이는 리그에는 아무것도 달려 있지 않았습니다.
+    ///
+    /// 카메라를 리그 아래로 옮기고 나니 그 보간이 처음으로 보이는데, <b>1인칭에서는
+    /// 못 씁니다.</b> 계기판은 차의 자식이고 카메라는 아니므로, 카메라가 0.1초라도
+    /// 처지면 20 m/s 에서 <b>2 m</b> 뒤처져 운전석이 아니라 뒷좌석을 보게 됩니다.
     /// </summary>
     public class CarCameraFollow : MonoBehaviour
     {
@@ -25,20 +32,6 @@ namespace CarDrive.Gameplay
         /// </summary>
         [Tooltip("카메라가 따라다닐 타겟 (예: 운전석 위치의 빈 오브젝트)")]
         public Transform target;
-
-        /// <summary>
-        /// 위치가 타겟을 따라붙는 속도입니다. 클수록 빨리 따라붙습니다.
-        ///
-        /// 너무 작으면 가속할 때 카메라가 뒤로 처지고, 너무 크면 차의 잔진동이
-        /// 그대로 화면에 옮겨집니다.
-        /// </summary>
-        [Header("추적 속도 설정")]
-        [Tooltip("위치 추적의 부드러움 정도 (높을수록 빠르게 반응)")]
-        public float positionSmoothSpeed = 10f;
-
-        /// <summary>회전이 타겟을 따라붙는 속도입니다. 클수록 빨리 돌아갑니다.</summary>
-        [Tooltip("회전 추적의 부드러움 정도 (높을수록 빠르게 반응)")]
-        public float rotationSmoothSpeed = 8f;
 
         // --- Unity Event Functions ---
 
@@ -59,31 +52,19 @@ namespace CarDrive.Gameplay
         }
 
         /// <summary>
-        /// 매 프레임 타겟의 위치와 회전을 향해 조금씩 다가갑니다.
+        /// 매 프레임 운전석 자리에 올라앉습니다.
+        ///
+        /// ⚠ <b>LateUpdate 입니다.</b> 차는 물리로 움직이므로, 이 프레임의 <b>최종</b>
+        /// 자리를 읽으려면 모든 Update 가 끝난 뒤여야 합니다. Update 에서 읽으면
+        /// 한 프레임 묵은 자리에 앉아 화면이 떨립니다.
         ///
         /// 타겟이 도중에 파괴되었을 수 있어 매번 다시 확인합니다.
-        /// <c>Start</c>에서 껐어도 타겟이 나중에 사라지는 경우는 따로이기 때문입니다.
         /// </summary>
-        void Update()
+        void LateUpdate()
         {
-            // 타겟이 유효한지 확인합니다 (예: 타겟이 파괴된 경우 등)
             if (target == null) return;
 
-            // 1. 위치를 부드럽게 추적 (Lerp: 선형 보간)
-            // 현재 위치에서 타겟 위치로 (Time.deltaTime * speed) 비율만큼 부드럽게 이동합니다.
-            transform.position = Vector3.Lerp(
-                transform.position,
-                target.position,
-                Time.deltaTime * positionSmoothSpeed
-            );
-
-            // 2. 회전을 부드럽게 추적 (Slerp: 구면 선형 보간 - 회전에 더 적합)
-            // 현재 회전에서 타겟 회전으로 (Time.deltaTime * speed) 비율만큼 부드럽게 회전합니다.
-            transform.rotation = Quaternion.Slerp(
-                transform.rotation,
-                target.rotation,
-                Time.deltaTime * rotationSmoothSpeed
-            );
+            transform.SetPositionAndRotation(target.position, target.rotation);
         }
     }
 }

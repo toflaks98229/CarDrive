@@ -24823,11 +24823,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 343738747}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 43.62664, y: 1.1121922, z: 16.493109}
+  m_LocalRotation: {x: 0.043619405, y: -0, z: -0, w: 0.9990483}
+  m_LocalPosition: {x: 44.2202, y: 20.55, z: 16.279999}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 1825523828}
   m_Father: {fileID: 1990000008}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &343738749
@@ -31132,6 +31133,10 @@ MonoBehaviour:
   dayAmbientSky: {r: 0.55, g: 0.6, b: 0.7, a: 1}
   nightAmbientSky: {r: 0.075, g: 0.086, b: 0.128, a: 1}
   groundAmbientScale: 0.62
+  nightHeightScale: 0.15
+  ceilingPitch: 65
+  ceilingYaw: 170
+  ceilingSway: 6
   weatherDarkFloor: 0.55
   weatherSunFloor: 0.45
   dayLightColor: {r: 1, g: 0.937, b: 0.831, a: 1}
@@ -130051,13 +130056,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1825523827}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 900000102}
-  m_Father: {fileID: 446511180}
+  m_Father: {fileID: 343738748}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1826973156
 PrefabInstance:
@@ -155216,10 +155221,6 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 903029778}
-    - targetCorrespondingSourceObject: {fileID: 4866138398215067577, guid: 2be49b372c828a54980dd780d9a734dc,
-        type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1825523828}
     - targetCorrespondingSourceObject: {fileID: 2163781951316582175, guid: 2be49b372c828a54980dd780d9a734dc,
         type: 3}
       insertIndex: -1
