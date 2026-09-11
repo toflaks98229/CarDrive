@@ -218,6 +218,8 @@ public static class PaletteFeatureSetup
                           Knob("PALETTE_HATCH_SMOOTH", material.GetFloat("_HatchToneSmooth")));
         material.SetFloat("_HatchBoilRate", Knob("PALETTE_BOIL", material.GetFloat("_HatchBoilRate")));
         material.SetFloat("_HatchBoilJump", Knob("PALETTE_BOIL_JUMP", material.GetFloat("_HatchBoilJump")));
+        material.SetFloat("_HatchBoilBlend",
+                          Knob("PALETTE_BOIL_BLEND", material.GetFloat("_HatchBoilBlend")));
 
         Debug.Log("PaletteFeatureSetup: 빗금 판 " + material.GetFloat("_HatchDither").ToString("F2")
                   + " · 한 판 " + material.GetFloat("_HatchDitherScale").ToString("F0") + " px"

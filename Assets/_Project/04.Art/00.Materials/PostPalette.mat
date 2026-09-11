@@ -37,6 +37,7 @@ Material:
     - _Desaturate: 0
     - _DitherPixel: 3
     - _DitherStrength: 1
+    - _HatchBoilBlend: 0.5
     - _HatchBoilJump: 0.2
     - _HatchBoilRate: 10
     - _HatchChroma: 0.5

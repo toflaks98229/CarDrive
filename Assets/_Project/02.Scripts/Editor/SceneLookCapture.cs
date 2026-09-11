@@ -360,6 +360,7 @@ public static class SceneLookCapture
         { "CARDRIVE_PAL_SMOOTH", "_HatchToneSmooth" },
         { "CARDRIVE_PAL_BOIL",   "_HatchBoilRate" },
         { "CARDRIVE_PAL_JUMP",   "_HatchBoilJump" },
+        { "CARDRIVE_PAL_BLEND",  "_HatchBoilBlend" },
         { "CARDRIVE_PAL_PAPER",  "_PaperGrain" },
         { "CARDRIVE_PAL_PAPERSC","_PaperScale" },
         { "CARDRIVE_PAL_EDGE",   "_PaperEdge" },

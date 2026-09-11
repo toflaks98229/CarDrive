@@ -146,6 +146,26 @@ Shader "CarDrive/Post/Palette"
         // 그것은 손그림이 아니라 <b>영상 노이즈</b>로 보입니다.
         _HatchBoilJump ("작화마다 옮기는 폭 (판의 몇 분의 1)", Range(0, 0.5)) = 0.2
 
+        // ── 한발 늦은 드로잉 ─────────────────────────────────────────────
+        //
+        // 보일은 작화가 <b>뚝 바뀝니다.</b> 한 박자에 획이 통째로 다른 자리로 갑니다
+        // (실측 63%). 실제 작화도 매 장 새로 긋지만, 사람 눈에는 <b>펜이 옮겨 가는</b>
+        // 것으로 읽힙니다 — 종이가 순간이동하지는 않으니까요.
+        //
+        // 그래서 넘어가는 자리를 겹칩니다. 박자가 바뀐 직후에는 <b>직전 작화</b>가
+        // 아직 남아 있고, 이 값만큼의 시간에 걸쳐 새 작화로 넘어갑니다.
+        // 잉크가 화면을 한 박자 늦게 따라오는 것처럼 보입니다.
+        //
+        // ⚠ <b>히스토리 버퍼를 쓰지 않습니다.</b> 처음에는 직전 <b>프레임</b>을 들고
+        // 섞으려 했는데, 그러려면 렌더러 기능을 새로 써야 하고 모션 벡터가 없어
+        // 카메라가 돌 때 <b>화면 전체가 번집니다.</b> 여기서 늦출 것은 화면이 아니라
+        // <b>획</b>이므로, 획의 자리를 두 번 읽어 섞는 편이 싸고 정확합니다.
+        //
+        // ⚠ 겹치는 동안에는 TAM 을 <b>두 번</b> 읽습니다. 다만 이 분기는 시간에만
+        // 걸리므로 <b>화면 전체가 같이</b> 갈립니다 — 화소마다 갈리는 분기가 아니라서
+        // 미분(ddx/ddy)이 무너지지 않습니다.
+        _HatchBoilBlend ("작화가 넘어가며 겹치는 시간 (박자의 몇 분의 1)", Range(0, 1)) = 0
+
         // ── 종이 ─────────────────────────────────────────────────────────
         //
         // <b>지금까지 이 그림은 아무 데도 안 그려져 있었습니다.</b> 획은 있는데
@@ -212,12 +232,20 @@ Shader "CarDrive/Post/Palette"
             half  _HatchToneSmooth;
             half  _HatchBoilRate;
             half  _HatchBoilJump;
+            half  _HatchBoilBlend;
 
             TEXTURE2D(_PaperTex);
             SAMPLER(sampler_LinearRepeat_PaperTex);
             half  _PaperGrain;
             half  _PaperScale;
             half  _PaperEdge;
+
+            /// 박자마다 다른 자리로 흩습니다. 무리수 둘을 쓰는 것은 유리수 비율이면
+            /// 몇 장 만에 같은 자리로 돌아와 <b>박자가 보이기</b> 때문입니다.
+            float2 Wobble(float beat)
+            {
+                return frac(float2(beat * 0.6180339887, beat * 0.4142135624)) - 0.5;
+            }
 
             half4 Fragment(Varyings input) : SV_Target
             {
@@ -274,16 +302,27 @@ Shader "CarDrive/Post/Palette"
                 // 두 무리수로 흩어 놓습니다. 유리수 비율을 쓰면 몇 장 만에 같은 자리로
                 // 돌아와 <b>박자가 보입니다.</b>
                 float2 penShift = float2(0.0, 0.0);
+                float2 penShiftWas = float2(0.0, 0.0);
+
+                // 0 이면 직전 작화를 안 씁니다. 1 이면 새 작화가 다 차오른 것입니다.
+                half settled = 1.0h;
 
                 [branch] if (_HatchBoilRate > 0.001h)
                 {
-                    float beat = floor(_Time.y * _HatchBoilRate);
-                    float2 wobble = frac(float2(beat * 0.6180339887, beat * 0.4142135624)) - 0.5;
-                    penShift = wobble * (2.0h * _HatchBoilJump)
-                               * max(_HatchDitherScale * pixelScale, 1.0h);
+                    float clock = _Time.y * _HatchBoilRate;
+                    float beat = floor(clock);
+                    float reach = max(_HatchDitherScale * pixelScale, 1.0h) * (2.0h * _HatchBoilJump);
+
+                    penShift = Wobble(beat) * reach;
+                    penShiftWas = Wobble(beat - 1.0) * reach;
+
+                    // 박자 안에서 얼마나 지났는가. 겹치는 시간을 지나면 1 이 됩니다.
+                    half blend = max(_HatchBoilBlend, 0.0001h);
+                    settled = smoothstep(0.0h, blend, (half)frac(clock));
                 }
 
                 float2 inkPos = input.positionCS.xy + penShift;
+                float2 inkPosWas = input.positionCS.xy + penShiftWas;
 
                 float2 cell = floor(input.positionCS.xy / max(_DitherPixel * pixelScale, 1.0h));
                 half pattern = CarDriveDitherThreshold(cell);
@@ -302,6 +341,16 @@ Shader "CarDrive/Post/Palette"
                     float2 uv = inkPos / max(_HatchDitherScale * pixelScale, 1.0h);
                     rank = SAMPLE_TEXTURE2D_LOD(_HatchDitherTex,
                                                 sampler_PointRepeat_HatchDitherTex, uv, 0).r;
+
+                    // 넘어가는 중이면 직전 작화도 읽어 섞습니다.
+                    // 분기가 시간에만 걸려 화면 전체가 같이 갈립니다.
+                    [branch] if (settled < 0.999h)
+                    {
+                        float2 uvWas = inkPosWas / max(_HatchDitherScale * pixelScale, 1.0h);
+                        half was = SAMPLE_TEXTURE2D_LOD(_HatchDitherTex,
+                                                        sampler_PointRepeat_HatchDitherTex, uvWas, 0).r;
+                        rank = lerp(was, rank, settled);
+                    }
                     pattern = lerp(pattern, rank, _HatchDither);
                 }
 
@@ -336,11 +385,17 @@ Shader "CarDrive/Post/Palette"
                     // 획 자리에서 값이 0 에 가까워지므로 곱하기가 곧 덮는 것입니다.
                     [branch] if (_HatchTam > 0.5h && _CarDriveHatchParams.w >= 0.5h)
                     {
-                        half ink = CarDriveHatchValue(1.0h - dark,
-                                                      float3(inkPos, 0.0),
-                                                      float3(0, 0, 1),
-                                                      max(_HatchDitherScale * pixelScale, 1.0h),
-                                                      _HatchTamTop);
+                        half tamScale = max(_HatchDitherScale * pixelScale, 1.0h);
+
+                        half ink = CarDriveHatchValue(1.0h - dark, float3(inkPos, 0.0),
+                                                      float3(0, 0, 1), tamScale, _HatchTamTop);
+
+                        [branch] if (settled < 0.999h)
+                        {
+                            half was = CarDriveHatchValue(1.0h - dark, float3(inkPosWas, 0.0),
+                                                          float3(0, 0, 1), tamScale, _HatchTamTop);
+                            ink = lerp(was, ink, settled);
+                        }
 
                         quantised *= lerp(1.0h, ink, _HatchInk);
                         drawn = true;
