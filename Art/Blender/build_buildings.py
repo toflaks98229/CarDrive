@@ -150,6 +150,15 @@ def build(s):
     ww, wh = s["win"]
     pitch = bw / s["bays"]
 
+    # <b>테두리는 창보다 넓습니다.</b> reveal 이 좌우·위아래로 jamb 만큼 더 나가므로,
+    # 창을 칸 간격에 맞춰 놓으면 <b>이웃한 테두리끼리 겹칩니다.</b> House04 에 남아
+    # 있던 96쌍이 전부 이것이었습니다 - 가로로는 옆 창과, 세로로는 위층 창과.
+    # 테두리 폭이 간격을 넘지 않게 창을 먼저 잘라 둡니다.
+    JAMB = 0.22
+    storey = (body_top - plinth) / s["floors"]
+    ww = min(ww, pitch - JAMB * 2.0 - 0.12)
+    wh = min(wh, storey - JAMB * 2.0 - 0.12)
+
     for floor in range(s["floors"]):
         z = plinth + (body_top - plinth) * (floor + 0.62) / s["floors"]
         if z + wh * 0.5 > body_top - 0.4:

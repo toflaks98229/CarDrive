@@ -101,6 +101,43 @@ DECK_TOP = DECK_Z + SOCKET["deck"]
 DECKS = [DECK_TOP + i * SOCKET["storey"] for i in range(LEVELS)]
 TOP_DECK = DECKS[-1]
 
+# 갤러리 한 벌의 치수입니다. 캡슐 한 칸 · 통로 폭 · 한 층 높이.
+CAPSULE = (6.4, 5.0, 4.4)
+WALK = 2.6
+TIER = 5.6
+
+# 갤러리 한 벌이 <c>y_half</c> 를 기준으로 <b>y 로 차지하는 구간</b>입니다.
+# 안쪽 끝은 층 슬래브, 바깥 끝은 난간 파이프입니다. 값을 여기 적지 않고
+# <c>capsules()</c> 가 쓰는 것에서 뽑으므로, 거기를 고치면 이것이 따라옵니다.
+GALLERY = (0.2 - CAPSULE[1] * 0.375, WALK + 0.62)
+
+
+def clear_of(half, taken, gap=0.6):
+    """
+    갤러리를 <b>이미 갤러리가 있는 자리에서 비켜</b> 세웁니다.
+
+    ⚠ <b>스파인도 자기 갤러리를 갖고 있습니다.</b> 시타델의 단이 물려 올라가다
+    그 갤러리 높이에 들어서면 테라스 가장자리가 스파인 갤러리 <b>한가운데</b>에
+    떨어져, 두 벌이 같은 부피를 차지합니다. 3 베이 시타델의 둘째 단이 정확히
+    그랬고, 슬롯 기둥 옆면이 <c>x = ±0.80</c> 에서 같은 쪽을 보며 겹쳐
+    <b>823 m2</b> 가 깜빡였습니다 - 이 프로젝트에서 가장 컸던 한 자리입니다.
+
+    비켜 세우는 쪽은 <b>안쪽</b>입니다. 바깥으로 밀면 허공에 뜨지만, 안쪽에는
+    아래 단의 테라스가 있어 실제로 설 자리가 됩니다. 난간에서 물러나 서는 것뿐이라
+    멀리서 보는 실루엣은 그대로입니다.
+
+    :param half: 세우고 싶은 자리(테라스 가장자리)
+    :param taken: 이미 갤러리가 서 있는 자리
+    :param gap: 두 벌 사이에 남길 틈
+    :returns: 비켜 세울 자리. 겹치지 않으면 <paramref name="half"/> 그대로
+    """
+    lo, hi = half + GALLERY[0], half + GALLERY[1]
+    t_lo, t_hi = taken + GALLERY[0], taken + GALLERY[1]
+    if hi <= t_lo or lo >= t_hi:
+        return half
+
+    return t_lo - gap - GALLERY[1]
+
 # <b>값을 끝까지 벌립니다.</b> 셋 다 중간 값대(0.465~0.048)에 몰려 있어, 폭을
 # 96 m 로 넓히고 438 m 를 올려도 화면에서는 한 덩어리로 눌려 보였습니다. 텍스처도
 # 색도 없는 NaissanceE 가 거대하게 읽히는 이유가 이것뿐이었습니다 — 밝은 면은
@@ -589,11 +626,11 @@ def capsules(m, s, length, rng, y_half=None, base=None, fade=False, deck=None,
     W = y_half if y_half is not None else SOCKET["width"] * 0.5
     z0 = base if base is not None else (deck if deck is not None else DECKS[0])
 
-    cw, cd, ch = 6.4, 5.0, 4.4
+    cw, cd, ch = CAPSULE
     inner = length - SOCKET["inset"] * 2.0
     cols = max(2, int(inner / (cw + 1.2)))
     pitch = inner / cols
-    tier = 5.6
+    tier = TIER
 
     # <b>갤러리 — 하늘의 거리.</b> 캡슐이 꽂혀 있어도 들어갈 길이 없으면 창고입니다.
     # Park Hill(1961)의 데크 접근 복도가 그 답이었습니다: 층마다 바깥으로 통로를
@@ -601,7 +638,7 @@ def capsules(m, s, length, rng, y_half=None, base=None, fade=False, deck=None,
     #
     # 그래서 골조에서 밖으로 <b>기둥 → 통로 → 캡슐</b> 순서가 됩니다. 캡슐을 통로
     # 바깥으로 밀어 두지 않으면 문 앞이 허공입니다.
-    walk = 2.6
+    walk = WALK
     reach = W + walk
 
     def holes(sign, t):
@@ -646,8 +683,16 @@ def capsules(m, s, length, rng, y_half=None, base=None, fade=False, deck=None,
         # 들어가는 자리에서는 끊어야 문이 문이 됩니다.
         for t in range(s["tiers"]):
             tag(t)
+            # ⚠ <b>층 슬래브와 같은 자리에서 끝나면 안 됩니다.</b> 둘 다
+            # <c>inner</c> 라 마구리가 <c>x = ±61.6</c> 에서 같은 평면에 놓였고,
+            # 시타델에서만 <b>636 쌍</b>이 나왔습니다 - 낱장은 0.22 m2 인데
+            # 층마다 양쪽 양끝이라 수가 불어납니다. 여기는 이음매 안쪽이라
+            # 옆 프리셋이 가려 주지도 않습니다.
+            #
+            # 0.6 m 짧게 놓습니다. 구조인 슬래브가 <b>디딤판보다 조금 나온</b>
+            # 것이 되어 오히려 맞습니다.
             m.box((0.0, sign * (W + walk * 0.5 + 0.6), z0 + t * tier + 0.35),
-                  (inner, walk, 0.3), CONCRETE)
+                  (inner - 0.6, walk, 0.3), CONCRETE)
 
             for lo, hi in segments(holes(sign, t)):
                 # 아래는 얇은 판, 위는 파이프. 상자 수는 그대로인데 30 m 위에서
@@ -699,8 +744,8 @@ def access(m, s, length, rng, deck=None):
 
     W = SOCKET["width"]
     inner = length - SOCKET["inset"] * 2.0
-    tier = 5.6
-    walk = 2.6
+    tier = TIER
+    walk = WALK
     reach = W + walk
 
     side = 1.0
@@ -884,8 +929,15 @@ def ramp(m, s, length, rng):
     top_x = -(run * 0.5 + 3.5) if flights % 2 == 0 else (run * 0.5 + 3.5)
     span = (length * 0.5 - SOCKET["inset"] - abs(top_x)) * 2.0
 
-    m.box((top_x, (W * 0.5 + lanes[0] - lane * 0.5) * 0.5, DECK_TOP - 0.6),
-          (span, lanes[0] - lane * 0.5 - W * 0.5 + 2.0, 1.6), CONCRETE)
+    # ⚠ <b>다리를 참 속으로 밀어 넣으면 안 됩니다.</b> 둘이 두께도 높이도 같아
+    # 윗면과 밑면이 <c>z = 35.4 · 33.8</c> 에서 같은 평면을 쓰며 겹쳤고,
+    # <b>20 m2</b> 가 깜빡였습니다 - 데크 밑에서 올려다보면 보이는 자리입니다.
+    # 메워야 할 것은 데크와 참 사이의 틈뿐이므로 참 앞에서 멈춥니다.
+    near = (lanes[0] + lanes[1]) * 0.5 - lane * 1.1
+    far = W * 0.5 - 1.25
+
+    m.box((top_x, (near + far) * 0.5, DECK_TOP - 0.6),
+          (span, near - far, 1.6), CONCRETE)
 
     # 데크로 들어서는 문턱. 데크 위에서 <b>여기가 내려가는 길</b>임을 보여 줍니다.
     m.box((top_x, W * 0.5 - 1.0, DECK_TOP + 0.22),
@@ -945,12 +997,21 @@ def crane(m, s, length, rng):
     inner = length - SOCKET["inset"] * 2.0
     rail = DECKS[s.get('levels', (0,))[-1]] + 26.0
 
+    # ⚠ <b>다리는 레일 위에서 시작합니다.</b> 데크 높이에서 시작했더니 레일과
+    # 다리의 밑면이 같은 평면에서 같은 쪽(아래)을 보았습니다. 이 둘은 데크
+    # <b>바깥으로</b> 5 m 나가 있어 밑에 데크가 없고, 그래서 밑에서 올려다보면
+    # 정말 보이는 자리였습니다 - 14 m2.
+    #
+    # 갠트리는 원래 레일을 <b>타고</b> 다니는 것이므로 이것이 맞는 순서입니다.
+    base = DECKS[s.get('levels', (0,))[-1]]
+    ride = base + 1.2
+
     for sign in (-1.0, 1.0):
-        m.box((0.0, sign * (W * 0.5 + 5.0), DECKS[s.get('levels', (0,))[-1]] + 0.6), (inner, 1.6, 1.2), STEEL)
+        m.box((0.0, sign * (W * 0.5 + 5.0), base + 0.6), (inner, 1.6, 1.2), STEEL)
 
         for i in (-1, 1):
-            m.box((i * inner * 0.3, sign * (W * 0.5 + 5.0), (DECKS[s.get('levels', (0,))[-1]] + rail) * 0.5),
-                  (2.2, 2.2, rail - DECKS[s.get('levels', (0,))[-1]]), STEEL)
+            m.box((i * inner * 0.3, sign * (W * 0.5 + 5.0), (ride + rail) * 0.5),
+                  (2.2, 2.2, rail - ride), STEEL)
 
             # 다리 밑동의 경고 띠. 갠트리가 <b>움직이는 것</b>임을 말합니다.
             m.box((i * inner * 0.3, sign * (W * 0.5 + 5.0),
@@ -1102,12 +1163,24 @@ def shaft(m, s, length, rng):
 
         z = base + f * step
 
-        m.box((0.0, span_y, z + 0.25), (inner * 0.82, 19.0, 0.5), CONCRETE)
-        m.box((0.0, span_y, z + 1.05), (inner * 0.82 + 0.5, 19.6, 0.16), DARK)
-
         # 난간 대신 가장자리 보. 층이 <b>판</b>으로 읽히게 합니다.
+        beam, edge_y = 0.4, 9.6
+
+        m.box((0.0, span_y, z + 0.25), (inner * 0.82, 19.0, 0.5), CONCRETE)
+
+        # ⚠ <b>덮개를 보와 같은 자리에서 끝내면 안 됩니다.</b> 둘 다 가장자리가
+        # <c>span_y ± 9.8</c> 이라 바깥면이 같은 평면에서 같은 쪽을 보았고, 층마다
+        # 두 쌍씩 열세 층이면 <b>277 m2</b> 가 깜빡였습니다 - 시타델을 고친 뒤
+        # 스파인에서 가장 컸던 자리입니다.
+        #
+        # 덮개를 보 <b>사이</b>에서 끊습니다. 가장자리를 보 하나가 도맡으니
+        # "판" 이라는 말이 오히려 또렷해집니다.
+        m.box((0.0, span_y, z + 1.05),
+              (inner * 0.82 + 0.5, (edge_y - beam * 0.5) * 2.0, 0.16), DARK)
+
         for edge in (-1, 1):
-            m.box((0.0, span_y + edge * 9.6, z + 0.9), (inner * 0.82, 0.4, 0.9), CONCRETE)
+            m.box((0.0, span_y + edge * edge_y, z + 0.9),
+                  (inner * 0.82, beam, 0.9), CONCRETE)
 
     # 데크에서 다발로 건너가는 다리.
     m.box((inner * 0.3, side * (W * 0.5 + 4.5), TOP_DECK - 0.15),
@@ -1128,7 +1201,7 @@ def tower(m, s, length, rng):
     inner = length - SOCKET["inset"] * 2.0
     side = -1.0
 
-    cw, cd, ch = 6.4, 5.0, 4.4
+    cw, cd, ch = CAPSULE
     step = 5.2
     floors = 13
     base = TOP_DECK
@@ -1238,9 +1311,9 @@ def rooms(m, s, length, prefix):
         return []
 
     W = SOCKET["width"] * 0.5
-    walk = 2.6
+    walk = WALK
     front = W + walk + 0.6      # 통로 바닥의 <b>바깥</b> 끝. 여기서부터 방입니다
-    tier = 5.6
+    tier = TIER
     inner = length - SOCKET["inset"] * 2.0
     cols = max(2, int(inner / (6.4 + 1.2)))
     pitch = inner / cols
@@ -1371,9 +1444,9 @@ def citadel(m, s, length, rng, coarse=False):
 
         # 테라스 난간에 붙는 캡슐 갤러리. 단마다 <b>덜 찹니다</b> - 위층은 아직
         # 안 올라간 것이지 지어진 적 없는 것이 아닙니다.
-        tiers = max(2, int(step / 5.6) - 1)
+        tiers = max(2, int(step / TIER) - 1)
         capsules(m, dict(tiers=tiers, fill=s["fill"] * (0.46 - k * 0.12)),
-                 w, rng, y_half=d * 0.5, base=z0 + 4.0, fade=True)
+                 w, rng, y_half=clear_of(d * 0.5, W * 0.5), base=z0 + 4.0, fade=True)
 
     m.group("Peak")
 
@@ -1392,7 +1465,12 @@ def citadel(m, s, length, rng, coarse=False):
     # 어두운 것을 강철로. <b>이 한 상자 때문에 슬롯이 하나 더 생기고</b>
     # 그 슬롯이 곧 드로우 하나입니다 - 12 삼각형이 파츠 전체 삼각형의
     # 0.5~1.4% 인데 제출 비용은 다른 슬롯과 똑같습니다.
-    m.box((0.0, 0.0, top + 1.4), (peak_w + 2.0, peak_d + 2.0, 1.8), STEEL)
+    #
+    # ⚠ 한 번 더 올려야 했습니다. <c>endwall</c> 의 <b>맨 위 가로 띠는 단 꼭대기를
+    # 걸치고</b> 서서 <c>top + 0.8</c> 까지 올라오는데, 마지막 단의 띠가 x 로
+    # <c>±36.6</c> 이라 이 띠와 <b>같은 평면</b>에 놓였습니다 - 32 m2 였습니다.
+    # 끝면 띠 위로 넘겨 둡니다.
+    m.box((0.0, 0.0, top + 2.0), (peak_w + 2.0, peak_d + 2.0, 1.8), STEEL)
 
 
 # --- Build ------------------------------------------------------------------

@@ -131,7 +131,13 @@ def wall(m, side, inner, height, openings):
 
     mine = sorted((o[1], o[2], o[3], o[4]) for o in openings if o[0] == side)
 
-    edge = -half - WALL
+    # <b>모서리는 한 쌍만 채웁니다.</b> 넷이 다 모서리까지 나가면 두 벽이 같은
+    # WALL x WALL 기둥을 차지하고, 그러면 한쪽의 끝면과 다른 쪽의 바깥면이
+    # <b>같은 평면에서 같은 쪽을</b> 봐 깜빡입니다. 방 다섯에서 잡힌 81쌍의
+    # 절반이 이것이었습니다. 좌우 벽이 모서리까지 가고 앞뒤 벽은 안에서 멈춥니다.
+    grow = WALL if axis == 0 else 0.0
+
+    edge = -half - grow
     for pos, width, sill, tall in mine:
         put(edge, pos - width * 0.5, 0.0, height)
         edge = pos + width * 0.5
@@ -142,15 +148,21 @@ def wall(m, side, inner, height, openings):
         put(pos - width * 0.5, pos + width * 0.5, sill + tall, height)
 
         # 구멍의 <b>속</b>. 깊은 인방이 그늘을 만들어 구멍으로 읽히게 합니다.
-        c = [0.0, 0.0, sill + tall + 0.16]
+        # 인방을 구멍 머리보다 <b>6 cm 아래로</b> 늘어뜨립니다. 예전에는 밑면이
+        # 구멍 위 벽의 밑면과 정확히 같은 높이라 그 자리가 깜빡였습니다.
+        # 실제 인방도 구멍보다 내려와 걸칩니다.
+        c = [0.0, 0.0, sill + tall + 0.16 - 0.06]
         s = [0.0, 0.0, 0.32]
-        c[axis] = sign * (at - WALL * 0.35)
-        s[axis] = WALL * 1.7
+        # 인방을 <b>벽면보다 안으로</b> 들입니다. 예전에는 바깥면이 벽면과 정확히
+        # 같은 평면이라 그 자리가 깜빡였습니다. 6 cm 들어가면 그늘이 한 겹 더 생겨
+        # 구멍이 오히려 깊어 보입니다.
+        c[axis] = sign * (at - WALL * 0.35 - 0.03)
+        s[axis] = WALL * 1.7 - 0.06
         c[1 - axis] = pos
         s[1 - axis] = width + 0.36
         m.box(c, s, DARK)
 
-    put(edge, half + WALL, 0.0, height)
+    put(edge, half + grow, 0.0, height)
 
 
 def shell(name, s):
