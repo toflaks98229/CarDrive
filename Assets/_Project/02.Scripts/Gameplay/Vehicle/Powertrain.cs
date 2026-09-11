@@ -36,6 +36,15 @@ namespace CarDrive.Gameplay
         /// <summary>현재 남은 연료량입니다.</summary>
         public float CurrentFuel { get; private set; }
 
+        /// <summary>
+        /// 이 차가 담을 수 있는 연료입니다. 데이터가 없으면 0 입니다.
+        ///
+        /// <b>왜 내주는가.</b> 바깥에서 "얼마나 비었는가" 를 알 길이 없었습니다 —
+        /// <see cref="CurrentFuel"/> 만 보이고 가득이 얼마인지는 안 보였습니다.
+        /// 주유하는 쪽(<c>RepairArm</c>)이 값을 매기려면 그 차이가 필요합니다.
+        /// </summary>
+        public float MaxFuel { get { return carData != null ? carData.maxFuel : 0f; } }
+
         // --- Private Member Variables ---
 
         /// <summary>
