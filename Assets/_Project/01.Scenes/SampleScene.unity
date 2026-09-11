@@ -1671,6 +1671,145 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 23844545}
   m_PrefabAsset: {fileID: 0}
+--- !u!1001 &24006924
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2052030056}
+    m_Modifications:
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 442.44656
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 19.042812
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7585455745858112564, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_Name
+      value: "WalkerRobot_Strider_Patrol_\uB3D9\uCABD \uAE38"
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 7585455745858112564, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 24006928}
+    - targetCorrespondingSourceObject: {fileID: 7585455745858112564, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 24006927}
+  m_SourcePrefab: {fileID: 100100000, guid: 3a77bbadc2a8afb4d825b02083f6dc4b, type: 3}
+--- !u!4 &24006925 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+    type: 3}
+  m_PrefabInstance: {fileID: 24006924}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &24006926 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7585455745858112564, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+    type: 3}
+  m_PrefabInstance: {fileID: 24006924}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &24006927
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 24006926}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a9d629e554851c643afb907686aada53, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Gameplay::CarDrive.Gameplay.RobotAwareness
+  noticeRadius: 26
+  noticeAngle: 75
+  patience: 3.5
+  stuckSpeed: 0.25
+  blameRadius: 14
+  grudgeSeconds: 8
+  head: {fileID: 0}
+  sightMask:
+    serializedVersion: 2
+    m_Bits: 2560
+  eyeHeight: 6
+  onNoticed:
+    m_PersistentCalls:
+      m_Calls: []
+  onProtested:
+    m_PersistentCalls:
+      m_Calls: []
+  onCalmed:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &24006928
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 24006926}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 71a084880999a5f41aecff4f240e2d44, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Gameplay::CarDrive.Gameplay.RobotPatrol
+  route: []
+  routeParent: {fileID: 1283962911}
+  loop: 0
+  dwellSeconds: 8
+  onDutyHour: 18
+  offDutyHour: 6
+  berth: {fileID: 0}
 --- !u!1001 &24346974
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -16145,6 +16284,145 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 278843956}
   m_PrefabAsset: {fileID: 0}
+--- !u!1001 &281174973
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2052030056}
+    m_Modifications:
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 18.794456
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 479.48566
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7585455745858112564, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      propertyPath: m_Name
+      value: "WalkerRobot_Strider_Patrol_\uBD81\uCABD \uAE38"
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 7585455745858112564, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 281174977}
+    - targetCorrespondingSourceObject: {fileID: 7585455745858112564, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 281174976}
+  m_SourcePrefab: {fileID: 100100000, guid: 3a77bbadc2a8afb4d825b02083f6dc4b, type: 3}
+--- !u!4 &281174974 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4411255398780754514, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+    type: 3}
+  m_PrefabInstance: {fileID: 281174973}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &281174975 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7585455745858112564, guid: 3a77bbadc2a8afb4d825b02083f6dc4b,
+    type: 3}
+  m_PrefabInstance: {fileID: 281174973}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &281174976
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 281174975}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a9d629e554851c643afb907686aada53, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Gameplay::CarDrive.Gameplay.RobotAwareness
+  noticeRadius: 26
+  noticeAngle: 75
+  patience: 3.5
+  stuckSpeed: 0.25
+  blameRadius: 14
+  grudgeSeconds: 8
+  head: {fileID: 0}
+  sightMask:
+    serializedVersion: 2
+    m_Bits: 2560
+  eyeHeight: 6
+  onNoticed:
+    m_PersistentCalls:
+      m_Calls: []
+  onProtested:
+    m_PersistentCalls:
+      m_Calls: []
+  onCalmed:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &281174977
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 281174975}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 71a084880999a5f41aecff4f240e2d44, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CarDrive.Gameplay::CarDrive.Gameplay.RobotPatrol
+  route: []
+  routeParent: {fileID: 2001536022}
+  loop: 0
+  dwellSeconds: 8
+  onDutyHour: 18
+  offDutyHour: 6
+  berth: {fileID: 0}
 --- !u!1001 &281663390
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -39376,6 +39654,37 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 566914418}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &568256814
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 568256815}
+  m_Layer: 0
+  m_Name: "WalkerRobot_Strider_Patrol_\uBD81\uCABD \uAE38_Stop0"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &568256815
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 568256814}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -86.93333, y: 19.761143, z: 456.19196}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2001536022}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &568357212
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -41968,6 +42277,37 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 605890236}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &609702613
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 609702614}
+  m_Layer: 0
+  m_Name: "WalkerRobot_Strider_Patrol_\uB3D9\uCABD \uAE38_Stop0"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &609702614
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 609702613}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 355.51324, y: 19.197147, z: -23.293716}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1283962911}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &609785177
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -42201,6 +42541,7 @@ MonoBehaviour:
   stuckSpeed: 0.25
   blameRadius: 14
   grudgeSeconds: 8
+  head: {fileID: 0}
   sightMask:
     serializedVersion: 2
     m_Bits: 2560
@@ -58424,6 +58765,37 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 803685807}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &806026721
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 806026722}
+  m_Layer: 0
+  m_Name: "WalkerRobot_Strider_Patrol_\uB3D9\uCABD \uAE38_Stop2"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &806026722
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 806026721}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 471.42435, y: 18.996193, z: 7.76457}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1283962911}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &807105976
 GameObject:
   m_ObjectHideFlags: 0
@@ -76158,6 +76530,7 @@ MonoBehaviour:
   stuckSpeed: 0.25
   blameRadius: 14
   grudgeSeconds: 8
+  head: {fileID: 0}
   sightMask:
     serializedVersion: 2
     m_Bits: 2560
@@ -76590,6 +76963,37 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &1028925560
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1028925561}
+  m_Layer: 0
+  m_Name: "WalkerRobot_Strider_Patrol_\uB3D9\uCABD \uAE38_Stop3"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1028925561
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1028925560}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 529.3799, y: 19.250038, z: 23.293715}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1283962911}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1029013052
 GameObject:
   m_ObjectHideFlags: 0
@@ -81448,6 +81852,37 @@ Terrain:
   m_EnableTreesAndDetailsRayTracing: 0
   m_EnableHeightmapLODFrustumCulling: 1
   m_TreeMotionVectorModeOverride: 3
+--- !u!1 &1099674542
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1099674543}
+  m_Layer: 0
+  m_Name: "WalkerRobot_Strider_Patrol_\uBD81\uCABD \uAE38_Stop3"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1099674543
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1099674542}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 86.93333, y: 19.082964, z: 502.7794}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2001536022}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1103391361
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -81656,6 +82091,8 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1545047959}
+  - {fileID: 1283962911}
+  - {fileID: 2001536022}
   m_Father: {fileID: 1990000006}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1108375047
@@ -92207,6 +92644,41 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 1283474015}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1283962910
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1283962911}
+  m_Layer: 0
+  m_Name: "WalkerRobot_Strider_Patrol_\uB3D9\uCABD \uAE38_Route"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1283962911
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1283962910}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 609702614}
+  - {fileID: 1922454065}
+  - {fileID: 806026722}
+  - {fileID: 1028925561}
+  m_Father: {fileID: 1105762451}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1284076008
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -101835,6 +102307,37 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 1486554709}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1487097767
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1487097768}
+  m_Layer: 0
+  m_Name: "WalkerRobot_Strider_Patrol_\uBD81\uCABD \uAE38_Stop1"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1487097768
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1487097767}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -28.97779, y: 19.183605, z: 471.7211}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2001536022}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1487485862
 GameObject:
   m_ObjectHideFlags: 0
@@ -139877,6 +140380,37 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 1917337589}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1922454064
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1922454065}
+  m_Layer: 0
+  m_Name: "WalkerRobot_Strider_Patrol_\uB3D9\uCABD \uAE38_Stop1"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1922454065
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1922454064}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 413.46878, y: 18.873552, z: -7.764572}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1283962911}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1922697798
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -144655,6 +145189,7 @@ Transform:
   - {fileID: 317127154}
   - {fileID: 1269096791}
   - {fileID: 1105762451}
+  - {fileID: 2052030056}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1990000007
@@ -145285,6 +145820,41 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 2001514440}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &2001536021
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2001536022}
+  m_Layer: 0
+  m_Name: "WalkerRobot_Strider_Patrol_\uBD81\uCABD \uAE38_Route"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2001536022
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2001536021}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 568256815}
+  - {fileID: 1487097768}
+  - {fileID: 2111705523}
+  - {fileID: 1099674543}
+  m_Father: {fileID: 1105762451}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &2004490674
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -147924,6 +148494,39 @@ Transform:
   - {fileID: 924576193}
   - {fileID: 1792123659}
   - {fileID: 1483722030}
+  m_Father: {fileID: 1990000006}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2052030055
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2052030056}
+  m_Layer: 0
+  m_Name: PlacedRobots
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2052030056
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2052030055}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 281174974}
+  - {fileID: 24006925}
   m_Father: {fileID: 1990000006}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &2057726453
@@ -151246,6 +151849,37 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 2534964839176971238, guid: f55265f5406f5504fa07e8dab4a5e8bb, type: 3}
+--- !u!1 &2111705522
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2111705523}
+  m_Layer: 0
+  m_Name: "WalkerRobot_Strider_Patrol_\uBD81\uCABD \uAE38_Stop2"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2111705523
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2111705522}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 28.977766, y: 19.470871, z: 487.25024}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2001536022}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &2111918096
 PrefabInstance:
   m_ObjectHideFlags: 0

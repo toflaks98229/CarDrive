@@ -289,7 +289,15 @@ public static class RobotPatrolSetup
         {
             GameObject made = new GameObject(robotName + "_Route");
             made.transform.SetParent(routes, true);
-            mine = made.transform;
+            return made.transform;
+        }
+
+        // ⚠ <b>남은 자리를 비웁니다.</b> 로봇을 다시 놓으면 이름이 같은 폴더가
+        // 그대로 남아, 새 자리가 옛 자리 뒤에 <b>쌓입니다.</b> 그러면 순찰로가
+        // 두 배 길이가 되고 가운데가 끊깁니다.
+        for (int i = mine.childCount - 1; i >= 0; i--)
+        {
+            Object.DestroyImmediate(mine.GetChild(i).gameObject);
         }
 
         return mine;
