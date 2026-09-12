@@ -321,6 +321,7 @@ public static class GhostVisibilityCheck
 
         Mirrors(spawner.rearGhostPrefab, spawner.rearSpawnAnchor, report);
         Panes(eye, report);
+        Turn(eye, mask, target, withGhost, without, silhouette, report, spawner);
 
         Place(eye, mask, target, withGhost, without, silhouette, report,
               "왼쪽 8 m", spawner.sideGhostPrefab, spawner.sideSpawnAnchor1);
@@ -329,6 +330,60 @@ public static class GhostVisibilityCheck
 
         Place(eye, mask, target, withGhost, without, silhouette, report,
               "오른쪽 8 m", spawner.sideGhostPrefab, spawner.sideSpawnAnchor2);
+    }
+
+    /// <summary>
+    /// <b>고개를 돌리면 보이는가.</b>
+    ///
+    /// 옆의 귀신은 앞을 볼 때 화면 밖이고 거울에도 0.3% 뿐입니다. 눈가 얼룩이
+    /// "저쪽에 있다" 를 말해 주는데, <b>돌아봤을 때 실제로 있어야</b> 그 말이
+    /// 값을 합니다 — 돌아봤는데 아무것도 없으면 얼룩은 거짓말이 됩니다.
+    /// </summary>
+    private static void Turn(Camera eye, Camera mask, RenderTexture target,
+                             Texture2D withGhost, Texture2D without, Texture2D silhouette,
+                             StringBuilder report, GhostSpawner spawner)
+    {
+        if (spawner.sideGhostPrefab == null || spawner.sideSpawnAnchor1 == null) return;
+
+        Quaternion straight = eye.transform.rotation;
+
+        try
+        {
+            foreach (float yaw in new[] { 30f, 60f, 90f })
+            {
+                eye.transform.rotation = straight * Quaternion.Euler(0f, -yaw, 0f);
+                mask.transform.rotation = eye.transform.rotation;
+
+                Grab(eye, target, without);
+
+                GameObject ghost = (GameObject)PrefabUtility.InstantiatePrefab(
+                    spawner.sideGhostPrefab);
+
+                ghost.transform.position = spawner.sideSpawnAnchor1.position;
+                ghost.transform.rotation = spawner.sideSpawnAnchor1.rotation;
+
+                foreach (Transform t in ghost.GetComponentsInChildren<Transform>(true))
+                {
+                    t.gameObject.layer = MaskLayer;
+                }
+
+                Grab(eye, target, withGhost);
+                Grab(mask, target, silhouette);
+                Object.DestroyImmediate(ghost);
+
+                File.WriteAllBytes(Path.Combine(OutputDirectory,
+                                                "turn_" + yaw.ToString("F0") + ".png"),
+                                   withGhost.EncodeToPNG());
+
+                report.Append("  왼쪽으로 " + yaw.ToString("F0") + "도 돌아보면 : ");
+                Measure("왼쪽 8 m", 0f, withGhost, without, silhouette, report);
+            }
+        }
+        finally
+        {
+            eye.transform.rotation = straight;
+            mask.transform.rotation = straight;
+        }
     }
 
     /// <summary>앵커 자리에 하나 세우고 잽니다.</summary>
