@@ -99,6 +99,14 @@ namespace CarDrive.Gameplay
         public WeaponWinch winch;
 
         /// <summary>
+        /// 칸입니다. 있으면 <b>쏜 만큼 비어</b> 갑니다.
+        ///
+        /// 미사일 랙처럼 남은 발수를 몸으로 말하지 못하는 무장에 답니다.
+        /// </summary>
+        [Tooltip("칸. 있으면 쏜 만큼 비어 갑니다")]
+        public WeaponCells cells;
+
+        /// <summary>
         /// 총구 섬광입니다. <b>이것이 없으면 쏘는 것이 화면에 안 보입니다.</b>
         ///
         /// 포신이 밀리는 것만으로는 발사인지 무엇인지 알 수 없습니다 - 특히 반동이
@@ -280,6 +288,9 @@ namespace CarDrive.Gameplay
             // 섬광은 <b>쏜 뒤에도</b> 꺼져야 합니다. 발사 판정보다 먼저입니다.
             if (flash != null) flash.Tick(dt);
 
+            // 다시 채우는 것도 <b>안 쏘는 동안</b> 돌아야 합니다.
+            if (cells != null) cells.Tick(dt);
+
             // ⚠ <c>out</c> 을 조건식 안에서 선언하면 안 됩니다. 앞 항이 거짓이면
             // <c>Ready</c> 가 안 불려 <c>point</c> 가 <b>미배정</b>으로 남습니다.
             Vector3 point = Vector3.zero;
@@ -352,6 +363,9 @@ namespace CarDrive.Gameplay
         private void Shoot(Vector3 point)
         {
             ShotCount++;
+
+            // 칸 하나가 빕니다. 쏘는 그 프레임이라야 화면과 발수가 안 어긋납니다.
+            if (cells != null) cells.Spend();
             LastShotTime = Time.time;
 
             // <b>번쩍이는 것이 먼저입니다.</b> 이 프레임에 같이 나가야 포신이 밀리는
@@ -487,6 +501,9 @@ namespace CarDrive.Gameplay
 
             firedInBurst = 0;
             nextShot = Time.time + burstCooldown;
+
+            // 한 묶음이 끝났습니다. 식는 동안 다시 채웁니다.
+            if (cells != null) cells.Reload();
         }
 
         /// <summary>밀린 조각들을 한 프레임분 되돌립니다.</summary>

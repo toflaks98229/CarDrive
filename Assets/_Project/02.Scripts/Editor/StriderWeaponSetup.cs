@@ -368,6 +368,10 @@ public static class StriderWeaponSetup
                 WeaponHatch gate = part.gameObject.AddComponent<WeaponHatch>();
                 gate.part = part;
                 weapon.hatch = gate;
+
+                // 덮개가 있는 무장은 <b>안에 든 것</b>도 있어야 합니다. 열린 뒤에
+                // 보이는 것이 빈 면이면 쏘기 전과 쏜 뒤가 같습니다.
+                weapon.cells = Cells(part, weapon, one);
             }
         }
 
@@ -509,6 +513,92 @@ public static class StriderWeaponSetup
         return made;
     }
 
+    /// <summary>
+    /// 덮개 뒤에 <b>미사일 여섯</b>을 세웁니다.
+    ///
+    /// <b>왜 도구가 만드는가.</b> 모델에는 칸이 없습니다 — 블렌더 쪽이
+    /// "칸을 여섯 개 따로 짜면 360 삼각형" 이라 일부러 <b>콘크리트 한 덩어리에
+    /// 살을 붙여</b> 칸처럼 보이게 했습니다. 그 판단은 겉모습에는 맞지만,
+    /// <b>쏜 칸이 비어 보이려면</b> 안에 든 것이 따로 있어야 합니다.
+    ///
+    /// 상자 하나에 12 삼각형이므로 여섯이 72 입니다. 원래 걱정하던 360 의 5 분의 1 이고,
+    /// <b>한 묶음을 다 쏘면 그 72 도 사라집니다.</b>
+    ///
+    /// ⚠ <b>덮개의 자식으로 두지 않습니다.</b> 덮개는 위로 미끄러지므로, 그 아래
+    /// 달면 미사일이 덮개를 따라 올라갑니다.
+    /// </summary>
+    /// <param name="doors">덮개 조각. 자리를 여기서 읽습니다</param>
+    /// <param name="weapon">이 무장</param>
+    /// <param name="one">무장 설정</param>
+    private static WeaponCells Cells(Transform doors, RobotWeapon weapon, Loadout one)
+    {
+        Renderer lid = doors.GetComponent<Renderer>();
+        if (lid == null) return null;
+
+        Transform rack = weapon.transform;
+
+        // 덮개가 가리고 있는 구멍의 크기와 자리입니다.
+        Vector3 mid = rack.InverseTransformPoint(lid.bounds.center);
+        Vector3 size = lid.bounds.size;
+
+        GameObject holder = new GameObject("Cells");
+        holder.transform.SetParent(rack, false);
+        holder.layer = rack.gameObject.layer;
+
+        Material skin = AssetDatabase.LoadAssetAtPath<Material>(
+            "Assets/_Project/04.Art/00.Materials/RobotDark.mat");
+
+        int columns = 3;
+        int rows = 2;
+
+        float cellW = size.x / columns;
+        float cellH = size.y / rows;
+
+        Transform[] loaded = new Transform[columns * rows];
+        int made = 0;
+
+        for (int row = 0; row < rows; row++)
+        {
+            for (int column = 0; column < columns; column++)
+            {
+                GameObject cell = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                cell.name = "Missile_" + made;
+                cell.transform.SetParent(holder.transform, false);
+                cell.layer = rack.gameObject.layer;
+
+                UnityEngine.Object.DestroyImmediate(cell.GetComponent<Collider>());
+
+                // ⚠ <b>덮개가 들어앉는 홈 안에 둡니다.</b> 랙은 <b>속이 찬 덩어리</b>라
+                // 그보다 깊이 넣으면 콘크리트 속에 묻혀 영영 안 보입니다. 처음에
+                // 0.26 m 안쪽에 뒀다가 여섯 개가 통째로 사라졌습니다.
+                //
+                // 덮개는 앞면과 나란한 0.16 m 두께의 판이고, 그 판이 위로 미끄러지면
+                // 그 자리가 빕니다. 거기가 <b>칸</b>입니다.
+                cell.transform.localPosition = new Vector3(
+                    mid.x + (column - (columns - 1) * 0.5f) * cellW,
+                    mid.y + (row - (rows - 1) * 0.5f) * cellH,
+                    mid.z);
+
+                cell.transform.localScale = new Vector3(cellW * 0.72f, cellH * 0.66f,
+                                                        size.z * 0.75f);
+
+                if (skin != null) cell.GetComponent<MeshRenderer>().sharedMaterial = skin;
+
+                loaded[made] = cell.transform;
+                made++;
+            }
+        }
+
+        WeaponCells cells = holder.AddComponent<WeaponCells>();
+        cells.loaded = loaded;
+        cells.refillSeconds = one.cooldown;
+
+        Debug.Log("STRIDER 칸 " + made + " 개를 세웠습니다 — " + weapon.name
+                  + " · 다시 채우기 " + one.cooldown.ToString("F1") + " 초");
+
+        return cells;
+    }
+
     private static WeaponFlash Flash(Transform muzzle, Loadout one)
     {
         GameObject go = new GameObject("Flash");
@@ -647,6 +737,13 @@ public static class StriderWeaponSetup
         // 섬광은 <b>오브젝트째</b> 지웁니다. 부품만 지우면 빈 Flash 오브젝트가
         // 돌릴 때마다 하나씩 쌓입니다.
         foreach (WeaponFlash stale in root.GetComponentsInChildren<WeaponFlash>(true))
+        {
+            if (stale == null) continue;
+            UnityEngine.Object.DestroyImmediate(stale.gameObject);
+        }
+
+        // 칸도 오브젝트째입니다. 미사일 여섯이 딸려 있어 부품만 지우면 남습니다.
+        foreach (WeaponCells stale in root.GetComponentsInChildren<WeaponCells>(true))
         {
             if (stale == null) continue;
             UnityEngine.Object.DestroyImmediate(stale.gameObject);
